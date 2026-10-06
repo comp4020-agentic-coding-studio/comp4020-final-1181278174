@@ -82,7 +82,15 @@ export class Visitor {
   }
 }
 
-const text = (el: Element | null | undefined): string => (el?.textContent ?? "").replace(/\s+/g, " ").trim();
+// Text the way it reads: separate paragraphs and labels stay separate words
+// (textContent alone would run a question into the "Yours" after it).
+function text(el: Element | null | undefined): string {
+  if (!el) return "";
+  const parts: string[] = [];
+  const walker = el.ownerDocument.createTreeWalker(el, 4 /* NodeFilter.SHOW_TEXT */);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) parts.push(node.nodeValue ?? "");
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+}
 const nameOf = (el: Element): string => el.getAttribute("aria-label") ?? text(el);
 
 /** The form holding a button whose name matches, e.g. /start/i. */
