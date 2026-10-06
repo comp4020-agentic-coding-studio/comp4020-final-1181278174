@@ -1,0 +1,18 @@
+---
+import JoinForm from "../components/JoinForm.astro";
+import Layout from "../layouts/Layout.astro";
+import { findSession, isCode, normaliseCode } from "../lib/board.ts";
+
+// The join box sends the code here, in whatever case it was typed.
+const typed = Astro.url.searchParams.get("code") ?? "";
+const code = normaliseCode(typed);
+if (isCode(code) && findSession(code)) return Astro.redirect(`/s/${code}`, 303);
+Astro.response.status = 404;
+---
+
+<Layout title="No such session · Hands Up">
+  <h1>{code ? `No session with the code ${code}` : "No session with that code"}</h1>
+  <p>Check the code on the screen at the front of the room, and try again.</p>
+  <JoinForm value={typed} />
+  <p><a href="/">Back to Hands Up</a></p>
+</Layout>

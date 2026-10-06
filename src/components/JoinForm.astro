@@ -1,0 +1,22 @@
+---
+type Props = { value?: string };
+const { value = "" } = Astro.props;
+---
+
+<form method="get" action="/join" class="join">
+  <label for="code">Code</label>
+  <div class="join-row">
+    <input
+      id="code"
+      name="code"
+      type="text"
+      autocomplete="off"
+      autocapitalize="characters"
+      spellcheck="false"
+      maxlength="8"
+      required
+      value={value}
+    />
+    <button type="submit">Join</button>
+  </div>
+</form>

@@ -1,9 +1,43 @@
 ---
+import JoinForm from "../components/JoinForm.astro";
 import Layout from "../layouts/Layout.astro";
+import { checkTitle, MAX_TITLE, startSession } from "../lib/board.ts";
+
+// Starting a session posts back here: on success it goes to the new
+// session, otherwise this page comes back with the name kept and the reason.
+let title = "";
+let problem: string | undefined;
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  title = String(form.get("title") ?? "").trim();
+  problem = checkTitle(title);
+  if (!problem) {
+    const code = startSession(title, Astro.locals.person);
+    return Astro.redirect(`/s/${code}`, 303);
+  }
+  Astro.response.status = 422;
+}
 ---
 
 <Layout title="Hands Up">
   <h1>Hands Up</h1>
-  <p>An anonymous question board for one room. Coming soon.</p>
-  <p><a href="/readme/">About this app</a></p>
+  <p>Ask the room's questions without putting your hand up.</p>
+
+  <section aria-labelledby="join-heading">
+    <h2 id="join-heading">Join a session</h2>
+    <p>Type the code on the screen at the front of the room.</p>
+    <JoinForm />
+  </section>
+
+  <section aria-labelledby="start-heading">
+    <h2 id="start-heading">Start a session</h2>
+    <form method="post">
+      <label for="title">Name it</label>
+      <input id="title" name="title" type="text" maxlength={MAX_TITLE} required value={title} />
+      {problem && <p role="alert">{problem}</p>}
+      <button type="submit">Start a session</button>
+    </form>
+  </section>
+
+  <p><a href="/readme/">About Hands Up</a></p>
 </Layout>
