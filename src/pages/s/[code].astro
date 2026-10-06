@@ -1,5 +1,7 @@
 ---
+import Icon from "../../components/Icon.astro";
 import JoinForm from "../../components/JoinForm.astro";
+import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
 import {
   ago,
@@ -49,81 +51,111 @@ if (!session) Astro.response.status = 404;
 const list = session ? listQuestions(session, person, sort) : [];
 const hosting = session !== undefined && session.host === person;
 const votesLabel = (n: number) => `Me too, ${n} ${n === 1 ? "vote" : "votes"}`;
+const howMany = `${list.length} ${list.length === 1 ? "question" : "questions"}`;
 ---
 
 {
   session ? (
     <Layout title={`${session.title} · Hands Up`}>
-      <header class="session">
-        <p class="code">
-          Code <strong>{session.code}</strong>
-        </p>
-        <h1>{session.title}</h1>
-        {hosting && <p>You started this session. Put the code on the screen so the room can join.</p>}
+      <header class="band">
+        <div class="wrap">
+          <div class="band-top">
+            <a class="brand" href="/">
+              <span class="brand-mark">
+                <Icon name="hand" />
+              </span>
+              Hands Up
+            </a>
+            <p class="code">Code <strong>{session.code}</strong></p>
+          </div>
+          <h1>{session.title}</h1>
+          {hosting && <p class="note">You started this session. Put the code on the screen so the room can join.</p>}
+        </div>
       </header>
 
-      <form method="post" class="ask">
-        <input type="hidden" name="intent" value="ask" />
-        <label for="body">Your question</label>
-        <textarea id="body" name="body" rows="3" maxlength={MAX_QUESTION} required aria-describedby="body-help">{draft}</textarea>
-        <p id="body-help">
-          Anonymous: nobody, the host included, can see who asked. Up to {MAX_QUESTION} characters.
-        </p>
-        {problem && <p role="alert">{problem}</p>}
-        <button type="submit">Ask</button>
-      </form>
+      <main id="main" class="wrap">
+        <form method="post" class="card ask">
+          <input type="hidden" name="intent" value="ask" />
+          <label for="body">Your question</label>
+          <textarea id="body" name="body" rows="2" maxlength={MAX_QUESTION} required placeholder="What do you want to ask?" aria-describedby="body-help">{draft}</textarea>
+          {problem && (
+            <p class="alert" role="alert">
+              {problem}
+            </p>
+          )}
+          <div class="ask-row">
+            <p class="hint" id="body-help">
+              <Icon name="lock" size={14} /> Anonymous, even to the host
+            </p>
+            <button class="button tomato" type="submit">
+              Ask
+            </button>
+          </div>
+        </form>
 
-      <nav aria-label="Order">
-        <a href={`/s/${session.code}`} aria-current={sort === "popular" ? "page" : undefined}>
-          Popular
-        </a>
-        <a href={`/s/${session.code}?sort=recent`} aria-current={sort === "recent" ? "page" : undefined}>
-          Recent
-        </a>
-      </nav>
+        <div class="bar">
+          <nav class="tabs" aria-label="Order">
+            <a href={`/s/${session.code}`} aria-current={sort === "popular" ? "page" : undefined}>
+              Popular
+            </a>
+            <a href={`/s/${session.code}?sort=recent`} aria-current={sort === "recent" ? "page" : undefined}>
+              Recent
+            </a>
+          </nav>
+          <p class="count-label">{howMany}</p>
+        </div>
 
-      {list.length === 0 ? (
-        <p class="empty">No questions yet. Be the first to ask.</p>
-      ) : (
-        <ol aria-label="Questions" class="questions">
-          {list.map((q) => (
-            <li id={`q-${q.id}`}>
-              <p class="body">{q.body}</p>
-              <p class="meta">
-                {/* HTML compression drops the whitespace between tags; the
-                    spaces are explicit so the text doesn't read "Yoursjust now" */}
-                {q.yours && <span class="yours">Yours</span>}
-                {" "}
-                <span>{ago(q.createdAt)}</span>
-              </p>
-              <form method="post" class="vote">
-                <input type="hidden" name="intent" value="vote" />
-                <input type="hidden" name="question" value={q.id} />
-                <button
-                  type="submit"
-                  name="want"
-                  value={q.voted ? "0" : "1"}
-                  aria-pressed={q.voted ? "true" : "false"}
-                  aria-label={votesLabel(q.votes)}
-                >
-                  <span>Me too</span>
-                  {" "}
-                  <span class="count">{q.votes}</span>
-                </button>
-              </form>
-            </li>
-          ))}
-        </ol>
-      )}
+        {list.length === 0 ? (
+          <p class="card empty">
+            <Icon name="hand" size={22} /> No questions yet. Be the first to ask.
+          </p>
+        ) : (
+          <ol aria-label="Questions" class="questions">
+            {list.map((q) => (
+              <li id={`q-${q.id}`}>
+                <p class="body">{q.body}</p>
+                <div class="q-foot">
+                  <p class="meta">
+                    {/* HTML compression drops the whitespace between tags; the
+                        spaces are explicit so the text doesn't read "Yoursjust now" */}
+                    {q.yours && <span class="yours">Yours</span>}
+                    {" "}
+                    <span>{ago(q.createdAt)}</span>
+                  </p>
+                  <form method="post" class="vote">
+                    <input type="hidden" name="intent" value="vote" />
+                    <input type="hidden" name="question" value={q.id} />
+                    <button
+                      class="me-too"
+                      type="submit"
+                      name="want"
+                      value={q.voted ? "0" : "1"}
+                      aria-pressed={q.voted ? "true" : "false"}
+                      aria-label={votesLabel(q.votes)}
+                    >
+                      <Icon name="hand" size={18} />
+                      <span>Me too</span>
+                      {" "}
+                      <span class="n">{q.votes}</span>
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </main>
     </Layout>
   ) : (
     <Layout title="No such session · Hands Up">
-      <h1>No session with the code {code}</h1>
-      <p>Check the code on the screen at the front of the room, and try again.</p>
-      <JoinForm value={raw} />
-      <p>
-        <a href="/">Back to Hands Up</a>
-      </p>
+      <SlimHeader />
+      <main id="main" class="wrap lost">
+        <div class="card panel">
+          <h1>No session with the code {code}</h1>
+          <p>Check the code on the screen at the front of the room, and try again.</p>
+          <JoinForm value={raw} />
+        </div>
+      </main>
     </Layout>
   )
 }

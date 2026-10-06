@@ -1,4 +1,5 @@
 ---
+import Icon from "../components/Icon.astro";
 import JoinForm from "../components/JoinForm.astro";
 import Layout from "../layouts/Layout.astro";
 import { checkTitle, MAX_TITLE, startSession } from "../lib/board.ts";
@@ -19,26 +20,42 @@ if (Astro.request.method === "POST") {
 }
 ---
 
-<Layout title="Hands Up">
-  <h1>Hands Up</h1>
-  <p>Ask the room's questions without putting your hand up.</p>
+<Layout title="Hands Up" sunny>
+  <main id="main" class="wrap">
+    <div class="hero">
+      <span class="hero-mark"><Icon name="hand" size={36} /></span>
+      <h1>Hands Up</h1>
+      <p>Ask the room's questions without putting your hand up.</p>
+    </div>
 
-  <section aria-labelledby="join-heading">
-    <h2 id="join-heading">Join a session</h2>
-    <p>Type the code on the screen at the front of the room.</p>
-    <JoinForm />
-    <p><a href="/s/HAND">Try the open board: HAND</a></p>
-  </section>
+    <div class="stack">
+      <section class="card panel" aria-labelledby="join-heading">
+        <h2 id="join-heading">Join a session</h2>
+        <p>Type the code on the screen at the front of the room.</p>
+        <JoinForm />
+        <a class="go" href="/s/HAND">Try the open board: HAND <Icon name="arrow" size={16} /></a>
+      </section>
 
-  <section aria-labelledby="start-heading">
-    <h2 id="start-heading">Start a session</h2>
-    <form method="post">
-      <label for="title">Name it</label>
-      <input id="title" name="title" type="text" maxlength={MAX_TITLE} required value={title} />
-      {problem && <p role="alert">{problem}</p>}
-      <button type="submit">Start a session</button>
-    </form>
-  </section>
+      <section class="card quiet panel" aria-labelledby="start-heading">
+        <h2 id="start-heading">Start a session</h2>
+        <form method="post" class="panel">
+          <label for="title">Name it</label>
+          <input
+            class="title-input"
+            id="title"
+            name="title"
+            type="text"
+            maxlength={MAX_TITLE}
+            required
+            placeholder="COMP4020 week 9 lecture"
+            value={title}
+          />
+          {problem && <p class="alert" role="alert">{problem}</p>}
+          <button class="button ink" type="submit">Start a session</button>
+        </form>
+      </section>
 
-  <p><a href="/readme/">About Hands Up</a></p>
+      <p class="foot"><a href="/readme/">About Hands Up</a> <span>No accounts. No names.</span></p>
+    </div>
+  </main>
 </Layout>

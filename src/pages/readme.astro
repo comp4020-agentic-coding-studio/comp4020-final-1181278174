@@ -2,6 +2,7 @@
 // README.md, rendered on the server: what this app is and what good means
 // here. spec/invariants.test.ts checks its headings are all on this page.
 import * as readme from "../../README.md";
+import SlimHeader from "../components/SlimHeader.astro";
 import Layout from "../layouts/Layout.astro";
 
 const title = readme.getHeadings().find((h) => h.depth === 1)?.text ?? "About";
@@ -9,5 +10,8 @@ const html = await readme.compiledContent();
 ---
 
 <Layout title={`${title} · About`}>
-  <article set:html={html} />
+  <SlimHeader />
+  <main id="main" class="wrap prose">
+    <article set:html={html} />
+  </main>
 </Layout>

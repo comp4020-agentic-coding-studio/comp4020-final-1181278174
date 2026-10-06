@@ -1,5 +1,6 @@
 ---
 import JoinForm from "../components/JoinForm.astro";
+import SlimHeader from "../components/SlimHeader.astro";
 import Layout from "../layouts/Layout.astro";
 import { findSession, isCode, normaliseCode } from "../lib/board.ts";
 
@@ -11,8 +12,12 @@ Astro.response.status = 404;
 ---
 
 <Layout title="No such session · Hands Up">
-  <h1>{code ? `No session with the code ${code}` : "No session with that code"}</h1>
-  <p>Check the code on the screen at the front of the room, and try again.</p>
-  <JoinForm value={typed} />
-  <p><a href="/">Back to Hands Up</a></p>
+  <SlimHeader />
+  <main id="main" class="wrap lost">
+    <div class="card panel">
+      <h1>{code ? `No session with the code ${code}` : "No session with that code"}</h1>
+      <p>Check the code on the screen at the front of the room, and try again.</p>
+      <JoinForm value={typed} />
+    </div>
+  </main>
 </Layout>

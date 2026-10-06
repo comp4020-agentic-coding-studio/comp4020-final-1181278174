@@ -3,7 +3,7 @@ type Props = { value?: string };
 const { value = "" } = Astro.props;
 ---
 
-<form method="get" action="/join" class="join">
+<form method="get" action="/join" class="panel">
   <label for="code">Code</label>
   <div class="join-row">
     <input
@@ -15,8 +15,9 @@ const { value = "" } = Astro.props;
       spellcheck="false"
       maxlength="8"
       required
+      placeholder="ABCD"
       value={value}
     />
-    <button type="submit">Join</button>
+    <button class="button blue" type="submit">Join</button>
   </div>
 </form>
