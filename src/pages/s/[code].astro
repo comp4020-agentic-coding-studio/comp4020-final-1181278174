@@ -90,7 +90,10 @@ const votesLabel = (n: number) => `Me too, ${n} ${n === 1 ? "vote" : "votes"}`;
             <li id={`q-${q.id}`}>
               <p class="body">{q.body}</p>
               <p class="meta">
+                {/* HTML compression drops the whitespace between tags; the
+                    spaces are explicit so the text doesn't read "Yoursjust now" */}
                 {q.yours && <span class="yours">Yours</span>}
+                {" "}
                 <span>{ago(q.createdAt)}</span>
               </p>
               <form method="post" class="vote">
@@ -104,7 +107,8 @@ const votesLabel = (n: number) => `Me too, ${n} ${n === 1 ? "vote" : "votes"}`;
                   aria-label={votesLabel(q.votes)}
                 >
                   <span>Me too</span>
-                    <span class="count">{q.votes}</span>
+                  {" "}
+                  <span class="count">{q.votes}</span>
                 </button>
               </form>
             </li>
