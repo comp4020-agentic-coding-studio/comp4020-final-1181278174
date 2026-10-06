@@ -33,6 +33,8 @@ FROM base
 
 COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /app/dist /app/dist
+# the committed migrations, applied at boot (src/lib/db.ts)
+COPY --from=build /app/drizzle /app/drizzle
 
 ENV HOST=0.0.0.0
 ENV PORT=8080
