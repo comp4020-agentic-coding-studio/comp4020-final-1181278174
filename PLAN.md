@@ -48,8 +48,23 @@ server-side logging (crit 10).
 
 Drawn on the design canvas before it is built, from a study of how Slido,
 Mentimeter, Pigeonhole Live and the others lay out a live Q&A. Three screens:
-the session on a 390 px phone, the home page, and the projector. Decided once
-the canvas has a direction.
+the session on a 390 px phone, the home page, and the projector.
+
+Decided 7 October, 04:30: bold and playful, so asking feels low-stakes.
+
+- Sunflower `#FFD43B` for the header band and the home page, ink `#121212`,
+  electric blue `#2F5BFF` for a pressed "Me too", tomato `#FF5A3C` for Ask,
+  warm white `#FFF9E8` behind white cards.
+- Bricolage Grotesque for headings, codes and counts; Instrument Sans for
+  everything else; the system's Chinese font for Chinese text.
+- 2 px ink outlines, 16 to 20 px corners, hard offset shadows. A pressed
+  "Me too" turns blue and sinks into its shadow.
+- The mark is a raised hand (Lucide's hand icon, ISC licence), on the "Me
+  too" button too.
+- Taken from the study: the code in a dark chip at the top of every phone; a
+  join rail with the code and a QR code on the projector (Slido, Pigeonhole);
+  Popular | Recent with a count (Slido); a "Yours" tag (Mentimeter); no
+  names, no downvotes, no replies.
 
 ## A person, a session
 
