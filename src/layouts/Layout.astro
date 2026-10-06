@@ -1,16 +1,18 @@
+---
+type Props = { title: string };
+const { title } = Astro.props;
+---
+
 <!doctype html>
 <html lang="en-AU">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>About</title>
+    <title>{title}</title>
   </head>
   <body>
-    <main>
-      <h1>About</h1>
-      <pre>
-@README@
-      </pre>
+    <main id="main">
+      <slot />
     </main>
   </body>
 </html>
