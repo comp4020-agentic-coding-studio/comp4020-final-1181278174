@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { sessions } from "./schema.ts";
 
 // One SQLite file is the app's whole persistent state. In the image,
 // DATABASE_PATH points at the volume (/data), which is how questions survive
@@ -20,3 +21,9 @@ export const db = drizzle(client);
 // src/lib/schema.ts, `pnpm db:generate`, commit the migration it writes.
 migrate(db, { migrationsFolder: "./drizzle" });
 
+// HAND is always there and always open, so a stranger has somewhere to ask
+// the moment they arrive. Nobody is its host.
+db.insert(sessions)
+  .values({ code: "HAND", title: "Questions for the maker of this app", host: null, createdAt: new Date() })
+  .onConflictDoNothing({ target: sessions.code })
+  .run();
