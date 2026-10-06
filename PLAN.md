@@ -50,7 +50,7 @@ Drawn on the design canvas before it is built, from a study of how Slido,
 Mentimeter, Pigeonhole Live and the others lay out a live Q&A. Three screens:
 the session on a 390 px phone, the home page, and the projector.
 
-Decided 7 October, 04:30: bold and playful, so asking feels low-stakes.
+Decided 7 October, 04:18: bold and playful, so asking feels low-stakes.
 
 - Sunflower `#FFD43B` for the header band and the home page, ink `#121212`,
   electric blue `#2F5BFF` for a pressed "Me too", tomato `#FF5A3C` for Ask,
@@ -106,7 +106,7 @@ and hidden arrive with crit 9, in their own migration.
   double click can't undo itself). Success redirects back with a 303; a
   refused question or name renders the same page again, with a 422, the text
   kept and the reason. Joining is a GET to `/join?code=` (decided 7 October,
-  04:15: a page can show its own form again; a separate endpoint can only
+  04:10: a page can show its own form again; a separate endpoint can only
   redirect).
 
 ## Stack
