@@ -86,10 +86,13 @@ and hidden arrive with crit 9, in their own migration.
 - `/s/[code]/present`, if time: the code, a QR code and the top questions in
   type big enough for the back row.
 - `/readme/`: README.md, rendered on the server.
-- Form posts: `POST /start`, `POST /s/[code]/ask`, `POST /s/[code]/vote` (the
-  question and `want` 1 or 0, so a double click can't undo itself). Each
-  redirects back with a 303; a refused question renders the page again with
-  the text kept and the reason.
+- Forms post back to the page they are on: starting a session to `/`, asking
+  and voting to `/s/[code]` (a vote sends the question and `want` 1 or 0, so a
+  double click can't undo itself). Success redirects back with a 303; a
+  refused question or name renders the same page again, with a 422, the text
+  kept and the reason. Joining is a GET to `/join?code=` (decided 7 October,
+  04:15: a page can show its own form again; a separate endpoint can only
+  redirect).
 
 ## Stack
 
