@@ -73,7 +73,7 @@ const hosting = session !== undefined && session.host === person;
       </header>
 
       <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
-        <form method="post" class="card ask">
+        <form method="post" class="card ask" data-ask>
           <input type="hidden" name="intent" value="ask" />
           <label for="body">Your question</label>
           <textarea id="body" name="body" rows="2" maxlength={MAX_QUESTION} required placeholder="What do you want to ask?" aria-describedby="body-help">{draft}</textarea>

@@ -6,6 +6,8 @@ import { votesLabel } from "../lib/words.ts";
 // counts and moves cards to match. When the state has a question this page
 // has never seen, the page fetches itself and takes the new card from the
 // server's HTML, so "Yours" and the wording are still the server's.
+// Asking and voting are still the page's forms; the script sends them in the
+// background, so the page doesn't reload, and takes the list from the answer.
 // Without this script the page works as plain forms.
 
 type Board = { questions: [id: number, votes: number][] };
@@ -15,9 +17,9 @@ const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const main = document.querySelector<HTMLElement>("[data-live]");
 const holder = main?.querySelector<HTMLElement>("[data-board]");
-if (main?.dataset.live && holder && "EventSource" in window) watch(main.dataset.live, holder);
+if (main?.dataset.live && holder && "EventSource" in window) watch(main, main.dataset.live, holder);
 
-function watch(url: string, holder: HTMLElement): void {
+function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   const cards = (): HTMLElement[] => [...holder.querySelectorAll<HTMLElement>(CARD)];
 
   /** Make a change to the list, keep the keyboard where it was, and slide each card to its new place. */
@@ -142,6 +144,54 @@ function watch(url: string, holder: HTMLElement): void {
       fetching = false;
     }
   }
+
+  /** Send a form in the background, as pressing `button` would, and show what the server answers. */
+  async function send(form: HTMLFormElement, button: HTMLElement | null): Promise<void> {
+    const fields = new URLSearchParams();
+    for (const [name, value] of new FormData(form)) fields.append(name, String(value));
+    if (button instanceof HTMLButtonElement && button.name) fields.append(button.name, button.value);
+    const asking = form.matches("[data-ask]");
+    const text = form.querySelector("textarea");
+
+    // a pressed "Me too" shows at once; the count waits for the server
+    const pressed = button?.getAttribute("aria-pressed");
+    if (button && pressed) button.setAttribute("aria-pressed", pressed === "true" ? "false" : "true");
+    form.setAttribute("aria-busy", "true");
+    try {
+      const res = await fetch(form.action, {
+        method: "POST",
+        body: fields,
+        headers: { accept: "text/html" },
+      });
+      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+      if (!doc.querySelector("[data-board]")) throw new Error(`the server answered ${res.status}`);
+      adopt(doc);
+      if (asking && text) {
+        // a refused question comes back with the reason; an accepted one empties the box
+        const reason = doc.querySelector("[data-ask] [role='alert']");
+        form.querySelector("[role='alert']")?.remove();
+        if (reason) text.after(document.adoptNode(reason));
+        else text.value = "";
+      }
+    } catch {
+      // no answer: put the button back and send the form the ordinary way
+      if (button && pressed) button.setAttribute("aria-pressed", pressed);
+      plain.add(form);
+      form.requestSubmit(button);
+    } finally {
+      form.removeAttribute("aria-busy");
+    }
+  }
+
+  const plain = new WeakSet<HTMLFormElement>();
+  main.addEventListener("submit", (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || form.method !== "post" || plain.has(form)) return;
+    event.preventDefault();
+    // a second press while the first is on its way would send the same thing again
+    if (form.getAttribute("aria-busy") === "true") return;
+    void send(form, event.submitter);
+  });
 
   function connect(): void {
     const source = new EventSource(url);
