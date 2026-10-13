@@ -190,9 +190,11 @@ reorders straight away, phones included.
 - The other option was to update counts and add new questions live but leave
   the order alone on a phone until its owner asks for the new order, and
   reorder live only on the projector.
-- Why: README.md says good means the questions most people want answered come
-  first. With this choice that is true on every screen all the time, and
-  everyone in the room sees the same list as the person at the front.
+- Why (rewritten 14 October, after I tried it on my laptop and my phone): a
+  question that gets votes moves up straight away, so anyone can see at a
+  glance which question the room wants most, without pressing anything. The
+  reason that stood here before was drafted for me, and I could not explain
+  it.
 - What it costs: a card can move just as someone is about to press it, so a
   "Me too" can land on the wrong question. Slido's staff call jumping
   questions distracting. A wrong vote can be taken back, and a card slides to
