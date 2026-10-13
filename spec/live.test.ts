@@ -7,6 +7,9 @@ import { ask, meToo, questions, startSession, type Stream, Visitor } from "./vis
 // That a page moves when the event arrives is checked by hand in a browser.
 const tag = (): string => Math.random().toString(36).slice(2, 8);
 
+// longer than the server takes to gather changes into one event
+const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 400));
+
 const open: Stream[] = [];
 afterEach(() => {
   for (const stream of open.splice(0)) stream.close();
@@ -81,8 +84,8 @@ describe("live", () => {
     await secondTab.until(() => true);
     await stream.until((board) => board.here === 2);
     // give a wrong count of three the time to arrive
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    expect((await stream.until(() => true)).board.here).toBeLessThan(3);
+    await settle();
+    expect(stream.last?.here).toBe(2);
 
     stream.forget();
     tab.close();
@@ -99,13 +102,18 @@ describe("live", () => {
     const link = [...session.doc.querySelectorAll("a")].find((a) => /projector/i.test(a.textContent ?? ""));
     const projector = await screen.listen(await screen.open(new URL(link!.getAttribute("href")!, session.url)));
     open.push(projector);
-    expect((await projector.until(() => true)).board.here).toBe(1);
+    await projector.until(() => true);
+    // the projector's arrival is sent to everyone a moment later; the count has not moved
+    await settle();
+    expect(projector.last?.here).toBe(1);
+    expect(stream.last?.here).toBe(1);
 
-    // a person arriving is what would raise the count
-    stream.forget();
+    // a person arriving is what raises it, to two and not three
     const other = new Visitor();
     open.push(await other.listen(await other.open(path)));
-    expect((await stream.until(() => true)).board.here).toBe(2);
+    await stream.until((board) => board.here > 1);
+    await settle();
+    expect(stream.last?.here).toBe(2);
   });
 
   it("the stream of an unknown code is a 404", async () => {

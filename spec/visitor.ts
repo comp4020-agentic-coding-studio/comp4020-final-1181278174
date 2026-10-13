@@ -83,6 +83,11 @@ export class Stream {
     }
   }
 
+  /** The state most recently sent. */
+  get last(): Board | undefined {
+    return this.events.at(-1)?.board;
+  }
+
   /** Forget what has been sent so far, so `until` only sees what comes next. */
   forget(): void {
     this.events = [];
