@@ -73,7 +73,7 @@ const howMany = `${list.length} ${list.length === 1 ? "question" : "questions"}`
         </div>
       </header>
 
-      <main id="main" class="wrap">
+      <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
         <form method="post" class="card ask">
           <input type="hidden" name="intent" value="ask" />
           <label for="body">Your question</label>

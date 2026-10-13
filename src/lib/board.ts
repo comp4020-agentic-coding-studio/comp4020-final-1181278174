@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "./db.ts";
+import { publish } from "./live.ts";
 import { questions, sessions, votes } from "./schema.ts";
 
 export const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -62,6 +63,7 @@ export function checkQuestion(body: string): string | undefined {
 
 export function askQuestion(session: Session, asker: string, body: string): void {
   db.insert(questions).values({ sessionId: session.id, body, asker, createdAt: new Date() }).run();
+  publish(session.id);
 }
 
 /** Say "me too" (want) or take it back. Saying it twice is still one vote. */
@@ -77,6 +79,7 @@ export function setVote(session: Session, questionId: number, person: string, wa
   } else {
     db.delete(votes).where(and(eq(votes.questionId, questionId), eq(votes.person, person))).run();
   }
+  publish(session.id);
 }
 
 export function listQuestions(session: Session, viewer: string, sort: Sort): QuestionView[] {
