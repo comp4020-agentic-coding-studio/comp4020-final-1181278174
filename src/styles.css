@@ -432,6 +432,12 @@ textarea {
   margin: 0;
 }
 
+/* a card that has just moved can't be pressed for a moment (src/scripts/live.ts):
+   the finger was aimed at whatever was here before */
+.questions > li[data-moved] button {
+  pointer-events: none;
+}
+
 /* a question the host has marked: answered ones step back, hidden ones (the
    host's page only) are outlined with dashes */
 .tag {

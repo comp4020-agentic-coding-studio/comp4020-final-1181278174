@@ -26,6 +26,10 @@ if (main?.dataset.live && holder && "EventSource" in window) watch(main, main.da
 function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   const cards = (): HTMLElement[] => [...holder.querySelectorAll<HTMLElement>(CARD)];
 
+  // how long a card that moved can't be pressed: the slide, and a little more
+  const MOVED_MS = 400;
+  const settling = new WeakMap<HTMLElement, number>();
+
   /** Make a change to the list, keep the keyboard where it was, and slide each card to its new place. */
   function move(change: () => void): void {
     const before = new Map(cards().map((li) => [li.id, li.getBoundingClientRect().top]));
@@ -41,6 +45,19 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       const buttons = document.getElementById(card.id)?.querySelectorAll<HTMLElement>("button");
       const again = focused.isConnected ? focused : (buttons?.[nth] ?? buttons?.[buttons.length - 1]);
       again?.focus({ preventScroll: true });
+    }
+    // A card that has just moved is under a finger that was aimed at another
+    // one, so for a moment it can't be pressed (the stylesheet turns its
+    // buttons off for the pointer; the keyboard is not affected).
+    for (const li of cards()) {
+      const was = before.get(li.id);
+      if (was === undefined || Math.abs(was - li.getBoundingClientRect().top) <= 1) continue;
+      li.dataset.moved = "";
+      clearTimeout(settling.get(li));
+      settling.set(
+        li,
+        window.setTimeout(() => delete li.dataset.moved, MOVED_MS),
+      );
     }
     if (calm.matches) return;
     for (const li of cards()) {
