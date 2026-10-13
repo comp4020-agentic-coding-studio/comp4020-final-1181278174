@@ -26,11 +26,12 @@ The design is `PLAN.md`. When this file and `PLAN.md` disagree, stop and ask.
   its template comment, every cited commit resolves. Run before `/ship`.
 - `pnpm db:generate --name <what>` — a migration from `src/lib/schema.ts`.
   Commit the migration with the schema change.
-- Deploy by hand while the repo is private, from a clean working tree (the
-  deploy uploads the working tree, uncommitted drafts included):
+- The repo is public, so every push to `main` runs the checks on GitHub and, if
+  they pass, deploys. A deploy by hand uploads the working tree, uncommitted
+  drafts included, so only from a clean tree:
   `mise exec -- flyctl deploy --remote-only --ha=false -a comp4020-final-1181278174`.
-- `/preflight` before `/ship`. `/ship` flips the repo public. That cannot be
-  undone and only happens on my word.
+- `/preflight` before `/ship`. `/ship` tags the crit's cutoff state. It only
+  happens on my word.
 
 ## What is fixed and what is mine
 
@@ -129,11 +130,12 @@ Bad: `Implement comprehensive anonymous voting system`
 An entry earns its place after it has cost time here. Shape: what is true, how it was
 measured. Delete it when it stops being true.
 
-### CI does nothing while the repo is private
+### Every push to `main` deploys
 
-Both jobs in `.github/workflows/checks.yml` carry `if: !github.event.repository.private`.
-Until `/ship`, the local `pnpm check` is the only gate and deploys are by hand. Measured by
-reading the workflow.
+The repo has been public since crit 8, so both jobs in `.github/workflows/checks.yml` run
+on every push, one deploy at a time, about four minutes each. A commit with tests that are
+red on purpose is pushed together with the commit that turns them green, or the run fails
+and nothing deploys. Measured 2026-10-13: run 38399933367 deployed `34ac650`.
 
 ### flyctl only has the token through mise
 
