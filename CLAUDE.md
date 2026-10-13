@@ -30,6 +30,7 @@ The design is `PLAN.md`. When this file and `PLAN.md` disagree, stop and ask.
   they pass, deploys. A deploy by hand uploads the working tree, uncommitted
   drafts included, so only from a clean tree:
   `mise exec -- flyctl deploy --remote-only --ha=false -a comp4020-final-1181278174`.
+- Installing or adding a package: `mise exec -- pnpm …`, never plain `pnpm`.
 - `/preflight` before `/ship`. `/ship` tags the crit's cutoff state. It only
   happens on my word.
 
@@ -136,6 +137,12 @@ The repo has been public since crit 8, so both jobs in `.github/workflows/checks
 on every push, one deploy at a time, about four minutes each. A commit with tests that are
 red on purpose is pushed together with the commit that turns them green, or the run fails
 and nothing deploys. Measured 2026-10-13: run 38399933367 deployed `34ac650`.
+
+### Plain `pnpm` here is newer than the pinned one
+
+`mise.toml` and the `Dockerfile` pin pnpm 11.9.0, but plain `pnpm` on this machine is
+11.20.0, which writes the lockfile differently: adding one package changed 97 lines. Use
+`mise exec -- pnpm add …`; the same change was then 8 lines. Measured 2026-10-13.
 
 ### flyctl only has the token through mise
 
