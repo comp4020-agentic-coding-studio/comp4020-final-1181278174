@@ -12,6 +12,78 @@ function page(status: number, url: URL, html: string): Page {
   return { status, url, html, doc: new JSDOM(html, { url: url.href }).window.document };
 }
 
+/** What the server sends an open page: every question's id and vote count, in Popular order. */
+export type Board = { questions: [id: number, votes: number][] };
+
+/** A page's live stream, read as the page's script would read it. */
+export class Stream {
+  /** Everything the server has sent on this stream, as text. */
+  raw = "";
+  private events: { board: Board; at: number }[] = [];
+  private waiting: (() => void)[] = [];
+  private abort = new AbortController();
+
+  constructor(
+    readonly status: number,
+    body: ReadableStream<Uint8Array> | null,
+    abort: AbortController,
+  ) {
+    this.abort = abort;
+    if (status === 200 && body) void this.read(body);
+  }
+
+  private async read(body: ReadableStream<Uint8Array>): Promise<void> {
+    const decoder = new TextDecoder();
+    let rest = "";
+    try {
+      for await (const chunk of body) {
+        const text = decoder.decode(chunk, { stream: true });
+        this.raw += text;
+        rest += text;
+        // events are separated by a blank line; an event's data lines carry JSON
+        for (let end = rest.indexOf("\n\n"); end >= 0; end = rest.indexOf("\n\n")) {
+          const data = rest
+            .slice(0, end)
+            .split("\n")
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trim())
+            .join("\n");
+          rest = rest.slice(end + 2);
+          if (data) this.events.push({ board: JSON.parse(data) as Board, at: Date.now() });
+        }
+        for (const wake of this.waiting.splice(0)) wake();
+      }
+    } catch {
+      // closed
+    }
+  }
+
+  /** The first board sent that passes `test`, and when it arrived; throws after `within` ms. */
+  async until(test: (board: Board) => boolean, within = 1000): Promise<{ board: Board; at: number }> {
+    const deadline = Date.now() + within;
+    for (;;) {
+      const found = this.events.find((event) => test(event.board));
+      if (found) return found;
+      const left = deadline - Date.now();
+      if (left <= 0) {
+        const last = JSON.stringify(this.events.at(-1)?.board ?? null);
+        throw new Error(`the stream sent nothing that matched within ${within} ms; last sent: ${last}`);
+      }
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, left);
+        this.waiting.push(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
+    }
+  }
+
+  close(): void {
+    this.abort.abort();
+  }
+}
+
 export class Visitor {
   private cookies = new Map<string, string>();
 
@@ -47,6 +119,23 @@ export class Visitor {
       return page(res.status, url, await res.text());
     }
     throw new Error(`too many redirects from ${path}`);
+  }
+
+  /** Open the live stream a page names, as its script would. */
+  async listen(from: Page): Promise<Stream> {
+    const path = from.doc.querySelector("[data-live]")?.getAttribute("data-live");
+    if (!path) throw new Error(`${from.url.pathname} names no live stream`);
+    return this.listenTo(new URL(path, from.url));
+  }
+
+  async listenTo(url: URL): Promise<Stream> {
+    const abort = new AbortController();
+    const res = await this.send(url, { headers: { accept: "text/event-stream" }, signal: abort.signal });
+    if (res.status !== 200) {
+      await res.body?.cancel();
+      return new Stream(res.status, null, abort);
+    }
+    return new Stream(res.status, res.body, abort);
   }
 
   /** Submit a form as pressing `button` (else its first submit button) would. */
@@ -112,6 +201,8 @@ export function fill(form: HTMLFormElement, value: string): void {
 }
 
 export type Question = {
+  /** The id the live stream uses for this question. */
+  id: number;
   text: string;
   votes: number;
   pressed: boolean;
@@ -126,6 +217,7 @@ export function questions(p: Page): Question[] {
     const meToo = [...li.querySelectorAll("button")].find((b) => /me too/i.test(nameOf(b)));
     if (!meToo) throw new Error(`a question with no "Me too" button: ${text(li)}`);
     return {
+      id: Number(li.id.match(/\d+/)?.[0] ?? Number.NaN),
       text: text(li),
       votes: Number(nameOf(meToo).match(/\d+/)?.[0] ?? Number.NaN),
       pressed: meToo.getAttribute("aria-pressed") === "true",
