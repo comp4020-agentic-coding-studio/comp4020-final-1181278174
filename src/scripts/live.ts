@@ -88,7 +88,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   function show(board: Board): void {
     const known = new Map(cards().map((li) => [Number(li.id.slice(2)), li]));
     const same = board.questions.length === known.size && board.questions.every(([id]) => known.has(id));
-    if (!same) {
+    // the projector page shows only the top few, so it always asks the server which
+    if (!same || holder.dataset.refresh !== undefined) {
       void refresh();
       return;
     }

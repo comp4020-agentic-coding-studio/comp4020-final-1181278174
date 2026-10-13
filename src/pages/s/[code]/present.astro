@@ -1,0 +1,94 @@
+---
+import Icon from "../../../components/Icon.astro";
+import JoinForm from "../../../components/JoinForm.astro";
+import SlimHeader from "../../../components/SlimHeader.astro";
+import Layout from "../../../layouts/Layout.astro";
+import { findSession, isCode, listQuestions, normaliseCode } from "../../../lib/board.ts";
+import { howMany } from "../../../lib/words.ts";
+
+// The session for the screen at the front of the room: where to join, and the
+// questions most people want answered, in type the back row can read. Nobody
+// presses anything here, so it has no forms.
+const TOP = 5;
+
+const raw = Astro.params.code ?? "";
+const code = normaliseCode(raw);
+const session = isCode(code) ? findSession(code) : undefined;
+if (!session) Astro.response.status = 404;
+
+const all = session ? listQuestions(session, Astro.locals.person, "popular") : [];
+const top = all.slice(0, TOP);
+---
+
+{
+  session ? (
+    <Layout title={`${session.title} · Hands Up`}>
+      <div class="present" data-live={`/s/${session.code}/events`}>
+        <aside class="rail" aria-label="How to join">
+          <a class="brand" href="/">
+            <span class="brand-mark">
+              <Icon name="hand" />
+            </span>
+            Hands Up
+          </a>
+          <div class="rail-step">
+            <p>Go to</p>
+            <p class="rail-where">{Astro.url.host}</p>
+          </div>
+          <div class="rail-step rail-code">
+            <p>and type the code</p>
+            <p class="big-code">{session.code}</p>
+          </div>
+        </aside>
+
+        <main id="main" class="stage">
+          <div class="stage-top">
+            <h1>{session.title}</h1>
+            <p class="count-label" data-count>
+              {howMany(all.length)}
+            </p>
+          </div>
+
+          {/* the page's script (src/scripts/live.ts) redraws what is in here after every change */}
+          <div class="stage-list" data-board data-refresh>
+            {top.length === 0 ? (
+              <p class="stage-empty">No questions yet. Join with the code and ask the first one.</p>
+            ) : (
+              <ol aria-label="Top questions" class="top">
+                {top.map((q) => (
+                  <li id={`q-${q.id}`}>
+                    <p class="body">{q.body}</p>
+                    <p class="votes">
+                      <Icon name="hand" size={34} />
+                      <span class="n">{q.votes}</span>
+                      {" "}
+                      <span class="unseen">{q.votes === 1 ? "vote" : "votes"}</span>
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <p class="stage-foot">
+            <Icon name="lock" size={18} /> Anonymous: nobody, the host included, can see who asked.
+          </p>
+        </main>
+      </div>
+      <script>
+        import "../../../scripts/live.ts";
+      </script>
+    </Layout>
+  ) : (
+    <Layout title="No such session · Hands Up">
+      <SlimHeader />
+      <main id="main" class="wrap lost">
+        <div class="card panel">
+          <h1>No session with the code {code}</h1>
+          <p>Check the code on the screen at the front of the room, and try again.</p>
+          <JoinForm value={raw} />
+        </div>
+      </main>
+    </Layout>
+  )
+}

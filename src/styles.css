@@ -640,6 +640,302 @@ textarea {
   font-size: 0.92em;
 }
 
+/* the projector page: a join rail and the top questions. Sizes are in em and
+   the em follows the screen's width, so 1280 and 1920 wide look the same. */
+
+.unseen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.session-foot {
+  padding: 18px 4px 28px;
+}
+
+.present {
+  font-size: calc(100vw / 80);
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.rail {
+  flex: none;
+  width: 23.75em;
+  background: var(--sun);
+  border-right: 0.19em solid var(--ink);
+  padding: 2.5em 2.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4em;
+}
+
+.rail .brand {
+  font-size: 1.6em;
+  gap: 0.4em;
+}
+
+.rail .brand-mark {
+  width: 1.7em;
+  height: 1.7em;
+}
+
+.rail .brand-mark svg {
+  width: 1em;
+  height: 1em;
+}
+
+.rail-step p {
+  margin: 0;
+  font-size: 1.15em;
+  font-weight: 700;
+}
+
+.rail-step .rail-where {
+  font-size: 1.05em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.rail-code {
+  margin-top: auto;
+}
+
+.rail-step .big-code {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 6.5em;
+  line-height: 0.9;
+  letter-spacing: 0.08em;
+}
+
+.stage {
+  flex: 1;
+  min-width: 0;
+  padding: 2.5em 3em;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25em;
+}
+
+.stage-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5em;
+}
+
+.stage-top h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 2.1em;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.stage-top .count-label {
+  flex: none;
+  font-size: 1.1em;
+}
+
+.stage-list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  /* room for the cards' shadows, which the clipping would cut off */
+  padding: 0 0.5em 0.5em 0;
+}
+
+.stage-empty {
+  margin: 0;
+  font-size: 2.4em;
+  font-weight: 600;
+  line-height: 1.2;
+  max-width: 16em;
+}
+
+.top {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9em;
+}
+
+.top > li {
+  background: var(--card);
+  border: 0.125em solid var(--ink);
+  border-radius: 1.1em;
+  padding: 1em 1.4em;
+  display: flex;
+  align-items: center;
+  gap: 1.25em;
+}
+
+.top .body {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 1.55em;
+  font-weight: 500;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.top .votes {
+  margin: 0;
+  flex: none;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.9em;
+  line-height: 1;
+}
+
+.top .votes svg {
+  display: none;
+}
+
+/* the question most people want answered is the big one */
+.top > li:first-child {
+  border-width: 0.19em;
+  border-radius: 1.4em;
+  box-shadow: 0.38em 0.38em 0 var(--ink);
+  padding: 1.6em 1.75em;
+  gap: 1.75em;
+}
+
+.top > li:first-child .body {
+  font-size: 2.4em;
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+}
+
+.top > li:first-child .votes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05em;
+  background: var(--blue);
+  color: #ffffff;
+  border: 0.07em solid var(--ink);
+  border-radius: 0.4em;
+  padding: 0.28em 0.4em;
+  font-size: 2.75em;
+}
+
+.top > li:first-child .votes svg {
+  display: block;
+  width: 0.78em;
+  height: 0.78em;
+}
+
+.stage-foot {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  font-size: 1.05em;
+  font-weight: 600;
+  color: #4a4433;
+}
+
+.stage-foot svg {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+}
+
+/* opened on a phone or a narrow window: the rail goes on top, and the page scrolls */
+@media (max-width: 760px) {
+  .present {
+    font-size: 16px;
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .rail {
+    width: auto;
+    border-right: 0;
+    border-bottom: var(--line);
+    padding: 14px 16px 18px;
+    gap: 10px;
+  }
+
+  .rail .brand {
+    font-size: 19px;
+  }
+
+  .rail-step p {
+    font-size: 15px;
+  }
+
+  .rail-step .big-code {
+    font-size: 64px;
+  }
+
+  .stage {
+    padding: 18px 16px 24px;
+    gap: 14px;
+  }
+
+  .stage-top {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stage-top h1 {
+    font-size: 26px;
+  }
+
+  .stage-top .count-label {
+    font-size: 13px;
+  }
+
+  .stage-list {
+    overflow: visible;
+  }
+
+  .stage-empty {
+    font-size: 20px;
+  }
+
+  .top > li,
+  .top > li:first-child {
+    padding: 14px 16px;
+    gap: 14px;
+    border-width: 2px;
+    border-radius: 18px;
+  }
+
+  .top .body,
+  .top > li:first-child .body {
+    font-size: 17px;
+  }
+
+  .top .votes {
+    font-size: 22px;
+  }
+
+  .top > li:first-child .votes {
+    font-size: 26px;
+  }
+
+  .stage-foot {
+    font-size: 13px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

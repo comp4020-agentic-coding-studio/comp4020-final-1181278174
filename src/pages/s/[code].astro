@@ -68,7 +68,12 @@ const hosting = session !== undefined && session.host === person;
             <p class="code">Code <strong>{session.code}</strong></p>
           </div>
           <h1>{session.title}</h1>
-          {hosting && <p class="note">You started this session. Put the code on the screen so the room can join.</p>}
+          {hosting && (
+            <p class="note">
+              You started this session. Put the code on the screen so the room can join: open the{" "}
+              <a href={`/s/${session.code}/present`}>projector page</a> there.
+            </p>
+          )}
         </div>
       </header>
 
@@ -150,6 +155,11 @@ const hosting = session !== undefined && session.host === person;
           </ol>
         )}
         </div>
+        {!hosting && (
+          <p class="foot session-foot">
+            <a href={`/s/${session.code}/present`}>Projector page</a> <span>For the screen at the front.</span>
+          </p>
+        )}
       </main>
       <script>
         import "../../scripts/live.ts";
