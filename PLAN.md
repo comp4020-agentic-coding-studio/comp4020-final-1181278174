@@ -282,3 +282,24 @@ side by side at 390 px and 1920 px, then two devices on the live app.
 If time runs short, drop from the end: answered and hidden, then the QR code,
 then "N here", then the projector page. Live updates, their tests, the
 decision record and the reflection stay.
+
+### After the first night on the live app
+
+Decided 14 October, 01:38, after measuring the live app and reading the cost of
+the decision again. Three changes, in this order:
+
+1. The time on a question keeps itself up to date. Pages no longer reload, so
+   a question asked ten minutes ago still said "just now".
+2. A new question is sent to the open pages with its words, so they can draw
+   the card without fetching the page. On the live server, 150 pages fetching
+   at once took about 0.8 seconds, which is close to the one-second limit. The
+   person who asked is not sent this message: their pages still fetch, so that
+   "Yours" is worked out on the server and never travels in a message.
+3. Two guards against a "Me too" landing on the wrong question, which is the
+   cost of reordering live. While a finger or the mouse button is down, the
+   list waits and reorders on release. A card that has just moved cannot be
+   pressed for 0.4 seconds. The order is still live on every screen; this does
+   not change the decision.
+
+The first two have tests. The third only happens in a browser, so it is checked
+by hand in two windows and the decision record says so.
