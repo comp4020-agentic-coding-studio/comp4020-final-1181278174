@@ -19,10 +19,15 @@ function page(status: number, url: URL, html: string): Page {
  */
 export type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][] };
 
+/** A question as it is sent to the pages that are open when it is asked: its words, and no person. */
+export type Added = { id: number; body: string; at: number };
+
 /** A page's live stream, read as the page's script would read it. */
 export class Stream {
   /** Everything the server has sent on this stream, as text. */
   raw = "";
+  /** The new questions sent on this stream, and when each arrived. */
+  added: { question: Added; at: number }[] = [];
   private events: { board: Board; at: number }[] = [];
   private waiting: (() => void)[] = [];
   private abort = new AbortController();
@@ -44,16 +49,19 @@ export class Stream {
         const text = decoder.decode(chunk, { stream: true });
         this.raw += text;
         rest += text;
-        // events are separated by a blank line; an event's data lines carry JSON
+        // Events are separated by a blank line; an event's data lines carry JSON.
+        // An event with no name is the state; one named "question" is a new question.
         for (let end = rest.indexOf("\n\n"); end >= 0; end = rest.indexOf("\n\n")) {
-          const data = rest
-            .slice(0, end)
-            .split("\n")
+          const lines = rest.slice(0, end).split("\n");
+          const data = lines
             .filter((line) => line.startsWith("data:"))
             .map((line) => line.slice(5).trim())
             .join("\n");
+          const name = lines.find((line) => line.startsWith("event:"))?.slice(6).trim();
           rest = rest.slice(end + 2);
-          if (data) this.events.push({ board: JSON.parse(data) as Board, at: Date.now() });
+          if (!data) continue;
+          if (name === "question") this.added.push({ question: JSON.parse(data) as Added, at: Date.now() });
+          else if (!name) this.events.push({ board: JSON.parse(data) as Board, at: Date.now() });
         }
         for (const wake of this.waiting.splice(0)) wake();
       }
@@ -80,6 +88,17 @@ export class Stream {
           resolve();
         });
       });
+    }
+  }
+
+  /** The first new question sent that passes `test`, and when it arrived; throws after `within` ms. */
+  async untilAdded(test: (question: Added) => boolean, within = 1000): Promise<{ question: Added; at: number }> {
+    const deadline = Date.now() + within;
+    for (;;) {
+      const found = this.added.find((sent) => test(sent.question));
+      if (found) return found;
+      if (Date.now() >= deadline) throw new Error(`the stream sent no new question that matched within ${within} ms`);
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
   }
 

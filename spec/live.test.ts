@@ -116,6 +116,33 @@ describe("live", () => {
     expect(stream.last?.here).toBe(2);
   });
 
+  it("a new question is sent to the others with its words, so their pages need not fetch it", async () => {
+    const { path, stream } = await watched();
+    const body = `Sent with its words ${tag()}`;
+    const asked = Date.now();
+    await ask(new Visitor(), path, body);
+    const sent = await stream.untilAdded((question) => question.body === body);
+    expect(sent.at - asked).toBeLessThan(1000);
+    expect(Math.abs(sent.question.at - asked)).toBeLessThan(2000);
+    // it is the question the state then lists
+    const listed = await stream.until((board) => board.questions.length === 1);
+    expect(listed.board.questions[0][0]).toBe(sent.question.id);
+  });
+
+  it("the person who asked is not sent it: their pages ask the server, which marks it theirs", async () => {
+    const { path, stream } = await watched();
+    const asker = new Visitor();
+    const own = await asker.listen(await asker.open(path));
+    open.push(own);
+    const body = `Asked by the one listening ${tag()}`;
+    await ask(asker, path, body);
+    await stream.untilAdded((question) => question.body === body);
+    await own.until((board) => board.questions.length === 1);
+    await settle();
+    expect(own.added).toHaveLength(0);
+    expect(own.raw).not.toContain(body);
+  });
+
   it("a question carries the time it was asked, so an open page can keep its \"just now\" true", async () => {
     const { path, watcher } = await watched();
     const before = Date.now();
