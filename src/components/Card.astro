@@ -1,0 +1,72 @@
+---
+import type { QuestionView, State } from "../lib/board.ts";
+import { ago, votesLabel } from "../lib/words.ts";
+import Icon from "./Icon.astro";
+
+// One question as one person sees it. The session page uses it for every
+// question in the list, and once more inside a <template>, which the page's
+// script copies to draw a question that arrives while the page is open.
+type Props = { q: QuestionView; hosting: boolean };
+const { q, hosting } = Astro.props;
+
+// what the host can do to a question in each state
+const hostButtons: Record<State, [to: State, label: string][]> = {
+  open: [
+    ["answered", "Answered"],
+    ["hidden", "Hide"],
+  ],
+  answered: [
+    ["open", "Not answered"],
+    ["hidden", "Hide"],
+  ],
+  hidden: [["open", "Show again"]],
+};
+---
+
+<li id={`q-${q.id}`} data-state={q.state}>
+  <p class="body">{q.body}</p>
+  <div class="q-foot">
+    <p class="meta">
+      {/* HTML compression drops the whitespace between tags; the spaces are
+          explicit so the text doesn't read "Yoursjust now" */}
+      {q.state === "answered" && <span class="tag">Answered</span>}
+      {q.state === "hidden" && <span class="tag">Hidden</span>}
+      {" "}
+      {q.yours && <span class="yours">Yours</span>}
+      {" "}
+      {/* the page's script keeps this up to date from the datetime */}
+      <time datetime={q.createdAt.toISOString()}>{ago(q.createdAt)}</time>
+    </p>
+    <form method="post" class="vote">
+      <input type="hidden" name="intent" value="vote" />
+      <input type="hidden" name="question" value={q.id} />
+      <button
+        class="me-too"
+        type="submit"
+        name="want"
+        value={q.voted ? "0" : "1"}
+        aria-pressed={q.voted ? "true" : "false"}
+        aria-label={votesLabel(q.votes)}
+      >
+        <Icon name="hand" size={18} />
+        <span>Me too</span>
+        {" "}
+        <span class="n">{q.votes}</span>
+      </button>
+    </form>
+  </div>
+  {
+    hosting && (
+      <form method="post" class="host">
+        <input type="hidden" name="intent" value="state" />
+        <input type="hidden" name="question" value={q.id} />
+        {q.state === "hidden" && <span class="host-note">Only you can see this.</span>}
+        {hostButtons[q.state].map(([to, label]) => (
+          <button class="host-button" type="submit" name="to" value={to}>
+            {label}
+          </button>
+        ))}
+      </form>
+    )
+  }
+</li>

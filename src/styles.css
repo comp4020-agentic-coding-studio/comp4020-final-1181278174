@@ -535,6 +535,10 @@ textarea {
   background: #2448e0;
 }
 
+.empty[hidden] {
+  display: none;
+}
+
 .empty {
   display: flex;
   align-items: center;

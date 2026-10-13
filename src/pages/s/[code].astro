@@ -1,4 +1,5 @@
 ---
+import Card from "../../components/Card.astro";
 import Icon from "../../components/Icon.astro";
 import JoinForm from "../../components/JoinForm.astro";
 import SlimHeader from "../../components/SlimHeader.astro";
@@ -16,9 +17,8 @@ import {
   setVote,
   type Sort,
   STATES,
-  type State,
 } from "../../lib/board.ts";
-import { ago, howMany, votesLabel } from "../../lib/words.ts";
+import { howMany } from "../../lib/words.ts";
 
 const raw = Astro.params.code ?? "";
 const code = normaliseCode(raw);
@@ -62,18 +62,6 @@ if (!session) Astro.response.status = 404;
 
 const list = session ? listQuestions(session, person, sort) : [];
 const hosting = session !== undefined && isHost(session, person);
-// what the host can do to a question in each state
-const hostButtons: Record<State, [to: State, label: string][]> = {
-  open: [
-    ["answered", "Answered"],
-    ["hidden", "Hide"],
-  ],
-  answered: [
-    ["open", "Not answered"],
-    ["hidden", "Hide"],
-  ],
-  hidden: [["open", "Show again"]],
-};
 const listed = list.filter((q) => q.state !== "hidden").length;
 ---
 
@@ -140,61 +128,15 @@ const listed = list.filter((q) => q.state !== "hidden").length;
 
         {/* the page's script (src/scripts/live.ts) keeps what is in here up to date */}
         <div data-board data-sort={sort}>
-        {list.length === 0 ? (
-          <p class="card empty">
+          {/* shown while the list is empty; the script hides it when the first question arrives */}
+          <p class="card empty" data-empty hidden={list.length > 0}>
             <Icon name="hand" size={22} /> No questions yet. Be the first to ask.
           </p>
-        ) : (
           <ol aria-label="Questions" class="questions">
             {list.map((q) => (
-              <li id={`q-${q.id}`} data-state={q.state}>
-                <p class="body">{q.body}</p>
-                <div class="q-foot">
-                  <p class="meta">
-                    {/* HTML compression drops the whitespace between tags; the
-                        spaces are explicit so the text doesn't read "Yoursjust now" */}
-                    {q.state === "answered" && <span class="tag">Answered</span>}
-                    {q.state === "hidden" && <span class="tag">Hidden</span>}
-                    {" "}
-                    {q.yours && <span class="yours">Yours</span>}
-                    {" "}
-                    {/* the page's script keeps this up to date from the datetime */}
-                    <time datetime={q.createdAt.toISOString()}>{ago(q.createdAt)}</time>
-                  </p>
-                  <form method="post" class="vote">
-                    <input type="hidden" name="intent" value="vote" />
-                    <input type="hidden" name="question" value={q.id} />
-                    <button
-                      class="me-too"
-                      type="submit"
-                      name="want"
-                      value={q.voted ? "0" : "1"}
-                      aria-pressed={q.voted ? "true" : "false"}
-                      aria-label={votesLabel(q.votes)}
-                    >
-                      <Icon name="hand" size={18} />
-                      <span>Me too</span>
-                      {" "}
-                      <span class="n">{q.votes}</span>
-                    </button>
-                  </form>
-                </div>
-                {hosting && (
-                  <form method="post" class="host">
-                    <input type="hidden" name="intent" value="state" />
-                    <input type="hidden" name="question" value={q.id} />
-                    {q.state === "hidden" && <span class="host-note">Only you can see this.</span>}
-                    {hostButtons[q.state].map(([to, label]) => (
-                      <button class="host-button" type="submit" name="to" value={to}>
-                        {label}
-                      </button>
-                    ))}
-                  </form>
-                )}
-              </li>
+              <Card q={q} hosting={hosting} />
             ))}
           </ol>
-        )}
         </div>
         {!hosting && (
           <p class="foot session-foot">

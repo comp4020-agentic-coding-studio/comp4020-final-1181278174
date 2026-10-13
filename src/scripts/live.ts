@@ -137,6 +137,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         });
         arrange(list, want);
       }
+      const empty = holder.querySelector<HTMLElement>("[data-empty]");
+      if (empty) empty.hidden = cards().length > 0;
       const count = doc.querySelector("[data-count]")?.textContent;
       const label = document.querySelector("[data-count]");
       if (label && count) label.textContent = count;
