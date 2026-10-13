@@ -9,11 +9,15 @@ import {
   checkQuestion,
   findSession,
   isCode,
+  isHost,
   listQuestions,
   MAX_QUESTION,
   normaliseCode,
+  setState,
   setVote,
   type Sort,
+  STATES,
+  type State,
 } from "../../lib/board.ts";
 import { howMany, votesLabel } from "../../lib/words.ts";
 
@@ -45,12 +49,33 @@ if (session && Astro.request.method === "POST") {
     const id = Number(form.get("question"));
     if (Number.isInteger(id)) setVote(session, id, person, form.get("want") === "1");
     return Astro.redirect(`${here}#q-${id}`, 303);
+  } else if (form.get("intent") === "state") {
+    // the host's buttons. Anyone else who sends this is refused, and shown the page as it is.
+    const id = Number(form.get("question"));
+    const to = STATES.find((state) => state === form.get("to"));
+    if (Number.isInteger(id) && to && setState(session, id, person, to)) {
+      return Astro.redirect(`${here}#q-${id}`, 303);
+    }
+    Astro.response.status = to ? 403 : 422;
   }
 }
 if (!session) Astro.response.status = 404;
 
 const list = session ? listQuestions(session, person, sort) : [];
-const hosting = session !== undefined && session.host === person;
+const hosting = session !== undefined && isHost(session, person);
+// what the host can do to a question in each state
+const hostButtons: Record<State, [to: State, label: string][]> = {
+  open: [
+    ["answered", "Answered"],
+    ["hidden", "Hide"],
+  ],
+  answered: [
+    ["open", "Not answered"],
+    ["hidden", "Hide"],
+  ],
+  hidden: [["open", "Show again"]],
+};
+const listed = list.filter((q) => q.state !== "hidden").length;
 ---
 
 {
@@ -110,7 +135,7 @@ const hosting = session !== undefined && session.host === person;
             {/* shown by the page's script once its stream is open */}
             <p class="live" role="status" data-live-status hidden />
             <p class="count-label" data-here hidden />
-            <p class="count-label" data-count>{howMany(list.length)}</p>
+            <p class="count-label" data-count>{howMany(listed)}</p>
           </div>
         </div>
 
@@ -123,12 +148,15 @@ const hosting = session !== undefined && session.host === person;
         ) : (
           <ol aria-label="Questions" class="questions">
             {list.map((q) => (
-              <li id={`q-${q.id}`}>
+              <li id={`q-${q.id}`} data-state={q.state}>
                 <p class="body">{q.body}</p>
                 <div class="q-foot">
                   <p class="meta">
                     {/* HTML compression drops the whitespace between tags; the
                         spaces are explicit so the text doesn't read "Yoursjust now" */}
+                    {q.state === "answered" && <span class="tag">Answered</span>}
+                    {q.state === "hidden" && <span class="tag">Hidden</span>}
+                    {" "}
                     {q.yours && <span class="yours">Yours</span>}
                     {" "}
                     <span>{ago(q.createdAt)}</span>
@@ -151,6 +179,18 @@ const hosting = session !== undefined && session.host === person;
                     </button>
                   </form>
                 </div>
+                {hosting && (
+                  <form method="post" class="host">
+                    <input type="hidden" name="intent" value="state" />
+                    <input type="hidden" name="question" value={q.id} />
+                    {q.state === "hidden" && <span class="host-note">Only you can see this.</span>}
+                    {hostButtons[q.state].map(([to, label]) => (
+                      <button class="host-button" type="submit" name="to" value={to}>
+                        {label}
+                      </button>
+                    ))}
+                  </form>
+                )}
               </li>
             ))}
           </ol>

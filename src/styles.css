@@ -432,6 +432,67 @@ textarea {
   margin: 0;
 }
 
+/* a question the host has marked: answered ones step back, hidden ones (the
+   host's page only) are outlined with dashes */
+.tag {
+  background: var(--ink);
+  color: #ffffff;
+  border: var(--line);
+  border-radius: 999px;
+  padding: 1px 9px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.questions > li[data-state="answered"],
+.questions > li[data-state="hidden"] {
+  background: var(--field);
+  box-shadow: none;
+}
+
+.questions > li[data-state="answered"] .body,
+.questions > li[data-state="hidden"] .body {
+  color: var(--muted);
+}
+
+.questions > li[data-state="hidden"] {
+  border-style: dashed;
+}
+
+/* the host's buttons on a question */
+.host {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1.5px dashed #cfc8b4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.host-note {
+  margin-right: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.host-button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: 700 13px var(--text);
+  cursor: pointer;
+}
+
+.host-button:hover {
+  background: var(--sun);
+}
+
 .me-too {
   display: inline-flex;
   align-items: center;

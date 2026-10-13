@@ -10,7 +10,7 @@ import { hereLabel, votesLabel } from "../lib/words.ts";
 // background, so the page doesn't reload, and takes the list from the answer.
 // Without this script the page works as plain forms.
 
-type Board = { here: number; questions: [id: number, votes: number][] };
+type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][] };
 
 const CARD = "li[id^='q-']";
 const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -34,9 +34,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
 
     if (focused && card && document.activeElement !== focused) {
       // a card that moved loses the focus; one that was redrawn has a new button
-      const again = focused.isConnected
-        ? focused
-        : document.getElementById(card.id)?.querySelectorAll<HTMLElement>("button")[nth];
+      const buttons = document.getElementById(card.id)?.querySelectorAll<HTMLElement>("button");
+      const again = focused.isConnected ? focused : (buttons?.[nth] ?? buttons?.[buttons.length - 1]);
       again?.focus({ preventScroll: true });
     }
     if (calm.matches) return;
@@ -91,8 +90,17 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       here.hidden = false;
       here.textContent = hereLabel(board.here);
     }
-    const known = new Map(cards().map((li) => [Number(li.id.slice(2)), li]));
-    const same = board.questions.length === known.size && board.questions.every(([id]) => known.has(id));
+    // The host's page also lists the hidden questions, which the server leaves
+    // out of the state; they stay where the server put them, at the end.
+    const hidden = cards().filter((li) => li.dataset.state === "hidden");
+    const known = new Map(
+      cards()
+        .filter((li) => li.dataset.state !== "hidden")
+        .map((li) => [Number(li.id.slice(2)), li]),
+    );
+    const same =
+      board.questions.length === known.size &&
+      board.questions.every(([id, , state]) => known.get(id)?.dataset.state === state);
     // the projector page shows only the top few, so it always asks the server which
     if (!same || holder.dataset.refresh !== undefined) {
       void refresh();
@@ -104,10 +112,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       for (const [id, votes] of board.questions) setCount(known.get(id)!, votes);
       // Recent is newest first, which a vote doesn't change
       if (holder.dataset.sort === "popular") {
-        arrange(
-          list,
-          board.questions.map(([id]) => known.get(id)!),
-        );
+        arrange(list, [...board.questions.map(([id]) => known.get(id)!), ...hidden]);
       }
     });
   }
@@ -127,6 +132,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
           const mine = old.get(li.id);
           if (!mine) return document.adoptNode(li);
           if (mine.innerHTML !== li.innerHTML) mine.replaceChildren(...li.childNodes);
+          mine.dataset.state = (li as HTMLElement).dataset.state;
           return mine;
         });
         arrange(list, want);

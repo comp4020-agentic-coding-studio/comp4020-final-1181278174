@@ -17,8 +17,9 @@ const code = normaliseCode(raw);
 const session = isCode(code) ? findSession(code) : undefined;
 if (!session) Astro.response.status = 404;
 
-const all = session ? listQuestions(session, Astro.locals.person, "popular") : [];
-const top = all.slice(0, TOP);
+// Popular order puts the open questions first, so the top of it is what is still to answer
+const all = session ? listQuestions(session, Astro.locals.person, "popular").filter((q) => q.state !== "hidden") : [];
+const top = all.filter((q) => q.state === "open").slice(0, TOP);
 
 // the QR code opens the session page itself, so a scan skips typing the code
 const address = session ? new URL(`/s/${session.code}`, Astro.url).href : "";
@@ -59,7 +60,11 @@ const qr = session ? renderSVG(address, { border: 0, ecc: "M", blackColor: "#121
           {/* the page's script (src/scripts/live.ts) redraws what is in here after every change */}
           <div class="stage-list" data-board data-refresh>
             {top.length === 0 ? (
-              <p class="stage-empty">No questions yet. Join with the code and ask the first one.</p>
+              <p class="stage-empty">
+                {all.length === 0
+                  ? "No questions yet. Join with the code and ask the first one."
+                  : "Every question so far is answered. Join with the code and ask the next one."}
+              </p>
             ) : (
               <ol aria-label="Top questions" class="top">
                 {top.map((q) => (

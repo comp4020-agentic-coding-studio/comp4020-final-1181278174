@@ -1,7 +1,8 @@
 import { randomInt } from "node:crypto";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "./db.ts";
 import { publish } from "./live.ts";
+import { popularOrder, voteCount } from "./order.ts";
 import { questions, sessions, votes } from "./schema.ts";
 
 export const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -10,6 +11,8 @@ export const MAX_TITLE = 80;
 
 export type Session = typeof sessions.$inferSelect;
 export type Sort = "popular" | "recent";
+export type State = "open" | "answered" | "hidden";
+export const STATES: readonly State[] = ["open", "answered", "hidden"];
 
 /** A question as one viewer sees it: who asked never leaves this module. */
 export type QuestionView = {
@@ -19,6 +22,7 @@ export type QuestionView = {
   votes: number;
   yours: boolean;
   voted: boolean;
+  state: State;
 };
 
 /** A code as someone typed it: any case, spaces and dashes ignored. */
@@ -82,23 +86,40 @@ export function setVote(session: Session, questionId: number, person: string, wa
   publish(session.id);
 }
 
+/** The host is the browser that started the session. HAND has none. */
+export function isHost(session: Session, person: string): boolean {
+  return session.host !== null && session.host === person;
+}
+
+/** The host marks a question answered, hides it, or puts it back. False if this person is not the host. */
+export function setState(session: Session, questionId: number, person: string, to: State): boolean {
+  if (!isHost(session, person)) return false;
+  db.update(questions)
+    .set({ state: to })
+    .where(and(eq(questions.id, questionId), eq(questions.sessionId, session.id)))
+    .run();
+  publish(session.id);
+  return true;
+}
+
+/** The questions as one viewer sees them. Only the host is given the hidden ones. */
 export function listQuestions(session: Session, viewer: string, sort: Sort): QuestionView[] {
-  const count = sql<number>`(SELECT count(*) FROM ${votes} WHERE ${votes.questionId} = ${questions.id})`;
-  const order =
-    sort === "recent"
-      ? [desc(questions.createdAt), desc(questions.id)]
-      : [desc(count), asc(questions.createdAt), asc(questions.id)];
+  const order = sort === "recent" ? [desc(questions.createdAt), desc(questions.id)] : popularOrder;
+  const seen = isHost(session, viewer)
+    ? eq(questions.sessionId, session.id)
+    : and(eq(questions.sessionId, session.id), ne(questions.state, "hidden"));
   return db
     .select({
       id: questions.id,
       body: questions.body,
       createdAt: questions.createdAt,
-      votes: count,
+      votes: voteCount,
       yours: sql<number>`${questions.asker} = ${viewer}`,
       voted: sql<number>`EXISTS (SELECT 1 FROM ${votes} WHERE ${votes.questionId} = ${questions.id} AND ${votes.person} = ${viewer})`,
+      state: questions.state,
     })
     .from(questions)
-    .where(eq(questions.sessionId, session.id))
+    .where(seen)
     .orderBy(...order)
     .all()
     .map((q) => ({ ...q, votes: Number(q.votes), yours: Boolean(q.yours), voted: Boolean(q.voted) }));
