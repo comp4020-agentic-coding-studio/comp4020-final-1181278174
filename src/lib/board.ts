@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "./db.ts";
-import { publish } from "./live.ts";
+import { announce, publish } from "./live.ts";
 import { popularOrder, voteCount } from "./order.ts";
 import { questions, sessions, votes } from "./schema.ts";
 
@@ -66,7 +66,13 @@ export function checkQuestion(body: string): string | undefined {
 }
 
 export function askQuestion(session: Session, asker: string, body: string): void {
-  db.insert(questions).values({ sessionId: session.id, body, asker, createdAt: new Date() }).run();
+  const createdAt = new Date();
+  const { id } = db
+    .insert(questions)
+    .values({ sessionId: session.id, body, asker, createdAt })
+    .returning({ id: questions.id })
+    .get();
+  announce(session.id, { id, body, at: createdAt.getTime() }, asker);
   publish(session.id);
 }
 

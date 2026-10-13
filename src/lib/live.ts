@@ -46,6 +46,23 @@ function here(sessionId: number): number {
   return people.size;
 }
 
+/** A new question as the open pages are sent it: enough to draw the card, and no person. */
+export type Added = { id: number; body: string; at: number };
+
+/**
+ * A question was asked: send it to the open pages, so they can draw it without
+ * fetching. Everyone it is sent to gets the same text. The person who asked is
+ * left out: their pages see an id they don't know in the next state and fetch
+ * the page, where the server marks the question theirs. That way "Yours" never
+ * travels in a message.
+ */
+export function announce(sessionId: number, question: Added, asker: string): void {
+  const event = `event: question\ndata: ${JSON.stringify(question)}\n\n`;
+  for (const listener of listeners.get(sessionId) ?? []) {
+    if (listener.person !== asker) listener.send(event);
+  }
+}
+
 /** One event as it goes down the wire. The same text is sent to everyone: it has no person in it. */
 export const asEvent = (state: Board): string => `data: ${JSON.stringify(state)}\n\n`;
 

@@ -138,6 +138,13 @@ const listed = list.filter((q) => q.state !== "hidden").length;
             ))}
           </ol>
         </div>
+        {/* an empty card for the script to copy when a question arrives while the page is open */}
+        <template data-card>
+          <Card
+            q={{ id: 0, body: "", createdAt: new Date(0), votes: 0, yours: false, voted: false, state: "open" }}
+            hosting={hosting}
+          />
+        </template>
         {!hosting && (
           <p class="foot session-foot">
             <a href={`/s/${session.code}/present`}>Projector page</a> <span>For the screen at the front.</span>

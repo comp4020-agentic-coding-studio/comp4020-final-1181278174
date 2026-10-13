@@ -1,16 +1,20 @@
-import { ago, hereLabel, votesLabel } from "../lib/words.ts";
+import { ago, hereLabel, howMany, votesLabel } from "../lib/words.ts";
 
 // Keeps an open session page up to date. The server sends the state of the
 // session (src/lib/live.ts) when the page connects and after every change:
-// how many people have it open, and each question's id and vote count, in
-// Popular order. The script changes counts and moves cards to match. When the state has a question this page
-// has never seen, the page fetches itself and takes the new card from the
-// server's HTML, so "Yours" and the wording are still the server's.
+// how many people have it open, and each question's id, vote count and state,
+// in Popular order. The script changes counts and moves cards to match. A
+// question asked by someone else is also sent with its words, and the script
+// draws it from the empty card in the page's <template>. For anything else it
+// doesn't know (a question of this person's own, one asked while the page was
+// offline, a change by the host) the page fetches itself and takes the cards
+// from the server's HTML, so "Yours" is always the server's.
 // Asking and voting are still the page's forms; the script sends them in the
 // background, so the page doesn't reload, and takes the list from the answer.
 // Without this script the page works as plain forms.
 
 type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][] };
+type Added = { id: number; body: string; at: number };
 
 const CARD = "li[id^='q-']";
 const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -90,6 +94,9 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       here.hidden = false;
       here.textContent = hereLabel(board.here);
     }
+    const count = document.querySelector("[data-count]");
+    if (count && holder.dataset.refresh === undefined) count.textContent = howMany(board.questions.length);
+
     // The host's page also lists the hidden questions, which the server leaves
     // out of the state; they stay where the server put them, at the end.
     const hidden = cards().filter((li) => li.dataset.state === "hidden");
@@ -98,23 +105,60 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         .filter((li) => li.dataset.state !== "hidden")
         .map((li) => [Number(li.id.slice(2)), li]),
     );
-    const same =
-      board.questions.length === known.size &&
-      board.questions.every(([id, , state]) => known.get(id)?.dataset.state === state);
-    // the projector page shows only the top few, so it always asks the server which
-    if (!same || holder.dataset.refresh !== undefined) {
+    const list = holder.querySelector("ol");
+    const listed = new Set(board.questions.map(([id]) => id));
+    const drawable = board.questions.every(([id, , state]) =>
+      known.has(id) ? known.get(id)!.dataset.state === state : sent.has(id) && state === "open",
+    );
+    // The projector page shows only the top few, so it always asks the server
+    // which. So does a page with a card the state no longer lists, or with a
+    // question it was not sent the words of.
+    if (holder.dataset.refresh !== undefined || !list || !drawable || [...known.keys()].some((id) => !listed.has(id))) {
       void refresh();
       return;
     }
-    const list = holder.querySelector("ol");
-    if (!list) return;
     move(() => {
-      for (const [id, votes] of board.questions) setCount(known.get(id)!, votes);
-      // Recent is newest first, which a vote doesn't change
+      const arrived: HTMLElement[] = [];
+      for (const [id, votes] of board.questions) {
+        let li = known.get(id);
+        if (!li) {
+          li = draw(sent.get(id)!);
+          known.set(id, li);
+          arrived.push(li);
+        }
+        sent.delete(id);
+        setCount(li, votes);
+      }
       if (holder.dataset.sort === "popular") {
         arrange(list, [...board.questions.map(([id]) => known.get(id)!), ...hidden]);
+      } else {
+        // Recent is newest first, which a vote doesn't change: new ones go on top
+        for (const li of arrived) list.prepend(li);
       }
+      const empty = holder.querySelector<HTMLElement>("[data-empty]");
+      if (empty) empty.hidden = cards().length > 0;
     });
+  }
+
+  // New questions the server has sent the words of, until the state lists them.
+  const sent = new Map<number, Added>();
+  const blank = document.querySelector<HTMLTemplateElement>("template[data-card]");
+
+  /** A card for a question someone else asked, copied from the page's empty one. */
+  function draw(question: Added): HTMLElement {
+    const li = blank!.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    li.id = `q-${question.id}`;
+    li.querySelector(".body")!.textContent = question.body;
+    for (const field of li.querySelectorAll<HTMLInputElement>("input[name='question']")) {
+      field.value = String(question.id);
+    }
+    const time = li.querySelector("time");
+    if (time) {
+      const asked = new Date(question.at);
+      time.dateTime = asked.toISOString();
+      time.textContent = ago(asked);
+    }
+    return li;
   }
 
   /** Take the list from the server's own HTML for this person, keeping the cards already here. */
@@ -236,6 +280,10 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     const source = new EventSource(url);
     source.onopen = () => say(true);
     source.onmessage = (event) => show(JSON.parse(event.data) as Board);
+    source.addEventListener("question", (event) => {
+      const question = JSON.parse((event as MessageEvent<string>).data) as Added;
+      if (blank) sent.set(question.id, question);
+    });
     source.onerror = () => {
       say(false);
       // The browser reconnects by itself after a dropped connection, but gives
