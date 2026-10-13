@@ -49,6 +49,15 @@ describe("the projector page", () => {
     expect(page.doc.body.textContent).toContain(session.url.host);
   });
 
+  it("links to the session page, for someone who opened it on their own device", async () => {
+    const screen = new Visitor();
+    const session = await startSession(screen, `Lecture ${tag()}`);
+    const page = await projector(screen, session);
+    const link = [...page.doc.querySelectorAll("a")].find((a) => /\bask\b/i.test(a.textContent ?? ""));
+    expect(link, "no link to where questions are asked").toBeDefined();
+    expect(new URL(link!.getAttribute("href")!, page.url).pathname).toBe(session.url.pathname);
+  });
+
   it("follows the same live stream as the session page", async () => {
     const screen = new Visitor();
     const session = await startSession(screen, `Lecture ${tag()}`);
