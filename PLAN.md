@@ -303,3 +303,8 @@ the decision again. Three changes, in this order:
 
 The first two have tests. The third only happens in a browser, so it is checked
 by hand in two windows and the decision record says so.
+
+Decided 14 October, 02:00: the projector page gets a link to the session page,
+"Ask from this device". I opened the projector page on my laptop, took it for
+the app itself and could not find where to ask. It still has no forms or
+buttons.
