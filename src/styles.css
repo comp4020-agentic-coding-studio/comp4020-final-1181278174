@@ -789,6 +789,22 @@ textarea {
   height: 100%;
 }
 
+.rail-ask {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-height: 44px;
+  font-size: 1.05em;
+  font-weight: 700;
+}
+
+.rail-ask svg {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+}
+
 .rail-code {
   margin-top: auto;
 }

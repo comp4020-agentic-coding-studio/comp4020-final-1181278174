@@ -42,6 +42,10 @@ const qr = session ? renderSVG(address, { border: 0, ecc: "M", blackColor: "#121
             <p class="rail-where">{Astro.url.host}</p>
           </div>
           <div class="qr" role="img" aria-label={`QR code for ${address}`} set:html={qr} />
+          {/* for someone who opened this page on their own device and wants to ask */}
+          <a class="rail-ask" href={`/s/${session.code}`}>
+            Ask from this device <Icon name="arrow" size={18} />
+          </a>
           <div class="rail-step rail-code">
             <p>and type the code</p>
             <p class="big-code">{session.code}</p>
