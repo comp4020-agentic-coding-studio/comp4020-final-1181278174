@@ -202,10 +202,20 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     void send(form, event.submitter);
   });
 
+  const status = document.querySelector<HTMLElement>("[data-live-status]");
+  const say = (live: boolean): void => {
+    if (!status) return;
+    status.hidden = false;
+    status.dataset.liveStatus = live ? "live" : "waiting";
+    status.textContent = live ? "Live" : "Reconnecting";
+  };
+
   function connect(): void {
     const source = new EventSource(url);
+    source.onopen = () => say(true);
     source.onmessage = (event) => show(JSON.parse(event.data) as Board);
     source.onerror = () => {
+      say(false);
       // The browser reconnects by itself after a dropped connection, but gives
       // up for good on an error page, which is what a redeploy answers with.
       if (source.readyState === EventSource.CLOSED) setTimeout(connect, 2000);

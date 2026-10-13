@@ -331,6 +331,45 @@ textarea {
   color: var(--muted);
 }
 
+.bar-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+/* "Live" while the page's stream is open, "Reconnecting" while it is not */
+.live {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.live::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  background: var(--blue);
+}
+
+.live[data-live-status="waiting"] {
+  color: var(--muted);
+}
+
+.live[data-live-status="waiting"]::before {
+  background: var(--card);
+}
+
+.live[hidden] {
+  display: none;
+}
+
 /* the questions */
 
 .questions {
