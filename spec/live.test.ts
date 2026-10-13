@@ -52,7 +52,7 @@ describe("live", () => {
     // the same order, with the same counts
     const page = questions(await watcher.open(path));
     expect(page.map((q) => q.text.includes(second))).toEqual([true, false]);
-    expect(sent.board.questions).toEqual(page.map((q) => [q.id, q.votes]));
+    expect(sent.board.questions.map(([id, votes]) => [id, votes])).toEqual(page.map((q) => [q.id, q.votes]));
   });
 
   it("nothing in the stream carries who asked or who voted", async () => {

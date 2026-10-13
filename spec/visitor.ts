@@ -12,8 +12,12 @@ function page(status: number, url: URL, html: string): Page {
   return { status, url, html, doc: new JSDOM(html, { url: url.href }).window.document };
 }
 
-/** What the server sends an open page: how many people have the session open, and every question's id and vote count, in Popular order. */
-export type Board = { here: number; questions: [id: number, votes: number][] };
+/**
+ * What the server sends an open page: how many people have the session open,
+ * and every question's id, vote count and state, in Popular order. A hidden
+ * question is not in it.
+ */
+export type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][] };
 
 /** A page's live stream, read as the page's script would read it. */
 export class Stream {
@@ -213,6 +217,8 @@ export type Question = {
   pressed: boolean;
   yours: boolean;
   meToo: HTMLButtonElement;
+  /** The question's other buttons by name, e.g. /hide/i: the host's. */
+  button: (name: RegExp) => HTMLButtonElement | undefined;
 };
 
 /** The questions on a session page, top to bottom: the list named "Questions". */
@@ -228,6 +234,7 @@ export function questions(p: Page): Question[] {
       pressed: meToo.getAttribute("aria-pressed") === "true",
       yours: /\bYours\b/.test(text(li)),
       meToo,
+      button: (name) => [...li.querySelectorAll("button")].find((b) => b !== meToo && name.test(nameOf(b))),
     };
   });
 }
@@ -257,4 +264,12 @@ export async function meToo(who: Visitor, sessionPath: string, body: string): Pr
   const q = question(session, body);
   if (!q) throw new Error(`no question "${body}" on ${sessionPath}`);
   return who.submit(session, q.meToo.closest("form")!, q.meToo);
+}
+
+/** Press one of the host's buttons on a question, e.g. /^answered/i or /hide/i. */
+export async function hostPress(who: Visitor, sessionPath: string, body: string, name: RegExp): Promise<Page> {
+  const session = await who.open(sessionPath);
+  const button = question(session, body)?.button(name);
+  if (!button) throw new Error(`no ${name} button on "${body}" for this person on ${sessionPath}`);
+  return who.submit(session, button.closest("form")!, button);
 }
