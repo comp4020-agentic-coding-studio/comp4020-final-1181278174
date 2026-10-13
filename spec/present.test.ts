@@ -37,6 +37,18 @@ describe("the projector page", () => {
     expect(page.doc.querySelectorAll("form, button, input, textarea")).toHaveLength(0);
   });
 
+  it("has a QR code that opens the session", async () => {
+    const screen = new Visitor();
+    const session = await startSession(screen, `Lecture ${tag()}`);
+    const page = await projector(screen, session);
+    const qr = page.doc.querySelector('[role="img"][aria-label*="QR"]');
+    expect(qr, "no QR code on the projector page").not.toBeNull();
+    expect(qr!.getAttribute("aria-label")).toContain(session.url.pathname);
+    expect(qr!.querySelector("svg path")).not.toBeNull();
+    // the address it opens is printed next to it, for anyone who can't scan
+    expect(page.doc.body.textContent).toContain(session.url.host);
+  });
+
   it("follows the same live stream as the session page", async () => {
     const screen = new Visitor();
     const session = await startSession(screen, `Lecture ${tag()}`);

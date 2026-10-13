@@ -5,6 +5,7 @@ import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { findSession, isCode, listQuestions, normaliseCode } from "../../../lib/board.ts";
 import { howMany } from "../../../lib/words.ts";
+import { renderSVG } from "uqr";
 
 // The session for the screen at the front of the room: where to join, and the
 // questions most people want answered, in type the back row can read. Nobody
@@ -18,6 +19,10 @@ if (!session) Astro.response.status = 404;
 
 const all = session ? listQuestions(session, Astro.locals.person, "popular") : [];
 const top = all.slice(0, TOP);
+
+// the QR code opens the session page itself, so a scan skips typing the code
+const address = session ? new URL(`/s/${session.code}`, Astro.url).href : "";
+const qr = session ? renderSVG(address, { border: 0, ecc: "M", blackColor: "#121212", whiteColor: "#ffffff" }) : "";
 ---
 
 {
@@ -32,9 +37,10 @@ const top = all.slice(0, TOP);
             Hands Up
           </a>
           <div class="rail-step">
-            <p>Go to</p>
+            <p>Scan, or go to</p>
             <p class="rail-where">{Astro.url.host}</p>
           </div>
+          <div class="qr" role="img" aria-label={`QR code for ${address}`} set:html={qr} />
           <div class="rail-step rail-code">
             <p>and type the code</p>
             <p class="big-code">{session.code}</p>

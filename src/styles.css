@@ -702,6 +702,22 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.qr {
+  width: 12.5em;
+  height: 12.5em;
+  padding: 0.9em;
+  background: var(--card);
+  border: 0.19em solid var(--ink);
+  border-radius: 1.1em;
+  box-shadow: 0.3em 0.3em 0 var(--ink);
+}
+
+.qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .rail-code {
   margin-top: auto;
 }
@@ -874,6 +890,11 @@ textarea {
 
   .rail .brand {
     font-size: 19px;
+  }
+
+  /* someone reading this on a phone has no second phone to scan with */
+  .qr {
+    display: none;
   }
 
   .rail-step p {
