@@ -37,6 +37,12 @@ export const questions = sqliteTable(
     body: text("body").notNull(),
     asker: text("asker").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    // set by the host: answered questions sink below the open ones, hidden
+    // ones are listed for nobody else. The migration holds the three values
+    // with a CHECK on the column.
+    state: text("state", { enum: ["open", "answered", "hidden"] })
+      .notNull()
+      .default("open"),
   },
   (t) => [
     check("questions_body_length", sql`length(${t.body}) BETWEEN 1 AND 240`),
