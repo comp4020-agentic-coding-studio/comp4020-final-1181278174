@@ -116,6 +116,18 @@ describe("live", () => {
     expect(stream.last?.here).toBe(2);
   });
 
+  it("a question carries the time it was asked, so an open page can keep its \"just now\" true", async () => {
+    const { path, watcher } = await watched();
+    const before = Date.now();
+    await ask(new Visitor(), path, `When was this asked? ${tag()}`);
+    const time = (await watcher.open(path)).doc.querySelector('[aria-label="Questions"] > li time');
+    expect(time, "the question has no <time>").not.toBeNull();
+    const asked = Date.parse(time!.getAttribute("datetime") ?? "");
+    expect(asked).toBeGreaterThanOrEqual(before - 1000);
+    expect(asked).toBeLessThanOrEqual(Date.now() + 1000);
+    expect(time!.textContent).toBe("just now");
+  });
+
   it("the stream of an unknown code is a 404", async () => {
     const { path, watcher } = await watched();
     const page = await watcher.open(path);
