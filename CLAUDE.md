@@ -144,6 +144,14 @@ and nothing deploys. Measured 2026-10-13: run 38399933367 deployed `34ac650`.
 11.20.0, which writes the lockfile differently: adding one package changed 97 lines. Use
 `mise exec -- pnpm add …`; the same change was then 8 lines. Measured 2026-10-13.
 
+### The first visit after a quiet spell is slow, and can fail
+
+`fly.toml` (fixed) stops the machine when nobody has the app open. The next request starts
+it again. Measured 2026-10-14 03:55, a few minutes after a deploy: two requests failed
+outright and a stream took 36 seconds to open; after that every page answered in 0.05
+seconds. An open session page keeps the machine running: two streams stayed open for 330
+quiet seconds. Before a crit, open the app a minute early and leave one tab on it.
+
 ### flyctl only has the token through mise
 
 The Fly token is in `mise.local.toml`, so a plain `flyctl` says "no access token". Use
