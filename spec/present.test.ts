@@ -53,7 +53,9 @@ describe("the projector page", () => {
     const screen = new Visitor();
     const session = await startSession(screen, `Lecture ${tag()}`);
     const page = await projector(screen, session);
-    const named = (p: Page): string | null | undefined => p.doc.querySelector("[data-live]")?.getAttribute("data-live");
+    // the same address; the projector's may add a note that it is a screen, not a person
+    const named = (p: Page): string | undefined =>
+      p.doc.querySelector("[data-live]")?.getAttribute("data-live")?.split("?")[0];
     expect(named(page)).toBeTruthy();
     expect(named(page)).toBe(named(session));
   });

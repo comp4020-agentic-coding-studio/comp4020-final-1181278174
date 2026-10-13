@@ -12,8 +12,8 @@ function page(status: number, url: URL, html: string): Page {
   return { status, url, html, doc: new JSDOM(html, { url: url.href }).window.document };
 }
 
-/** What the server sends an open page: every question's id and vote count, in Popular order. */
-export type Board = { questions: [id: number, votes: number][] };
+/** What the server sends an open page: how many people have the session open, and every question's id and vote count, in Popular order. */
+export type Board = { here: number; questions: [id: number, votes: number][] };
 
 /** A page's live stream, read as the page's script would read it. */
 export class Stream {
@@ -77,6 +77,11 @@ export class Stream {
         });
       });
     }
+  }
+
+  /** Forget what has been sent so far, so `until` only sees what comes next. */
+  forget(): void {
+    this.events = [];
   }
 
   close(): void {

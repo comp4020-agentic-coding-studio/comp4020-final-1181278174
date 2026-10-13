@@ -70,6 +70,44 @@ describe("live", () => {
     }
   });
 
+  it("counts the people with the session open: two tabs are one person, and leaving is noticed", async () => {
+    const { path, stream } = await watched();
+    await stream.until((board) => board.here === 1);
+
+    const other = new Visitor();
+    const tab = await other.listen(await other.open(path));
+    const secondTab = await other.listen(await other.open(path));
+    open.push(tab, secondTab);
+    await secondTab.until(() => true);
+    await stream.until((board) => board.here === 2);
+    // give a wrong count of three the time to arrive
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect((await stream.until(() => true)).board.here).toBeLessThan(3);
+
+    stream.forget();
+    tab.close();
+    secondTab.close();
+    await stream.until((board) => board.here === 1, 2000);
+  });
+
+  it("does not count the projector page as a person", async () => {
+    const { path, stream } = await watched();
+    await stream.until((board) => board.here === 1);
+
+    const screen = new Visitor();
+    const session = await screen.open(path);
+    const link = [...session.doc.querySelectorAll("a")].find((a) => /projector/i.test(a.textContent ?? ""));
+    const projector = await screen.listen(await screen.open(new URL(link!.getAttribute("href")!, session.url)));
+    open.push(projector);
+    expect((await projector.until(() => true)).board.here).toBe(1);
+
+    // a person arriving is what would raise the count
+    stream.forget();
+    const other = new Visitor();
+    open.push(await other.listen(await other.open(path)));
+    expect((await stream.until(() => true)).board.here).toBe(2);
+  });
+
   it("the stream of an unknown code is a 404", async () => {
     const { path, watcher } = await watched();
     const page = await watcher.open(path);
