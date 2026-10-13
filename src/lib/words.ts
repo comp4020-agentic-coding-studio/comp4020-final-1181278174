@@ -7,3 +7,12 @@ export const howMany = (n: number): string => `${n} ${n === 1 ? "question" : "qu
 
 /** How many people have the session open. */
 export const hereLabel = (n: number): string => `${n} here`;
+
+/** "just now", "4 min ago", "2 h ago", else the date. */
+export function ago(when: Date, now = new Date()): string {
+  const minutes = Math.floor((now.getTime() - when.getTime()) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} h ago`;
+  return when.toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Sydney" });
+}

@@ -4,7 +4,6 @@ import JoinForm from "../../components/JoinForm.astro";
 import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
 import {
-  ago,
   askQuestion,
   checkQuestion,
   findSession,
@@ -19,7 +18,7 @@ import {
   STATES,
   type State,
 } from "../../lib/board.ts";
-import { howMany, votesLabel } from "../../lib/words.ts";
+import { ago, howMany, votesLabel } from "../../lib/words.ts";
 
 const raw = Astro.params.code ?? "";
 const code = normaliseCode(raw);
@@ -159,7 +158,8 @@ const listed = list.filter((q) => q.state !== "hidden").length;
                     {" "}
                     {q.yours && <span class="yours">Yours</span>}
                     {" "}
-                    <span>{ago(q.createdAt)}</span>
+                    {/* the page's script keeps this up to date from the datetime */}
+                    <time datetime={q.createdAt.toISOString()}>{ago(q.createdAt)}</time>
                   </p>
                   <form method="post" class="vote">
                     <input type="hidden" name="intent" value="vote" />

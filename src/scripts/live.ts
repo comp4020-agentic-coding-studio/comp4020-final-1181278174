@@ -1,4 +1,4 @@
-import { hereLabel, votesLabel } from "../lib/words.ts";
+import { ago, hereLabel, votesLabel } from "../lib/words.ts";
 
 // Keeps an open session page up to date. The server sends the state of the
 // session (src/lib/live.ts) when the page connects and after every change:
@@ -213,6 +213,14 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     if (form.getAttribute("aria-busy") === "true") return;
     void send(form, event.submitter);
   });
+
+  // The page no longer reloads, so "just now" has to be kept true here.
+  setInterval(() => {
+    for (const time of holder.querySelectorAll<HTMLTimeElement>("time[datetime]")) {
+      const text = ago(new Date(time.dateTime));
+      if (time.textContent !== text) time.textContent = text;
+    }
+  }, 20_000);
 
   const status = document.querySelector<HTMLElement>("[data-live-status]");
   const say = (live: boolean): void => {

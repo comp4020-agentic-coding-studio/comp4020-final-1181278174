@@ -124,12 +124,3 @@ export function listQuestions(session: Session, viewer: string, sort: Sort): Que
     .all()
     .map((q) => ({ ...q, votes: Number(q.votes), yours: Boolean(q.yours), voted: Boolean(q.voted) }));
 }
-
-/** "just now", "4 min ago", "2 h ago", else the date. */
-export function ago(when: Date, now = new Date()): string {
-  const minutes = Math.floor((now.getTime() - when.getTime()) / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} h ago`;
-  return when.toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Sydney" });
-}
