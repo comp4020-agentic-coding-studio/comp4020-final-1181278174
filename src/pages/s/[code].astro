@@ -15,6 +15,7 @@ import {
   setVote,
   type Sort,
 } from "../../lib/board.ts";
+import { howMany, votesLabel } from "../../lib/words.ts";
 
 const raw = Astro.params.code ?? "";
 const code = normaliseCode(raw);
@@ -50,8 +51,6 @@ if (!session) Astro.response.status = 404;
 
 const list = session ? listQuestions(session, person, sort) : [];
 const hosting = session !== undefined && session.host === person;
-const votesLabel = (n: number) => `Me too, ${n} ${n === 1 ? "vote" : "votes"}`;
-const howMany = `${list.length} ${list.length === 1 ? "question" : "questions"}`;
 ---
 
 {
@@ -102,9 +101,11 @@ const howMany = `${list.length} ${list.length === 1 ? "question" : "questions"}`
               Recent
             </a>
           </nav>
-          <p class="count-label">{howMany}</p>
+          <p class="count-label" data-count>{howMany(list.length)}</p>
         </div>
 
+        {/* the page's script (src/scripts/live.ts) keeps what is in here up to date */}
+        <div data-board data-sort={sort}>
         {list.length === 0 ? (
           <p class="card empty">
             <Icon name="hand" size={22} /> No questions yet. Be the first to ask.
@@ -144,7 +145,11 @@ const howMany = `${list.length} ${list.length === 1 ? "question" : "questions"}`
             ))}
           </ol>
         )}
+        </div>
       </main>
+      <script>
+        import "../../scripts/live.ts";
+      </script>
     </Layout>
   ) : (
     <Layout title="No such session · Hands Up">

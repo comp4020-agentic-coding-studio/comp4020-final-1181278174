@@ -1,0 +1,156 @@
+import { votesLabel } from "../lib/words.ts";
+
+// Keeps an open session page up to date. The server sends the state of the
+// session (src/lib/live.ts) when the page connects and after every change:
+// each question's id and vote count, in Popular order. The script changes
+// counts and moves cards to match. When the state has a question this page
+// has never seen, the page fetches itself and takes the new card from the
+// server's HTML, so "Yours" and the wording are still the server's.
+// Without this script the page works as plain forms.
+
+type Board = { questions: [id: number, votes: number][] };
+
+const CARD = "li[id^='q-']";
+const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+const main = document.querySelector<HTMLElement>("[data-live]");
+const holder = main?.querySelector<HTMLElement>("[data-board]");
+if (main?.dataset.live && holder && "EventSource" in window) watch(main.dataset.live, holder);
+
+function watch(url: string, holder: HTMLElement): void {
+  const cards = (): HTMLElement[] => [...holder.querySelectorAll<HTMLElement>(CARD)];
+
+  /** Make a change to the list, keep the keyboard where it was, and slide each card to its new place. */
+  function move(change: () => void): void {
+    const before = new Map(cards().map((li) => [li.id, li.getBoundingClientRect().top]));
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const card = focused?.closest<HTMLElement>(CARD);
+    const nth = card && focused ? [...card.querySelectorAll("button")].indexOf(focused as HTMLButtonElement) : -1;
+
+    change();
+
+    if (focused && card && document.activeElement !== focused) {
+      // a card that moved loses the focus; one that was redrawn has a new button
+      const again = focused.isConnected
+        ? focused
+        : document.getElementById(card.id)?.querySelectorAll<HTMLElement>("button")[nth];
+      again?.focus({ preventScroll: true });
+    }
+    if (calm.matches) return;
+    for (const li of cards()) {
+      const was = before.get(li.id);
+      const now = li.getBoundingClientRect().top;
+      if (was === undefined) {
+        li.animate(
+          [
+            { opacity: 0, transform: "translateY(10px)" },
+            { opacity: 1, transform: "none" },
+          ],
+          { duration: 250, easing: "ease-out" },
+        );
+      } else if (Math.abs(was - now) > 1) {
+        li.animate([{ transform: `translateY(${was - now}px)` }, { transform: "none" }], {
+          duration: 300,
+          easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        });
+      }
+    }
+  }
+
+  /** Put the list's cards in this order, moving only the ones that are out of place. */
+  function arrange(list: Element, want: Element[]): void {
+    for (const li of [...list.children]) if (!want.includes(li)) li.remove();
+    want.forEach((li, i) => {
+      if (list.children[i] !== li) list.insertBefore(li, list.children[i] ?? null);
+    });
+  }
+
+  function setCount(li: HTMLElement, votes: number): void {
+    const button = li.querySelector<HTMLElement>(".me-too");
+    const n = button?.querySelector<HTMLElement>(".n");
+    if (!button || !n || n.textContent === String(votes)) return;
+    n.textContent = String(votes);
+    button.setAttribute("aria-label", votesLabel(votes));
+  }
+
+  /** The state the server sent: change counts and the order here, or fetch what this page hasn't got. */
+  function show(board: Board): void {
+    const known = new Map(cards().map((li) => [Number(li.id.slice(2)), li]));
+    const same = board.questions.length === known.size && board.questions.every(([id]) => known.has(id));
+    if (!same) {
+      void refresh();
+      return;
+    }
+    const list = holder.querySelector("ol");
+    if (!list) return;
+    move(() => {
+      for (const [id, votes] of board.questions) setCount(known.get(id)!, votes);
+      // Recent is newest first, which a vote doesn't change
+      if (holder.dataset.sort === "popular") {
+        arrange(
+          list,
+          board.questions.map(([id]) => known.get(id)!),
+        );
+      }
+    });
+  }
+
+  /** Take the list from the server's own HTML for this person, keeping the cards already here. */
+  function adopt(doc: Document): void {
+    const fresh = doc.querySelector<HTMLElement>("[data-board]");
+    if (!fresh) return;
+    move(() => {
+      const list = holder.querySelector("ol");
+      const freshList = fresh.querySelector("ol");
+      if (!list || !freshList) {
+        holder.replaceChildren(...fresh.childNodes);
+      } else {
+        const old = new Map(cards().map((li) => [li.id, li]));
+        const want = [...freshList.children].map((li) => {
+          const mine = old.get(li.id);
+          if (!mine) return document.adoptNode(li);
+          if (mine.innerHTML !== li.innerHTML) mine.replaceChildren(...li.childNodes);
+          return mine;
+        });
+        arrange(list, want);
+      }
+      const count = doc.querySelector("[data-count]")?.textContent;
+      const label = document.querySelector("[data-count]");
+      if (label && count) label.textContent = count;
+    });
+  }
+
+  // One fetch at a time; a change that arrives during one is picked up by another straight after.
+  let fetching = false;
+  let again = false;
+  async function refresh(): Promise<void> {
+    if (fetching) {
+      again = true;
+      return;
+    }
+    fetching = true;
+    try {
+      do {
+        again = false;
+        const res = await fetch(location.href, { headers: { accept: "text/html" } });
+        if (!res.ok) break;
+        adopt(new DOMParser().parseFromString(await res.text(), "text/html"));
+      } while (again);
+    } catch {
+      // offline: the stream reconnects and sends the state again
+    } finally {
+      fetching = false;
+    }
+  }
+
+  function connect(): void {
+    const source = new EventSource(url);
+    source.onmessage = (event) => show(JSON.parse(event.data) as Board);
+    source.onerror = () => {
+      // The browser reconnects by itself after a dropped connection, but gives
+      // up for good on an error page, which is what a redeploy answers with.
+      if (source.readyState === EventSource.CLOSED) setTimeout(connect, 2000);
+    };
+  }
+  connect();
+}
