@@ -1,16 +1,16 @@
-import { votesLabel } from "../lib/words.ts";
+import { hereLabel, votesLabel } from "../lib/words.ts";
 
 // Keeps an open session page up to date. The server sends the state of the
 // session (src/lib/live.ts) when the page connects and after every change:
-// each question's id and vote count, in Popular order. The script changes
-// counts and moves cards to match. When the state has a question this page
+// how many people have it open, and each question's id and vote count, in
+// Popular order. The script changes counts and moves cards to match. When the state has a question this page
 // has never seen, the page fetches itself and takes the new card from the
 // server's HTML, so "Yours" and the wording are still the server's.
 // Asking and voting are still the page's forms; the script sends them in the
 // background, so the page doesn't reload, and takes the list from the answer.
 // Without this script the page works as plain forms.
 
-type Board = { questions: [id: number, votes: number][] };
+type Board = { here: number; questions: [id: number, votes: number][] };
 
 const CARD = "li[id^='q-']";
 const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -86,6 +86,11 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
 
   /** The state the server sent: change counts and the order here, or fetch what this page hasn't got. */
   function show(board: Board): void {
+    const here = document.querySelector<HTMLElement>("[data-here]");
+    if (here) {
+      here.hidden = false;
+      here.textContent = hereLabel(board.here);
+    }
     const known = new Map(cards().map((li) => [Number(li.id.slice(2)), li]));
     const same = board.questions.length === known.size && board.questions.every(([id]) => known.has(id));
     // the projector page shows only the top few, so it always asks the server which

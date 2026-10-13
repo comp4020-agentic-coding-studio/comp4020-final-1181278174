@@ -7,7 +7,7 @@ import { asEvent, board, listen } from "../../../lib/live.ts";
 // goes out now and then so Fly's proxy doesn't close a quiet connection.
 const BEAT_MS = 20_000;
 
-export const GET: APIRoute = ({ params, request }) => {
+export const GET: APIRoute = ({ params, request, url, locals }) => {
   const code = normaliseCode(params.code ?? "");
   const session = isCode(code) ? findSession(code) : undefined;
   if (!session) return new Response("No such session.\n", { status: 404 });
@@ -23,7 +23,9 @@ export const GET: APIRoute = ({ params, request }) => {
           leave();
         }
       };
-      const stop = listen(session.id, send);
+      // the projector page asks with ?screen: it is not a person in the room
+      const person = url.searchParams.has("screen") ? null : locals.person;
+      const stop = listen(session.id, { person, send });
       const beat = setInterval(() => send(": still here\n\n"), BEAT_MS);
       leave = () => {
         clearInterval(beat);

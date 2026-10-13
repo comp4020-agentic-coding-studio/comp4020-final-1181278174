@@ -761,6 +761,10 @@ textarea {
   font-size: 1.1em;
 }
 
+.stage-top [data-here]:not([hidden])::after {
+  content: " · ";
+}
+
 .stage-list {
   flex: 1;
   min-height: 0;

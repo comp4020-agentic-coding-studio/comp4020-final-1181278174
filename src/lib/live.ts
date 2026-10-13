@@ -8,10 +8,11 @@ import { questions, votes } from "./schema.ts";
 // live in memory. Nothing else does: counts are read from the database for
 // every event.
 
-/** What every open page of a session is sent: each question's id and vote count, in Popular order. */
-export type Board = { questions: [id: number, votes: number][] };
+/** What every open page of a session is sent: how many people have it open, and each question's id and vote count, in Popular order. */
+export type Board = { here: number; questions: [id: number, votes: number][] };
 
-type Listener = (event: string) => void;
+/** One open stream. `person` is null for a screen nobody is asking from (the projector page). */
+type Listener = { person: string | null; send: (event: string) => void };
 
 const listeners = new Map<number, Set<Listener>>();
 const waiting = new Map<number, ReturnType<typeof setTimeout>>();
@@ -28,20 +29,29 @@ export function board(sessionId: number): Board {
     .where(eq(questions.sessionId, sessionId))
     .orderBy(desc(count), asc(questions.createdAt), asc(questions.id))
     .all();
-  return { questions: rows.map((q) => [q.id, Number(q.votes)]) };
+  return { here: here(sessionId), questions: rows.map((q) => [q.id, Number(q.votes)]) };
+}
+
+/** How many people have the session open. People, not tabs; only the number ever leaves here. */
+function here(sessionId: number): number {
+  const people = new Set<string>();
+  for (const { person } of listeners.get(sessionId) ?? []) if (person) people.add(person);
+  return people.size;
 }
 
 /** One event as it goes down the wire. The same text is sent to everyone: it has no person in it. */
 export const asEvent = (state: Board): string => `data: ${JSON.stringify(state)}\n\n`;
 
-/** Listen to a session; the returned function stops listening. */
+/** Listen to a session; the returned function stops listening. Both tell the others, since the count changed. */
 export function listen(sessionId: number, listener: Listener): () => void {
   let room = listeners.get(sessionId);
   if (!room) listeners.set(sessionId, (room = new Set()));
   room.add(listener);
+  publish(sessionId);
   return () => {
-    room.delete(listener);
+    if (!room.delete(listener)) return;
     if (room.size === 0) listeners.delete(sessionId);
+    publish(sessionId);
   };
 }
 
@@ -55,7 +65,7 @@ export function publish(sessionId: number): void {
       const room = listeners.get(sessionId);
       if (!room) return;
       const event = asEvent(board(sessionId));
-      for (const listener of room) listener(event);
+      for (const listener of room) listener.send(event);
     }, GATHER_MS),
   );
 }

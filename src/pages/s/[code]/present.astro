@@ -28,7 +28,7 @@ const qr = session ? renderSVG(address, { border: 0, ecc: "M", blackColor: "#121
 {
   session ? (
     <Layout title={`${session.title} · Hands Up`}>
-      <div class="present" data-live={`/s/${session.code}/events`}>
+      <div class="present" data-live={`/s/${session.code}/events?screen`}>
         <aside class="rail" aria-label="How to join">
           <a class="brand" href="/">
             <span class="brand-mark">
@@ -50,8 +50,9 @@ const qr = session ? renderSVG(address, { border: 0, ecc: "M", blackColor: "#121
         <main id="main" class="stage">
           <div class="stage-top">
             <h1>{session.title}</h1>
-            <p class="count-label" data-count>
-              {howMany(all.length)}
+            <p class="count-label">
+              <span data-here hidden />
+              <span data-count>{howMany(all.length)}</span>
             </p>
           </div>
 

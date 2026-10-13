@@ -109,6 +109,7 @@ const hosting = session !== undefined && session.host === person;
           <div class="bar-end">
             {/* shown by the page's script once its stream is open */}
             <p class="live" role="status" data-live-status hidden />
+            <p class="count-label" data-here hidden />
             <p class="count-label" data-count>{howMany(list.length)}</p>
           </div>
         </div>
