@@ -87,7 +87,48 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     button.setAttribute("aria-label", votesLabel(votes));
   }
 
-  /** The state the server sent: change counts and the order here, or fetch what this page hasn't got. */
+  // Every screen reorders as votes arrive, so a card can move just as someone
+  // presses it. While a finger or the mouse button is down the list waits, and
+  // takes the newest state a moment after the release, once the press has
+  // landed where it was aimed.
+  let fingers = 0;
+  let mouse = false;
+  let waiting: Board | undefined;
+  const down = (): boolean => fingers > 0 || mouse;
+  const released = (): void => {
+    setTimeout(() => {
+      if (down() || !waiting) return;
+      const board = waiting;
+      waiting = undefined;
+      redraw(board);
+    }, 120);
+  };
+  const touched = (event: TouchEvent): void => {
+    fingers = event.touches.length;
+    if (fingers === 0) released();
+  };
+  for (const name of ["touchstart", "touchend", "touchcancel"] as const) {
+    document.addEventListener(name, touched, { passive: true });
+  }
+  document.addEventListener("mousedown", () => {
+    mouse = true;
+  });
+  const mouseUp = (): void => {
+    if (!mouse) return;
+    mouse = false;
+    released();
+  };
+  document.addEventListener("mouseup", mouseUp);
+  // a button let go outside the window sends no mouseup: notice when the mouse is back
+  document.addEventListener("mousemove", (event) => {
+    if (event.buttons === 0) mouseUp();
+  });
+  window.addEventListener("blur", () => {
+    fingers = 0;
+    mouseUp();
+  });
+
+  /** The state the server sent. The labels change at once; the list waits for a finger to lift. */
   function show(board: Board): void {
     const here = document.querySelector<HTMLElement>("[data-here]");
     if (here) {
@@ -96,6 +137,17 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     }
     const count = document.querySelector("[data-count]");
     if (count && holder.dataset.refresh === undefined) count.textContent = howMany(board.questions.length);
+    if (down()) {
+      waiting = board;
+    } else {
+      // a state that was waiting is older than this one
+      waiting = undefined;
+      redraw(board);
+    }
+  }
+
+  /** Change counts and the order here, or fetch what this page hasn't got. */
+  function redraw(board: Board): void {
 
     // The host's page also lists the hidden questions, which the server leaves
     // out of the state; they stay where the server put them, at the end.
