@@ -25,6 +25,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   /** Make a change to the list, keep the keyboard where it was, and slide each card to its new place. */
   function move(change: () => void): void {
     const before = new Map(cards().map((li) => [li.id, li.getBoundingClientRect().top]));
+    const counted = new Map(cards().map((li) => [li.id, li.querySelector(".n")?.textContent]));
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const card = focused?.closest<HTMLElement>(CARD);
     const nth = card && focused ? [...card.querySelectorAll("button")].indexOf(focused as HTMLButtonElement) : -1;
@@ -40,6 +41,14 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     }
     if (calm.matches) return;
     for (const li of cards()) {
+      // a count that changed jumps, so a change made elsewhere is seen
+      const n = li.querySelector<HTMLElement>(".n");
+      if (n && counted.has(li.id) && counted.get(li.id) !== n.textContent) {
+        n.animate([{ transform: "scale(1)" }, { transform: "scale(1.5)" }, { transform: "scale(1)" }], {
+          duration: 350,
+          easing: "ease-out",
+        });
+      }
       const was = before.get(li.id);
       const now = li.getBoundingClientRect().top;
       if (was === undefined) {
