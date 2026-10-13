@@ -175,3 +175,110 @@ If time runs short, drop these in order: the projector view, the QR code (the
 code alone works), Recent, taking back a vote, the look beyond the session
 page. Joining, asking, one vote each, "Yours", persistence, `HAND`, the tests,
 the deploy and the README stay.
+
+## Crit 9: all at once
+
+Crit 9 brief: make the final project real-time, then decide how it behaves when
+several people use it at once, and write down why. Cutoff Wednesday 14 October
+2026, 08:30.
+
+### The decision
+
+Decided 13 October, 23:20: when votes change the order, every open screen
+reorders straight away, phones included.
+
+- The other option was to update counts and add new questions live but leave
+  the order alone on a phone until its owner asks for the new order, and
+  reorder live only on the projector.
+- Why: README.md says good means the questions most people want answered come
+  first. With this choice that is true on every screen all the time, and
+  everyone in the room sees the same list as the person at the front.
+- What it costs: a card can move just as someone is about to press it, so a
+  "Me too" can land on the wrong question. Slido's staff call jumping
+  questions distracting. A wrong vote can be taken back, and a card slides to
+  its new place instead of jumping, so the eye can follow it.
+
+The full record, with the options, goes in `docs/decisions/0002-live-order.md`.
+
+### How a change travels
+
+- `GET /s/[code]/events` is a server-sent events stream. The session page and
+  the projector page name it in their HTML, and the tests read it from there.
+- Asking, voting and the host's actions still go through the forms. After the
+  database write, the server tells every open stream for that session. Changes
+  less than 100 ms apart go out as one event.
+- Every event is the whole state, not a change: how many people are here, and
+  each question's id, vote count and state, in Popular order. Everyone in a
+  session is sent the same event, and it has no person's id in it. A phone
+  that was asleep or lost its connection reconnects and is sent the current
+  state; there is nothing to replay.
+- The page moves cards and changes counts from the event. When the event has a
+  question the page has never seen, the page fetches itself and takes the new
+  card from the server's HTML, so "Yours" is still worked out on the server.
+- A comment line every 20 seconds keeps the connection open through Fly's
+  proxy.
+- Without JavaScript the pages work as they did in crit 8.
+
+### Built this week, in this order
+
+The first part is what the crit 9 spec asks for. Each later part is added on
+its own and leaves `main` working, so the work can stop after any of them.
+
+1. Live updates: counts, new questions and the order, on every open session
+   page within about a second.
+2. Asking and voting without a page reload. A count that changes jumps
+   briefly. The page says "Live" or "Reconnecting".
+3. The projector page, `/s/[code]/present`, as drawn on the canvas in crit 8:
+   the code, where to join, and the top questions in type big enough for the
+   back row. No buttons. A QR code if there is time.
+4. "N here": how many people have the session open. People are counted, not
+   tabs, and only the number is sent.
+5. The host can mark a question answered or hide it, and everyone sees it
+   straight away. An answered question says "Answered" and sits below the
+   open ones in Popular. A hidden question is only listed for the host, who
+   can show it again. A new migration adds `state` to `questions`: `open`,
+   `answered` or `hidden`.
+
+The host is still the browser that started the session, so at the crit the
+session is started on my own device and the room's screen only opens the
+projector page. `HAND` has no host, so nobody can hide or mark anything
+there. A host link for a second device, "answering now" and written answers
+are not this week.
+
+### Tests (`spec/`)
+
+New tests, red first, alongside crit 8's:
+
+- someone with the stream open is sent a question another person asks, within
+  a second
+- and a vote, with the new count, within a second; when the vote changes the
+  order, the event lists the questions in the new order
+- nothing in the stream carries who asked
+- the stream of an unknown code is a 404
+- with each later part: the projector page shows the code and the questions in
+  Popular order and has no forms; two people listening are counted as two, and
+  as one after one leaves; only the host is offered Answered and Hide, anyone
+  else who sends them is refused, a hidden question is gone from everyone
+  else's page and from the stream, and an answered one says so
+
+The tests read the stream over HTTP, so they show the server sends a change
+within a second. That a page on a phone moves is checked by hand: two windows
+side by side at 390 px and 1920 px, then two devices on the live app.
+
+### Order of work
+
+1. this plan
+2. the live tests, red
+3. the stream, and the publish after each write; tests green; push and try the
+   stream on the live app before building on it
+4. the page script: counts, new cards, reordering
+5. 150 streams against a local server, to measure delay and memory; the
+   decision record and the README change, as drafts
+6. parts 2 to 5 above, one at a time, each with its tests
+7. code stops at 06:30; two devices on the live app, preflight
+8. 07:00 to 08:00: I read the drafts, write PROCESS.md and
+   `reflections/crit-9.md`, and ship
+
+If time runs short, drop from the end: answered and hidden, then the QR code,
+then "N here", then the projector page. Live updates, their tests, the
+decision record and the reflection stay.
