@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { findSession, isCode, normaliseCode } from "../../../lib/board.ts";
-import { asEvent, board, listen } from "../../../lib/live.ts";
+import { asEvent, board, here, listen } from "../../../lib/live.ts";
 
 // The live stream of one session, as server-sent events. It opens with the
 // current state and sends the state again after every change. A comment line
@@ -26,10 +26,19 @@ export const GET: APIRoute = ({ params, request, url, locals }) => {
       // the projector page asks with ?screen: it is not a person in the room
       const person = url.searchParams.has("screen") ? null : locals.person;
       const stop = listen(session.id, { person, send });
+      // who opened the session and when they left, with how many people are
+      // here after; the projector page is a screen, not a person
+      const opened = Date.now();
+      locals.log(person ? "session_joined" : "screen_opened", { session: session.code, here: here(session.id) });
       const beat = setInterval(() => send(": still here\n\n"), BEAT_MS);
+      let gone = false;
       leave = () => {
+        if (gone) return;
+        gone = true;
         clearInterval(beat);
         stop();
+        const stayed = `${Math.round((Date.now() - opened) / 1000)}s`;
+        locals.log(person ? "session_left" : "screen_closed", { session: session.code, here: here(session.id), stayed });
       };
       request.signal.addEventListener("abort", () => {
         leave();

@@ -40,7 +40,7 @@ export function board(sessionId: number): Board {
 }
 
 /** How many people have the session open. People, not tabs; only the number ever leaves here. */
-function here(sessionId: number): number {
+export function here(sessionId: number): number {
   const people = new Set<string>();
   for (const { person } of listeners.get(sessionId) ?? []) if (person) people.add(person);
   return people.size;
