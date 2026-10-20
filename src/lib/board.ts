@@ -76,20 +76,25 @@ export function askQuestion(session: Session, asker: string, body: string): void
   publish(session.id);
 }
 
-/** Say "me too" (want) or take it back. Saying it twice is still one vote. */
-export function setVote(session: Session, questionId: number, person: string, want: boolean): void {
-  const inSession = db
-    .select({ id: questions.id })
+/**
+ * Say "me too" (want) or take it back. Saying it twice is still one vote.
+ * False if this person can't see the question: it is in another session, or
+ * hidden and they are not the host.
+ */
+export function setVote(session: Session, questionId: number, person: string, want: boolean): boolean {
+  const found = db
+    .select({ state: questions.state })
     .from(questions)
     .where(and(eq(questions.id, questionId), eq(questions.sessionId, session.id)))
     .get();
-  if (!inSession) return;
+  if (!found || (found.state === "hidden" && !isHost(session, person))) return false;
   if (want) {
     db.insert(votes).values({ questionId, person, createdAt: new Date() }).onConflictDoNothing().run();
   } else {
     db.delete(votes).where(and(eq(votes.questionId, questionId), eq(votes.person, person))).run();
   }
   publish(session.id);
+  return true;
 }
 
 /** The host is the browser that started the session. HAND has none. */

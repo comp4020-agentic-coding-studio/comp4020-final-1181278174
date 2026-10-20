@@ -45,9 +45,12 @@ if (session && Astro.request.method === "POST") {
     }
     Astro.response.status = 422;
   } else if (form.get("intent") === "vote") {
+    // a question this person can't see takes no vote, and is a 404 to them
     const id = Number(form.get("question"));
-    if (Number.isInteger(id)) setVote(session, id, person, form.get("want") === "1");
-    return Astro.redirect(`${here}#q-${id}`, 303);
+    if (Number.isInteger(id) && setVote(session, id, person, form.get("want") === "1")) {
+      return Astro.redirect(`${here}#q-${id}`, 303);
+    }
+    Astro.response.status = 404;
   } else if (form.get("intent") === "state") {
     // the host's buttons. Anyone else who sends this is refused, and shown the page as it is.
     const id = Number(form.get("question"));
