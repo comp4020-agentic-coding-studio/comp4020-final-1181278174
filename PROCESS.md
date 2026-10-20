@@ -86,7 +86,8 @@ may tie a question to a browser ([`0baf778`](https://github.com/comp4020-agentic
 logs that say who did what.
 *What I did instead:* after the agent showed me five example log lines, I chose
 to log who asked too: by a short tag, never by the cookie, and with nothing
-anyone typed ([`ce5c77f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-1181278174/commit/ce5c77f), [`cf04364...dad4bff`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-1181278174/compare/cf04364...dad4bff)). Leaving the tag off
+anyone typed ([`ce5c77f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-1181278174/commit/ce5c77f), [`cf04364...dad4bff`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-1181278174/compare/cf04364...dad4bff)). I changed the rule in `CLAUDE.md` to match
+([`7bf28a1`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-1181278174/commit/7bf28a1)). Leaving the tag off
 that line would not hide who asked, because the asker's page loads again
 straight after, with their tag. The cost is that whoever runs the server can
 see which tag asked which question, which the database already held.
