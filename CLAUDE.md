@@ -30,6 +30,9 @@ The design is `PLAN.md`. When this file and `PLAN.md` disagree, stop and ask.
   they pass, deploys. A deploy by hand uploads the working tree, uncommitted
   drafts included, so only from a clean tree:
   `mise exec -- flyctl deploy --remote-only --ha=false -a comp4020-final-1181278174`.
+- `mise exec -- flyctl logs -a comp4020-final-1181278174` — the live app's log as it
+  is written; `--no-tail` prints the recent lines and stops. Read it first when the live
+  app misbehaves, and paste the lines rather than describe them.
 - Installing or adding a package: `mise exec -- pnpm …`, never plain `pnpm`.
 - `/preflight` before `/ship`. `/ship` tags the crit's cutoff state. It only
   happens on my word.
