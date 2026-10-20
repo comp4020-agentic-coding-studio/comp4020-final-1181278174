@@ -23,12 +23,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   context.locals.person = person;
 
+  // Every line from this request starts with the same id and names the same
+  // person. Pages log what the person did with `locals.log`.
+  const id = requestId();
+  const who = tag(person);
+  context.locals.log = (what, fields = {}) => write(id, what, { person: who, ...fields });
+
   // one line per request, after it is answered: the path without its query,
   // since a query can hold what someone typed
-  const id = requestId();
   const started = performance.now();
   const response = await next();
   const took = Math.round(performance.now() - started);
-  write(id, `${context.request.method} ${context.url.pathname} ${response.status} ${took}ms`, { person: tag(person) });
+  write(id, `${context.request.method} ${context.url.pathname} ${response.status} ${took}ms`, { person: who });
   return response;
 });

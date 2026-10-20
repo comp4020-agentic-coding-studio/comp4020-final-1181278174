@@ -65,7 +65,8 @@ export function checkQuestion(body: string): string | undefined {
   }
 }
 
-export function askQuestion(session: Session, asker: string, body: string): void {
+/** Ask a question; returns its number. */
+export function askQuestion(session: Session, asker: string, body: string): number {
   const createdAt = new Date();
   const { id } = db
     .insert(questions)
@@ -74,27 +75,33 @@ export function askQuestion(session: Session, asker: string, body: string): void
     .get();
   announce(session.id, { id, body, at: createdAt.getTime() }, asker);
   publish(session.id);
+  return id;
 }
 
 /**
- * Say "me too" (want) or take it back. Saying it twice is still one vote.
- * False if this person can't see the question: it is in another session, or
- * hidden and they are not the host.
+ * What a vote did. "unchanged" is a vote that was already there, or already
+ * taken back. The last two are refusals: this person can't see the question.
  */
-export function setVote(session: Session, questionId: number, person: string, want: boolean): boolean {
+export type Vote = "changed" | "unchanged" | "hidden" | "no-such-question";
+
+/**
+ * Say "me too" (want) or take it back. Saying it twice is still one vote.
+ * Refused if the question is in another session, or hidden and this person is
+ * not the host.
+ */
+export function setVote(session: Session, questionId: number, person: string, want: boolean): Vote {
   const found = db
     .select({ state: questions.state })
     .from(questions)
     .where(and(eq(questions.id, questionId), eq(questions.sessionId, session.id)))
     .get();
-  if (!found || (found.state === "hidden" && !isHost(session, person))) return false;
-  if (want) {
-    db.insert(votes).values({ questionId, person, createdAt: new Date() }).onConflictDoNothing().run();
-  } else {
-    db.delete(votes).where(and(eq(votes.questionId, questionId), eq(votes.person, person))).run();
-  }
+  if (!found) return "no-such-question";
+  if (found.state === "hidden" && !isHost(session, person)) return "hidden";
+  const { changes } = want
+    ? db.insert(votes).values({ questionId, person, createdAt: new Date() }).onConflictDoNothing().run()
+    : db.delete(votes).where(and(eq(votes.questionId, questionId), eq(votes.person, person))).run();
   publish(session.id);
-  return true;
+  return changes > 0 ? "changed" : "unchanged";
 }
 
 /** The host is the browser that started the session. HAND has none. */

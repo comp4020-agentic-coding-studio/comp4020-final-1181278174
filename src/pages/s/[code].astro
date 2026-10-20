@@ -29,6 +29,7 @@ const session = isCode(code) ? findSession(code) : undefined;
 const sort: Sort = Astro.url.searchParams.get("sort") === "recent" ? "recent" : "popular";
 const here = sort === "recent" ? `/s/${code}?sort=recent` : `/s/${code}`;
 const person = Astro.locals.person;
+const log = Astro.locals.log;
 
 // Asking and voting post back to this page: plain forms, no script needed.
 // A refused question comes back with the text kept and the reason.
@@ -40,14 +41,19 @@ if (session && Astro.request.method === "POST") {
     draft = String(form.get("body") ?? "").trim();
     problem = checkQuestion(draft);
     if (!problem) {
-      askQuestion(session, person, draft);
+      const id = askQuestion(session, person, draft);
+      log("question_asked", { session: session.code, question: id });
       return Astro.redirect(here, 303);
     }
     Astro.response.status = 422;
   } else if (form.get("intent") === "vote") {
     // a question this person can't see takes no vote, and is a 404 to them
     const id = Number(form.get("question"));
-    if (Number.isInteger(id) && setVote(session, id, person, form.get("want") === "1")) {
+    const want = form.get("want") === "1";
+    const vote = Number.isInteger(id) ? setVote(session, id, person, want) : "no-such-question";
+    if (vote === "changed" || vote === "unchanged") {
+      const what = vote === "unchanged" ? "vote_unchanged" : want ? "vote_given" : "vote_taken_back";
+      log(what, { session: session.code, question: id });
       return Astro.redirect(`${here}#q-${id}`, 303);
     }
     Astro.response.status = 404;
@@ -56,6 +62,7 @@ if (session && Astro.request.method === "POST") {
     const id = Number(form.get("question"));
     const to = STATES.find((state) => state === form.get("to"));
     if (Number.isInteger(id) && to && setState(session, id, person, to)) {
+      log("question_marked", { session: session.code, question: id, to });
       return Astro.redirect(`${here}#q-${id}`, 303);
     }
     Astro.response.status = to ? 403 : 422;

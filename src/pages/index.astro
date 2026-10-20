@@ -14,6 +14,7 @@ if (Astro.request.method === "POST") {
   problem = checkTitle(title);
   if (!problem) {
     const code = startSession(title, Astro.locals.person);
+    Astro.locals.log("session_started", { session: code });
     return Astro.redirect(`/s/${code}`, 303);
   }
   Astro.response.status = 422;
