@@ -21,7 +21,8 @@ The design is `PLAN.md`. When this file and `PLAN.md` disagree, stop and ask.
 - `pnpm build && pnpm start` — the built server on 8080, as CI runs it.
 - `pnpm check` — `astro check`, then every `spec/*.test.ts` against the app
   running at `APP_URL` (default `http://localhost:8080`). Start the app first.
-  Run before every commit. Never point it at the live app: the tests write.
+  Run before every commit. Never point it at the live app: the tests write, so
+  `spec/visitor.ts` makes them fail at once on a fly.dev address.
 - `pnpm check:evidence` — this file, a crit reflection, `PROCESS.md` without
   its template comment, every cited commit resolves. Run before `/ship`.
 - `pnpm db:generate --name <what>` — a migration from `src/lib/schema.ts`.
