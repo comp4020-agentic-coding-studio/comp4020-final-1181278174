@@ -6,6 +6,14 @@ import { inject } from "vitest";
 // script runs, so whatever these tests do works without JavaScript too.
 const baseUrl = inject("baseUrl");
 
+// These checks write: they start sessions, ask and vote. Run against the live
+// app they leave all of that in its database (a run on 21 October left 63
+// sessions), so on a fly.dev address they fail at once. CI runs them against
+// its own container, and locally they run against a local server.
+if (new URL(baseUrl).hostname.endsWith(".fly.dev")) {
+  throw new Error(`these checks write to the app they run against, so not to ${baseUrl}: run them against a local server`);
+}
+
 export type Page = { status: number; url: URL; html: string; doc: Document };
 
 function page(status: number, url: URL, html: string): Page {
