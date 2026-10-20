@@ -309,3 +309,100 @@ Decided 14 October, 02:00: the projector page gets a link to the session page,
 "Ask from this device". I opened the projector page on my laptop, took it for
 the app itself and could not find where to ask. It still has no forms or
 buttons.
+
+## Crit 10: fly by instruments
+
+Crit 10 brief: make the final project tell people apart, then hand two of the
+pod only the URL. They use it side by side in separate Chrome profiles while I
+narrate from the logs who did what. Cutoff Wednesday 21 October 2026, 08:30.
+
+### Where it starts
+
+The app already tells people apart: a browser is a person, by the random id in
+its cookie. The server already checks what each person may do: one vote each,
+held by the database key; "Yours" is worked out on the server; only the host
+can mark a question answered or hide it; a hidden question is listed only for
+the host. What is missing:
+
+- The app logs nothing. `flyctl logs` shows the machine starting and stopping,
+  and no requests.
+- Who may see and change what is not written down in one place.
+- A vote for a hidden question is counted. The page offers no button for it,
+  but a page opened before the host hid the question still has one.
+
+### The decision
+
+Decided 21 October, 02:20: the logs say who did everything, asking included.
+
+- A person shows in the logs as a short tag worked out from their cookie, never
+  as the cookie itself. Anyone holding the cookie could act as that person, and
+  as the host if they started the session.
+- No line holds anything someone typed. A question is its number.
+- The other option was to leave the person off the line that says a question
+  was asked. It would not hide who asked: the asker's page loads itself again
+  straight after, and that request has their tag.
+- What it costs: whoever runs the server can see which tag asked which
+  question. The database already holds which browser asked each question
+  (that is how "Yours" works), so this was already true. The README will say
+  so.
+- Why: I will write this after trying it in two windows.
+
+### What the logs say
+
+Every line goes to standard output, where Fly collects it:
+`mise exec -- flyctl logs -a comp4020-final-1181278174`.
+
+- One line per request: the method, the path without its query, the status,
+  the time it took and the person's tag. A request id at the front ties it to
+  the other lines from the same request.
+- One line for each thing a person does: started a session, opened it (with how
+  many are here), left it, asked, voted, took a vote back, marked a question
+  answered or not, hid it, showed it again.
+- One line for each refusal, with the reason: not the host, an empty or too
+  long question, a vote for a question that is hidden or not in the session.
+- One line when the server starts: how many sessions, questions and votes the
+  database holds, so a restart that lost something would show.
+- One line for a server error: the request, and where in the code it happened.
+
+Never logged: the cookie, anything typed, IP addresses, the browser.
+
+The logging stays after the crit. It is what I, and an agent, read when the
+deployed app misbehaves.
+
+### Who may see and change what
+
+- Anyone with the code sees the questions that are not hidden, their counts and
+  how many are here. They can ask, and give each question one vote, which they
+  can take back.
+- The person who asked sees "Yours" on their question. They cannot change its
+  words or delete it.
+- The host, the browser that started the session, also sees the hidden
+  questions, and can mark a question answered or not, hide it and show it
+  again.
+- Nobody sees who asked or who voted, or changes someone else's vote.
+- HAND has no host.
+
+The record, with the reasons, goes in
+`docs/decisions/0003-who-may-see-and-change-what.md`.
+
+### Tests (`spec/`)
+
+- a vote for a hidden question, sent from a page opened before it was hidden,
+  is refused, and nothing changes (red until built)
+
+The logs have no test: the tests reach the app over HTTP and cannot see what
+the server prints. They are checked by hand: two windows on a local server,
+then a search of its output for each cookie value; then two windows on the
+live app with `flyctl logs` open.
+
+### Order of work
+
+1. this plan
+2. the hidden vote: the test, red, then the fix
+3. the person's tag and the line per request
+4. the lines for what people do and for refusals, then opening and leaving
+5. the line at start, and errors
+6. push, then two windows on the live app with the logs open
+7. the decision record and the changes to README.md and CLAUDE.md, as drafts
+8. a rehearsal: two Chrome profiles, the URL only, me reading the logs
+9. I write PROCESS.md and `reflections/crit-10.md`, then preflight and ship
