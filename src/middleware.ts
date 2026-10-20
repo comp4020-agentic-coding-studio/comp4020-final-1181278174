@@ -32,8 +32,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // one line per request, after it is answered: the path without its query,
   // since a query can hold what someone typed
   const started = performance.now();
-  const response = await next();
-  const took = Math.round(performance.now() - started);
-  write(id, `${context.request.method} ${context.url.pathname} ${response.status} ${took}ms`, { person: who });
-  return response;
+  const line = (status: number, error?: string): void => {
+    const took = Math.round(performance.now() - started);
+    write(id, `${context.request.method} ${context.url.pathname} ${status} ${took}ms`, { person: who, error });
+  };
+  try {
+    const response = await next();
+    line(response.status);
+    return response;
+  } catch (error) {
+    // Astro answers with a 500 and prints where it happened just after this line
+    line(500, JSON.stringify(error instanceof Error ? error.message : String(error)));
+    throw error;
+  }
 });
