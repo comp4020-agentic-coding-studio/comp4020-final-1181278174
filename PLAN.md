@@ -345,7 +345,7 @@ Decided 21 October, 02:20: the logs say who did everything, asking included.
   question. The database already holds which browser asked each question
   (that is how "Yours" works), so this was already true. The README will say
   so.
-- Why: I will write this after trying it in two windows.
+- Why: the other option would not hide who asked, as the second point says.
 
 ### What the logs say
 
