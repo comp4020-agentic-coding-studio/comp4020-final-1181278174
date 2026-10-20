@@ -10,6 +10,7 @@ import {
   findSession,
   isCode,
   isHost,
+  length,
   listQuestions,
   MAX_QUESTION,
   normaliseCode,
@@ -46,6 +47,8 @@ if (session && Astro.request.method === "POST") {
       return Astro.redirect(here, 303);
     }
     Astro.response.status = 422;
+    const reason = draft.length === 0 ? "empty" : "too-long";
+    log("refused", { action: "ask", session: session.code, reason, length: length(draft) });
   } else if (form.get("intent") === "vote") {
     // a question this person can't see takes no vote, and is a 404 to them
     const id = Number(form.get("question"));
@@ -57,6 +60,7 @@ if (session && Astro.request.method === "POST") {
       return Astro.redirect(`${here}#q-${id}`, 303);
     }
     Astro.response.status = 404;
+    log("refused", { action: "vote", session: session.code, question: Number.isInteger(id) ? id : undefined, reason: vote });
   } else if (form.get("intent") === "state") {
     // the host's buttons. Anyone else who sends this is refused, and shown the page as it is.
     const id = Number(form.get("question"));
@@ -66,6 +70,8 @@ if (session && Astro.request.method === "POST") {
       return Astro.redirect(`${here}#q-${id}`, 303);
     }
     Astro.response.status = to ? 403 : 422;
+    const reason = !to ? "no-such-state" : isHost(session, person) ? "no-such-question" : "not-host";
+    log("refused", { action: "mark", session: session.code, question: Number.isInteger(id) ? id : undefined, reason });
   }
 }
 if (!session) Astro.response.status = 404;

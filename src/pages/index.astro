@@ -2,7 +2,7 @@
 import Icon from "../components/Icon.astro";
 import JoinForm from "../components/JoinForm.astro";
 import Layout from "../layouts/Layout.astro";
-import { checkTitle, MAX_TITLE, startSession } from "../lib/board.ts";
+import { checkTitle, length, MAX_TITLE, startSession } from "../lib/board.ts";
 
 // Starting a session posts back here: on success it goes to the new
 // session, otherwise this page comes back with the name kept and the reason.
@@ -18,6 +18,8 @@ if (Astro.request.method === "POST") {
     return Astro.redirect(`/s/${code}`, 303);
   }
   Astro.response.status = 422;
+  const reason = title.length === 0 ? "empty" : "too-long";
+  Astro.locals.log("refused", { action: "start", reason, length: length(title) });
 }
 ---
 
