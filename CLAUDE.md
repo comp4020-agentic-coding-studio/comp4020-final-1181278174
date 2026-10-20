@@ -98,8 +98,15 @@ Bad: `Implement comprehensive anonymous voting system`
   worked out on the server. A query that hands `asker` to a page is a bug;
   `spec/board.test.ts` checks every page another person is sent.
 - A person is the random id in the `hands_up_person` cookie (`src/middleware.ts`). No
-  names, no accounts, no other identifier, and nothing logged that ties a question to a
-  browser.
+  names, no accounts, no other identifier.
+
+### Logs
+
+- Every request, every thing a person does and every refusal writes one line, through
+  `locals.log` (`src/lib/log.ts`). A new action or refusal comes with its line.
+- A line names a person by their tag from `src/lib/log.ts`, never by the cookie: the
+  cookie is enough to act as that person, as the host too. Nothing anyone typed goes in a
+  line; a question is its number. No IP addresses, no browser names.
 
 ### Votes
 
