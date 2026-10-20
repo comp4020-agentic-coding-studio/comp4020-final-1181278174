@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { type Fields, write } from "./log.ts";
 import { sessions } from "./schema.ts";
 
 // One SQLite file is the app's whole persistent state. In the image,
@@ -27,3 +28,12 @@ db.insert(sessions)
   .values({ code: "HAND", title: "Questions for the maker of this app", host: null, createdAt: new Date() })
   .onConflictDoNothing({ target: sessions.code })
   .run();
+
+// One line when the database is opened, at the first request after the server
+// starts: what it holds, so a restart that lost something shows in the logs.
+const held = client
+  .prepare(
+    "SELECT (SELECT count(*) FROM sessions) AS sessions, (SELECT count(*) FROM questions) AS questions, (SELECT count(*) FROM votes) AS votes",
+  )
+  .get() as Fields;
+write("start", "database_opened", { path, ...held });
