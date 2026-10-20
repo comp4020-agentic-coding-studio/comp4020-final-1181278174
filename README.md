@@ -110,7 +110,6 @@ with a real class yet.
   managed from a phone.
 - Marking the question that is being answered right now.
 - Written answers after the session.
-- Logging on the server, which is the next crit.
 
 ## Limits
 
@@ -118,7 +117,9 @@ The app treats each browser as one person. If you clear your cookies or switch
 phones, it sees you as someone new: your questions lose "Yours", and you can
 vote again. That is fine for one class, but not for anything that must be
 counted fairly. The server knows which browser asked each question, so it can
-show "Yours", but it never shows this to anyone else.
+show "Yours", but it never shows this to anyone else in the app. The server's
+log names each person by a short tag, so whoever runs the server can see which
+tag asked which question.
 
 HAND has no host, so nobody can hide or mark a question there. The app runs on
 one small server, and the list of open connections is kept in that server's
