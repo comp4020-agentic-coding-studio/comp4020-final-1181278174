@@ -12,7 +12,8 @@ and the host can mark a question answered or hide it.
 
 Since crit 10 the server logs who did what, one line for each action, with a
 short tag for each person. What each person may see and change is checked on
-the server: for example, only the host can hide a question.
+the server: for example, only the host can hide a question
+([decision record](docs/decisions/0003-who-may-see-and-change-what.md)).
 
 ## How I worked
 
