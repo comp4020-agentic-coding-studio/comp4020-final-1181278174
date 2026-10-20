@@ -47,6 +47,17 @@ describe("the host", () => {
     expect(question(await new Visitor().open(path), voted)).toBeDefined();
   });
 
+  it("a vote for a hidden question, sent from a page opened before it was hidden, is refused, and nothing changes", async () => {
+    const { host, path, plain, guest } = await hosted();
+    // without the page's script, a page opened earlier still has the button
+    const before = await guest.open(path);
+    const meTooButton = question(before, plain)!.meToo;
+    await hostPress(host, path, plain, /^hide/i);
+    const refused = await guest.submit(before, meTooButton.closest("form")!, meTooButton);
+    expect(refused.status).toBe(404);
+    expect(question(await host.open(path), plain)!.votes).toBe(0);
+  });
+
   it("marks a question answered: it says so to everyone, sits below the open ones, and the stream says it within a second", async () => {
     const { host, path, voted, plain, guest, stream } = await hosted();
     const pressed = Date.now();
