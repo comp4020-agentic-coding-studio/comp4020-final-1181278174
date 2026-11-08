@@ -63,7 +63,7 @@ function watch(line: HTMLElement): void {
   const forms = (): HTMLFormElement[] => [...document.querySelectorAll<HTMLFormElement>("form[data-hand]")];
   // Hands go up only while the class is on (src/lib/classes.ts). The page says
   // where the class is; the stream says when that changes.
-  let lesson = (forms()[0]?.dataset.class ?? "on") as Lesson;
+  let lesson = (forms()[0]?.dataset.class ?? document.querySelector<HTMLElement>("[data-class-note]")?.dataset.class ?? "on") as Lesson;
 
   /** The other people's hands: every hand, less the one closest in age to this person's own. */
   function others(now: number): number[] {
@@ -93,7 +93,13 @@ function watch(line: HTMLElement): void {
       if (el.textContent?.trim() !== text) el.textContent = text;
     }
     // what silence does not show, while no hand is up
-    for (const el of document.querySelectorAll<HTMLElement>("[data-silence]")) el.hidden = lost > 0 || waiting;
+    for (const el of document.querySelectorAll<HTMLElement>("[data-silence]")) el.hidden = lost > 0 || waiting || lesson !== "on";
+    // why no hand can go up, outside a class (the projector)
+    for (const el of document.querySelectorAll<HTMLElement>("[data-class-note]")) {
+      el.hidden = lesson === "on";
+      const said = lesson === "before" ? el.dataset.before : lesson === "over" ? el.dataset.over : "";
+      if (said !== undefined && el.textContent?.trim() !== said) el.textContent = said;
+    }
     const until = mine === null ? undefined : new Date(Date.now() + HAND_MS - (now - mine));
     for (const form of forms()) {
       if (pressing) form.setAttribute("aria-busy", "true");

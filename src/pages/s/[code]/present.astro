@@ -8,7 +8,8 @@ import { findSession, isCode, listQuestions, normaliseCode } from "../../../lib/
 import { people } from "../../../lib/live.ts";
 import { goingOverAge } from "../../../lib/going-over.ts";
 import { handsUp } from "../../../lib/room.ts";
-import { howMany, lostLabel, SILENCE_SHORT } from "../../../lib/words.ts";
+import { classNote, howMany, lostLabel, SILENCE_SHORT } from "../../../lib/words.ts";
+import { classState } from "../../../lib/classes.ts";
 import { renderSVG } from "uqr";
 
 // The session for the screen at the front of the room: where to join, the
@@ -32,6 +33,8 @@ const qr = session ? renderSVG(address, { border: 0, ecc: "M", blackColor: "#121
 
 // the hall as it is now; this screen is not a person, so it is not in it
 const inRoom = session ? [...people(session.id)] : [];
+// before the host starts the class, on, or over (src/lib/classes.ts)
+const classNow = session ? classState(session) : "on";
 const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom) : [], mine: null, recent: [] };
 ---
 
@@ -79,7 +82,11 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
               {lostLabel(room.hands.length, room.here)}
             </p>
             <GoingOver age={goingOverAge(session.id)} />
-            <p class="stage-silence" data-silence hidden={room.hands.length > 0}>
+            {/* why no hand can go up: before the class or after it; kept current by src/scripts/hand.ts */}
+            <p class="stage-class" data-class-note data-class={classNow} data-before={classNote("before")} data-over={classNote("over")} hidden={classNow === "on"}>
+              {classNote(classNow)}
+            </p>
+            <p class="stage-silence" data-silence hidden={room.hands.length > 0 || classNow !== "on"}>
               {SILENCE_SHORT}
             </p>
           </div>
