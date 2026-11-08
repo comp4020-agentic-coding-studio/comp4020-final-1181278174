@@ -90,6 +90,27 @@ describe("a class", () => {
     expect((await student.open(path)).doc.querySelector('input[name="intent"][value^="class-"]')).toBeNull();
   });
 
+  it("tells the room on the projector when hands are closed, and why", async () => {
+    const host = new Visitor();
+    const path = (await startSession(host, `Projector ${tag()}`, { started: false })).url.pathname;
+    const screen = new Visitor({ signedOut: true });
+    const classNote = (page: Page): Element | null => page.doc.querySelector("[data-class-note]");
+    const silence = (page: Page): boolean => page.doc.querySelector("[data-silence]")?.hasAttribute("hidden") ?? true;
+
+    const before = await screen.open(`${path}/present`);
+    expect(classNote(before)?.hasAttribute("hidden")).toBe(false);
+    expect(text(classNote(before))).toBe("The class hasn't started. Hands open when the host starts it.");
+    expect(silence(before), "silence means nothing while hands are closed").toBe(true);
+
+    await hostPress(host, path, /^start class$/i);
+    const on = await screen.open(`${path}/present`);
+    expect(classNote(on)?.hasAttribute("hidden")).toBe(true);
+    expect(silence(on)).toBe(false);
+
+    await hostPress(host, path, /^end class$/i);
+    expect(text(classNote(await screen.open(`${path}/present`)))).toBe("The class has ended.");
+  });
+
   it("leaves HAND open, with no class to start", async () => {
     const student = new Visitor();
     const page = await student.open("/s/HAND");

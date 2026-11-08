@@ -64,7 +64,7 @@ function watch(line: HTMLElement): void {
   const forms = (): HTMLFormElement[] => [...document.querySelectorAll<HTMLFormElement>("form[data-hand]")];
   // Hands go up only while the class is on (src/lib/classes.ts). The page says
   // where the class is; the stream says when that changes.
-  let lesson = (forms()[0]?.dataset.class ?? "on") as Lesson;
+  let lesson = (forms()[0]?.dataset.class ?? document.querySelector<HTMLElement>("[data-class-note]")?.dataset.class ?? "on") as Lesson;
 
   /** The other people's hands: every hand, less the one closest in age to this person's own. */
   function others(now: number): number[] {
@@ -80,6 +80,12 @@ function watch(line: HTMLElement): void {
   function render(): void {
     const now = performance.now();
     if (mine !== null && now - mine >= HAND_MS) mine = null;
+    // Outside a class no hand is up: End class took every hand down, and none
+    // can go up until the next one. A reply from before that can't put one back.
+    if (lesson !== "on") {
+      mine = null;
+      hands = [];
+    }
     const rest = others(now);
     const lost = rest.length + (mine === null ? 0 : 1);
     const waiting = hosting && here === 0;
@@ -89,7 +95,13 @@ function watch(line: HTMLElement): void {
       acknowledgeCount(el, !pressing && !optimistic);
     }
     // what silence does not show, while no hand is up
-    for (const el of document.querySelectorAll<HTMLElement>("[data-silence]")) el.hidden = lost > 0 || waiting;
+    for (const el of document.querySelectorAll<HTMLElement>("[data-silence]")) el.hidden = lost > 0 || waiting || lesson !== "on";
+    // why no hand can go up, outside a class (the projector)
+    for (const el of document.querySelectorAll<HTMLElement>("[data-class-note]")) {
+      el.hidden = lesson === "on";
+      const said = lesson === "before" ? el.dataset.before : lesson === "over" ? el.dataset.over : "";
+      if (said !== undefined && el.textContent?.trim() !== said) el.textContent = said;
+    }
     const until = mine === null ? undefined : new Date(Date.now() + HAND_MS - (now - mine));
     for (const form of forms()) {
       if (pressing) form.setAttribute("aria-busy", "true");
@@ -254,6 +266,30 @@ function watch(line: HTMLElement): void {
         if (lowered !== null) hands = hands.filter((since) => since !== lowered);
       }
       render();
+      const since = heard;
+      // The stream's hands are newer than a reply it overtook: take only this
+      // browser's own hand from that reply, and keep the room's hands as the
+      // stream has them, without the optimistic one the server never had.
+      const take = (room: OwnRoom): void => {
+        if (since === heard) {
+          takeRoom(room);
+          return;
+        }
+        const was = mine;
+        if (room.mine === null) {
+          mine = null;
+          if (was !== null && !confirmedHands.includes(was)) {
+            const at = hands.indexOf(was);
+            if (at >= 0) hands.splice(at, 1);
+          }
+          return;
+        }
+        // The hand is up: keep the time this page already has for it (a slow
+        // answer's time is later), or the one it had before a refused lowering.
+        const own = was ?? lowered ?? room.mine;
+        mine = own;
+        if (!hands.some((h) => Math.abs(h - own) < 3000)) hands.push(own);
+      };
       try {
         const res = await fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } });
         const text = await res.text();
@@ -262,7 +298,7 @@ function watch(line: HTMLElement): void {
           // A refusal the server explained (too many presses, signed out, the
           // host's own hand): show its words, and the hand as the server has it.
           const said = new DOMParser().parseFromString(text, "text/html").querySelector('[role="alert"]')?.textContent?.trim();
-          if (real) takeRoom(real);
+          if (real) take(real);
           else {
             hands = [...confirmedHands];
             mine = before;
@@ -272,7 +308,7 @@ function watch(line: HTMLElement): void {
         }
         if (!res.ok) throw new Error(`the server answered ${res.status}`);
         if (!real) throw new Error("No hand state in the response");
-        takeRoom(real);
+        take(real);
         announceSessionChange();
       } catch {
         // No answer. The press may still have reached the server, so ask it
@@ -282,7 +318,8 @@ function watch(line: HTMLElement): void {
           hands = [...confirmedHands];
           mine = before === null ? null : hands.find((since) => Math.abs(since - before) < 3000) ?? null;
         } else {
-          takeRoom(real);
+          // the same rule as a reply: the stream may have overtaken this answer too
+          take(real);
         }
         // with no answer at all, the next press asks the server first
         if (real === undefined) doubt = true;

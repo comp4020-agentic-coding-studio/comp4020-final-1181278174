@@ -388,7 +388,10 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
    * see. A half-written question is kept for this tab, to copy after the load.
    */
   function accountChanged(): void {
-    const draft = document.querySelector<HTMLTextAreaElement>("form[data-ask] textarea")?.value.trim();
+    // the question box on the page, or the one in the floating window (src/scripts/float.ts)
+    const floating = (window as unknown as { documentPictureInPicture?: { window: Window | null } }).documentPictureInPicture?.window;
+    const draft = document.querySelector<HTMLTextAreaElement>("form[data-ask] textarea")?.value.trim()
+      || floating?.document.querySelector<HTMLTextAreaElement>(".float-ask textarea")?.value.trim();
     if (draft) {
       try {
         sessionStorage.setItem(KEPT, draft);
@@ -598,6 +601,12 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     source.addEventListener("question", (event) => {
       const question = JSON.parse((event as MessageEvent<string>).data) as Added;
       if (blank) sent.set(question.id, question);
+    });
+    // Each time the stream opens it says which sign-in it is for. A page made for
+    // another account, or before a sign-out, loads again before showing more.
+    source.addEventListener("who", (event) => {
+      const mark = (event as MessageEvent<string>).data;
+      if ((mark === "-" ? undefined : mark) !== document.body.dataset.signedIn) accountChanged();
     });
     // A report, or one taken back: only the host's pages and the reporter's own
     // are told (src/lib/live.ts `nudge`), and each fetches its own page again.

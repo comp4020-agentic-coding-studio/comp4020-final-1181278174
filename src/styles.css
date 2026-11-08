@@ -3183,3 +3183,14 @@ button:disabled,
     background: CanvasText;
   }
 }
+
+/* the projector, outside a class: why no hand can go up */
+.stage-class {
+  margin: 0;
+  font-size: 1.3em;
+  font-weight: 700;
+}
+
+.stage-class[hidden] {
+  display: none;
+}

@@ -51,7 +51,7 @@ export type Minute = { at: Date; here: number; lost: number };
 export type Sitting = { from: Date; to: Date; minutes: Minute[]; most: number; mostLost: number };
 
 /** The newest sittings first, each minute by minute. `hereNow` is how many have it open at this moment. */
-export function sittings(sessionId: number, hereNow: number, now = Date.now()): Sitting[] {
+export function sittings(sessionId: number, hereNow: number, now = Date.now(), limit = SHOWN): Sitting[] {
   const rows = db.select().from(presence).where(eq(presence.sessionId, sessionId)).orderBy(asc(presence.minute)).all();
   // the host's own moments: Going over it, and each class's start and end
   const eventMinutes = [
@@ -92,7 +92,7 @@ export function sittings(sessionId: number, hereNow: number, now = Date.now()): 
     if (group && c.minute - group[group.length - 1].minute <= GAP_MINUTES) group.push(c);
     else groups.push([c]);
   }
-  const shown = groups.slice(-SHOWN).reverse();
+  const shown = groups.slice(-limit).reverse();
 
   // the hands that could fall in these sittings, each as the stretch it was up
   const from = shown.at(-1)![0].minute * MINUTE;
@@ -231,9 +231,31 @@ export function partSoFar(sessionId: number, hereNow: number, now = Date.now()):
   const mark = marksOf(sessionId).filter((m) => m.at >= lesson.startedAt).at(-1);
   const from = mark?.at ?? lesson.startedAt;
   const start = Math.floor(from.getTime() / MINUTE) * MINUTE;
-  const minutes = (sittings(sessionId, hereNow, now)[0]?.minutes ?? []).filter((m) => m.at.getTime() >= start && m.lost > 0);
+  // every sitting in the part, not only the newest: the room may have been empty a while
+  const minutes = sittings(sessionId, hereNow, now, Infinity)
+    .flatMap((s) => s.minutes)
+    .filter((m) => m.at.getTime() >= start)
+    .sort((a, b) => a.at.getTime() - b.at.getTime())
+    // the part's first minute counts only the hands that were up after the part began
+    .map((m) => (m.at.getTime() === start ? { ...m, lost: lostWithin(sessionId, from.getTime(), start + MINUTE, now) } : m))
+    .filter((m) => m.lost > 0);
   const most = minutes.reduce<Minute | null>((best, m) => (!best || m.lost >= best.lost ? m : best), null);
   return { from, label: mark?.label ?? null, most };
+}
+
+/** How many people had a hand up at some moment from `from` until `to`: a count, never who. */
+function lostWithin(sessionId: number, from: number, to: number, now: number): number {
+  const host = hostOf(sessionId);
+  const rows = db
+    .select({ person: hands.person, raisedAt: hands.raisedAt, loweredAt: hands.loweredAt })
+    .from(hands)
+    .where(sql`${hands.sessionId} = ${sessionId} AND ${hands.raisedAt} < ${to} AND ${hands.raisedAt} >= ${from - HAND_MS}`)
+    .all();
+  const up = rows.filter((h) => {
+    const down = Math.min(h.loweredAt?.getTime() ?? h.raisedAt.getTime() + HAND_MS, h.raisedAt.getTime() + HAND_MS, now);
+    return h.person !== host && h.raisedAt.getTime() < to && down > from;
+  });
+  return new Set(up.map((h) => h.person)).size;
 }
 
 /** The class that ended, for the host until the next one starts: when, and its minutes with the most hands up. */
@@ -249,7 +271,7 @@ export function classRecap(sessionId: number, hereNow: number, now = Date.now())
   if (!lesson?.endedAt) return null;
   const from = Math.floor(lesson.startedAt.getTime() / MINUTE) * MINUTE;
   const to = lesson.endedAt.getTime();
-  const minutes = sittings(sessionId, hereNow, now)
+  const minutes = sittings(sessionId, hereNow, now, Infinity)
     .flatMap((s) => s.minutes)
     .filter((m) => m.at.getTime() >= from && m.at.getTime() < to && m.lost > 0);
   const busiest = minutes.sort((a, b) => b.lost - a.lost || a.at.getTime() - b.at.getTime()).slice(0, 3);

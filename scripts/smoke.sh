@@ -26,7 +26,8 @@ grep -qi '^x-frame-options: DENY' <<< "$headers" && ok "pages can't be framed" |
 grep -qi '^strict-transport-security:' <<< "$headers" && ok "HTTPS only" || bad "strict-transport-security is missing"
 
 # the live stream sends the room's state at once
-first=$(curl -s -N --max-time 5 "$base/s/HAND/events" | grep -m1 '^data:')
+# (the stream first says which sign-in it is for, "data: -" here; the state is the first JSON line)
+first=$(curl -s -N --max-time 5 "$base/s/HAND/events" | grep -m1 '^data: {')
 grep -q '"here":' <<< "$first" && ok "the live stream sends the room's state" || bad "the live stream sent nothing"
 
 [ "$failed" = 0 ] && echo "all fine" || echo "something is wrong: read the logs (docs/operations.md)"

@@ -12,9 +12,14 @@ if (card) {
   let last = Date.now();
   let timer: number | undefined;
   let fetching = false;
+  // a change that came while a fetch was on its way: fetch again after it, now or at the gap
+  let again: "now" | "later" | null = null;
 
   const fetchCard = async (): Promise<void> => {
-    if (fetching) return;
+    if (fetching) {
+      again = again === "now" ? "now" : "later";
+      return;
+    }
     fetching = true;
     last = Date.now();
     try {
@@ -28,11 +33,19 @@ if (card) {
       // the next change in the room tries again
     } finally {
       fetching = false;
+      const next = again;
+      again = null;
+      if (next) soon(next === "now");
     }
   };
 
   const soon = (now = false): void => {
-    if (timer !== undefined) return;
+    if (timer !== undefined) {
+      // a refresh waiting for the gap gives way to one that can't wait
+      if (!now) return;
+      window.clearTimeout(timer);
+      timer = undefined;
+    }
     const wait = now ? 0 : Math.max(0, last + GAP - Date.now());
     timer = window.setTimeout(() => {
       timer = undefined;
@@ -42,6 +55,11 @@ if (card) {
 
   document.addEventListener("hands-up:board", () => soon());
   document.addEventListener("hands-up:marked", () => {
+    if (fetching) {
+      // the card on its way may be from before the mark
+      again = "now";
+      return;
+    }
     window.clearTimeout(timer);
     timer = undefined;
     soon(true);

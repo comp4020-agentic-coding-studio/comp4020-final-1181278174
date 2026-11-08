@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { findSession, isCode, normaliseCode } from "../../../lib/board.ts";
-import { SIGNIN_COOKIE, tokenHash } from "../../../lib/accounts.ts";
+import { pageMark, SIGNIN_COOKIE, tokenHash } from "../../../lib/accounts.ts";
 import { asEvent, board, here, listen } from "../../../lib/live.ts";
 import { connections, networkAddress } from "../../../lib/limits.ts";
 
@@ -97,6 +97,9 @@ export const GET: APIRoute = (context) => {
         beat = setInterval(() => send(": still here\n\n"), BEAT_MS);
         // if the connection drops, the browser tries again after two seconds
         send("retry: 2000\n\n");
+        // which sign-in this stream is for, as the page's own mark (src/layouts/Layout.astro),
+        // so a page made for another account loads again; "-" when signed out
+        send(`event: who\ndata: ${locals.account ? pageMark(locals.account) : "-"}\n\n`);
         if (!gone) send(asEvent(board(session.id)));
       } catch (error) {
         leave();
