@@ -20,7 +20,7 @@ import {
   normaliseCode,
   type Sort,
 } from "../../../lib/board.ts";
-import { howMany, lostLabel } from "../../../lib/words.ts";
+import { howMany, lostLabel, SILENCE_SHORT } from "../../../lib/words.ts";
 import { goingOverAge } from "../../../lib/going-over.ts";
 import { people } from "../../../lib/live.ts";
 import { handsUp } from "../../../lib/room.ts";
@@ -123,6 +123,9 @@ const room = {
               {room.here === 0 ? "Waiting for students to join." : lostLabel(room.hands.length, room.here)}
             </p>
             <a href={`/s/${session.code}#hall`}>Going over it is on the hall</a>
+            <p class="hint question-silence" data-silence hidden={room.hands.length > 0 || room.here === 0}>
+              {SILENCE_SHORT}
+            </p>
           </div>
         )}
 

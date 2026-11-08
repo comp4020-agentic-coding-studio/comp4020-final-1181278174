@@ -7,6 +7,9 @@ const tag = (): string => Math.random().toString(36).slice(2, 8);
 const text = (el: Element | null): string => el?.textContent?.replace(/\s+/g, " ").trim() ?? "";
 const link = (page: Page, label: string): HTMLAnchorElement | undefined =>
   [...page.doc.querySelectorAll("a")].find((a) => text(a) === label);
+/** The line that says no hand up is not everyone following. */
+const silence = (page: Page): HTMLElement | undefined =>
+  [...page.doc.querySelectorAll<HTMLElement>("p")].find((p) => text(p) === "That doesn't mean everyone follows.");
 const open: Stream[] = [];
 afterEach(() => {
   for (const stream of open.splice(0)) stream.close();
@@ -68,6 +71,7 @@ describe("the host's questions page", () => {
     expect(count, "the host's count is missing the attributes hand.ts needs").not.toBeNull();
     expect(text(count)).toBe(text(hall.doc.querySelector("[data-lost][data-room]")));
     expect(text(count)).toBe("Waiting for students to join.");
+    expect(silence(page)?.hidden, "silence is explained before anyone has joined").toBe(true);
     const toHall = link(page, "Going over it is on the hall");
     expect(toHall).toBeDefined();
     expect(toHall!.getAttribute("href")).toBe(`${hall.url.pathname}#hall`);
@@ -105,6 +109,7 @@ describe("the host's questions page", () => {
       expect(count).not.toBeNull();
       expect(text(count)).toBe(text(hostHall.doc.querySelector("[data-lost][data-room]")));
       expect(text(count)).toBe(raised ? "1 of 1 here says they're lost" : "1 here. No hands up right now.");
+      expect(silence(page)?.hidden, raised ? "silence explained with a hand up" : "no hand up, and silence not explained").toBe(raised);
       const room = JSON.parse(count!.getAttribute("data-room")!);
       expect(room.here).toBe(1);
       expect(room.hands).toHaveLength(raised ? 1 : 0);

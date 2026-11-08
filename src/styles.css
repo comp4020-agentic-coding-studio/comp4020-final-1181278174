@@ -2004,3 +2004,12 @@ body.float {
   align-items: center;
   min-height: 44px;
 }
+
+.question-room .question-silence {
+  flex-basis: 100%;
+  font-weight: 400;
+}
+
+.question-room .question-silence[hidden] {
+  display: none;
+}
