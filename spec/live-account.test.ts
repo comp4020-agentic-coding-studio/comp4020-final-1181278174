@@ -96,3 +96,25 @@ it("adds the reported line when a report arrives on a page that had none", async
   nudge();
   await vi.waitFor(() => expect(window.document.querySelector("[data-reported] a")?.getAttribute("href")).toBe("/s/ABCD/questions#q-1"));
 });
+
+/** What the stream says about its sign-in when it opens: the "who" event. */
+function who(mark: string): void {
+  const call = Source.opened.at(-1)!.addEventListener.mock.calls.find(([name]) => name === "who");
+  (call![1] as (event: { data: string }) => void)({ data: mark });
+}
+
+it("loads again when the stream, opening, is for another sign-in or for none", async () => {
+  const { reload } = await start(page("one", reported), page("one", reported));
+  who("one");
+  expect(reload).not.toHaveBeenCalled();
+  who("two");
+  expect(reload).toHaveBeenCalledTimes(1);
+  who("-");
+  expect(reload).toHaveBeenCalledTimes(2);
+});
+
+it("leaves a signed-out page alone while its stream is signed out too", async () => {
+  const { reload } = await start(page(null, board), page(null, board));
+  who("-");
+  expect(reload).not.toHaveBeenCalled();
+});

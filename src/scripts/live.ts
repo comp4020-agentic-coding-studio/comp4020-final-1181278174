@@ -599,6 +599,12 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       const question = JSON.parse((event as MessageEvent<string>).data) as Added;
       if (blank) sent.set(question.id, question);
     });
+    // Each time the stream opens it says which sign-in it is for. A page made for
+    // another account, or before a sign-out, loads again before showing more.
+    source.addEventListener("who", (event) => {
+      const mark = (event as MessageEvent<string>).data;
+      if ((mark === "-" ? undefined : mark) !== document.body.dataset.signedIn) accountChanged();
+    });
     // A report, or one taken back: only the host's pages and the reporter's own
     // are told (src/lib/live.ts `nudge`), and each fetches its own page again.
     source.addEventListener("refresh", () => {
