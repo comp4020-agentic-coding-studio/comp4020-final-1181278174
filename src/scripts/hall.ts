@@ -36,7 +36,7 @@ const LOOK = {
   tones: [150, 150, 150, 255, 210, 210, 210, 255, 255, 255, 255, 255],
   glow: 0.10, // how strong the light round a raised hand is
   shadow: 0.08,
-  outline: 0.035, // how much bigger the ink shell round each shape is, in metres
+  outline: 0.028, // how much bigger the ink shell round each shape is, in metres
   handOutline: 0.015, // fingers need a thinner edge to stay readable on a phone
 };
 
