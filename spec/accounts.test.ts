@@ -44,6 +44,14 @@ describe("accounts over plain HTTP", () => {
     expect(words(page)).toContain(`Signed in as ${owner.username}`);
   });
 
+  it("shows no account name on the projector, which is on a big screen", async () => {
+    const host = new Visitor();
+    const hall = await startSession(host, `Projector ${tag()}`);
+    const present = await host.open(`${hall.url.pathname}/present`);
+    expect(words(present)).not.toContain("Signed in as");
+    expect(words(present)).not.toContain(host.username);
+  });
+
   it("ends a page's live stream when its browser signs out, so it no longer counts as here", async () => {
     const host = new Visitor();
     const hall = await startSession(host, `Signed out stream ${tag()}`);

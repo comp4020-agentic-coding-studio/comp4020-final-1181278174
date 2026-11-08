@@ -36,9 +36,9 @@ describe("the projector page", () => {
     expect(shown[1]).toMatch(/0\s*votes\b/);
 
     expect(page.doc.querySelectorAll(".present form, .present button, .present input, .present textarea")).toHaveLength(0);
-    const signout = page.doc.querySelector<HTMLFormElement>('header form[action="/signout"]');
-    expect(signout?.method).toBe("post");
-    expect(signout?.querySelector("button")?.textContent).toContain("Sign out");
+    // the projector is on a big screen: no account name or sign-out on it
+    expect(page.doc.querySelector('header form[action="/signout"]')).toBeNull();
+    expect(page.doc.body.textContent).not.toContain("Signed in as");
   });
 
   it("has a QR code that opens the session", async () => {
