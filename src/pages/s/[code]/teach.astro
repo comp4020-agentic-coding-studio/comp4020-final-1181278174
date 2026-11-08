@@ -1,0 +1,32 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import SlimHeader from "../../../components/SlimHeader.astro";
+import { findSession, isCode, isHost, normaliseCode } from "../../../lib/board.ts";
+
+const raw = Astro.params.code ?? "";
+const code = normaliseCode(raw);
+if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
+  return Astro.redirect(`/s/${code}/teach${Astro.url.search}`, 301);
+}
+const session = isCode(code) ? findSession(code) : undefined;
+// Reuse the canonical page's 404 and all its form handling. Rewrites preserve
+// the request body. Keep the action target in request-local state as well.
+if (!session || (Astro.locals.account && isHost(session, Astro.locals.person))) {
+  Astro.locals.teachingPath = `/s/${code}/teach`;
+  const target = new URL(`/s/${code}${Astro.url.search}`, Astro.url);
+  target.searchParams.delete("view");
+  return Astro.rewrite(target);
+}
+Astro.response.status = 403;
+Astro.locals.log("refused", { action: "teaching_workspace", session: session.code, reason: "not-host" });
+---
+<Layout title="Lecturer access only · Hands Up">
+  <SlimHeader />
+  <main id="main" class="wrap info">
+    <section class="card panel">
+      <h1>Lecturer access only</h1>
+      <p>Only this session’s host can open the lecturer workspace.</p>
+      <a class="button" href={`/s/${code}`}>Go to the student view</a>
+    </section>
+  </main>
+</Layout>

@@ -1,31 +1,24 @@
 ---
-import Card from "../../components/Card.astro";
-import ReportedNotice from "../../components/ReportedNotice.astro";
-import GoingOver from "../../components/GoingOver.astro";
-import Guide from "../../components/Guide.astro";
-import Icon from "../../components/Icon.astro";
+import TeachingWorkspace from "../../components/TeachingWorkspace.astro";
+import StudentRoom from "../../components/StudentRoom.astro";
 import JoinForm from "../../components/JoinForm.astro";
 import SessionBand from "../../components/SessionBand.astro";
 import SessionTabs from "../../components/SessionTabs.astro";
 import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
-import { endClass, goingOver, mark, report, startClass, timelineMark, unreport, vote } from "../../lib/actions.ts";
-import { authLink } from "../../lib/auth.ts";
+import { endClass, goingOver, mark, recordingStart, report, startClass, timelineMark, unreport, vote } from "../../lib/actions.ts";
 import { accountRefusal } from "../../lib/abuse.ts";
 import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
 import { classState, latestClass } from "../../lib/classes.ts";
 import { HAND_MS } from "../../lib/hall.ts";
-import { goingOverAge } from "../../lib/going-over.ts";
 import { guideDone, handleGuide } from "../../lib/guide.ts";
 import { people } from "../../lib/live.ts";
-import { classRecap, intoRecording, MAX_MARK, marksOf, partAt, partSoFar, recentLost } from "../../lib/record.ts";
+import { classRecap, MAX_MARK, marksOf, partSoFar, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
-import { classNote, clock, GOING_OVER_NOTE, handNote, lostLabel, moment, refusal, SILENCE, SILENCE_SHORT, tooFast } from "../../lib/words.ts";
+import { classNote, refusal, tooFast } from "../../lib/words.ts";
 
-// The hall, the first part of a session: "I'm lost", and how many of the
-// people here have pressed it. Under it, the three open questions the room
-// wants answered most, which take "Me too" here too. The questions page,
-// /s/CODE/questions, is the second part.
+// The account chooses the lecturer workspace or student room. Keep any
+// tutorial-session rewrite directly after findSession, before this view logic.
 const raw = Astro.params.code ?? "";
 const code = normaliseCode(raw);
 if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
@@ -34,7 +27,11 @@ if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
 const session = isCode(code) ? findSession(code) : undefined;
 const person = Astro.locals.person;
 const signedIn = Astro.locals.account !== null;
-const returnTo = Astro.url.pathname + Astro.url.search;
+// Account-selected view logic follows the tutorial rewrite point above.
+const base = Astro.locals.teachingPath ?? `/s/${code}`;
+const preview = Astro.url.searchParams.get("view") === "student";
+const back = `${base}${preview ? "?view=student" : ""}`;
+const returnTo = base + Astro.url.search;
 const log = Astro.locals.log;
 const hosting = signedIn && session !== undefined && isHost(session, person);
 const guideRole = hosting ? "host" : "student";
@@ -44,6 +41,8 @@ let goingOverProblem = "";
 let problem = "";
 let markValue = "";
 let markProblem = "";
+let recordingValue: string | undefined;
+let recordingProblem = "";
 const form = Astro.request.method === "POST" ? await Astro.request.formData() : undefined;
 const intent = form?.get("intent");
 const signedOutPost = session && form && !signedIn && intent !== "guide";
@@ -84,45 +83,66 @@ if (form && intent === "guide") {
       } else {
         const done = raiseHand(session, person, up === "1");
         log(done === "unchanged" ? "hand_unchanged" : `hand_${done}`, { session: session.code });
-        return Astro.redirect(`/s/${session.code}#hall`, 303);
+        return Astro.redirect(`${back}#hall`, 303);
       }
     } else {
       Astro.response.status = 422;
       problem = refusal("hand", 422);
       log("refused", { action: "hand", session: session.code, reason: "no-such-value" });
     }
+  } else if (intent === "review") {
+    if (!isHost(session, person)) {
+      Astro.response.status = 403;
+      problem = refusal(intent, 403);
+      log("refused", { action: "teaching_review", session: session.code, reason: "not-host" });
+    } else {
+      log("teaching_reviewed", { session: session.code });
+      return Astro.redirect(`${base}?checked=${Date.now()}#host`, 303);
+    }
   } else if (intent === "class-start" || intent === "class-end") {
     // the host starts or ends the class (src/lib/actions.ts)
     const done = (intent === "class-start" ? startClass : endClass)(session, person, log);
-    if (done.ok) return Astro.redirect(`/s/${session.code}#host`, 303);
+    if (done.ok) return Astro.redirect(`${base}${intent === "class-end" ? "#recap-title" : "#host"}`, 303);
     Astro.response.status = done.status;
     if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
     problem = done.status === 429 ? tooFast(done.retryAfter) : refusal(intent, done.status);
   } else if (intent === "vote" || intent === "report" || intent === "unreport") {
     const done = (intent === "vote" ? vote : intent === "report" ? report : unreport)(session, person, form, log);
-    if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
+    if (done.ok) return Astro.redirect(`${back}#q-${done.question}`, 303);
     Astro.response.status = done.status;
     if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
     problem = done.status === 429 ? tooFast(done.retryAfter) : refusal(intent, done.status);
   } else if (intent === "going-over") {
     const done = goingOver(session, person, log);
-    if (done.ok) return Astro.redirect(`/s/${session.code}#host`, 303);
+    if (done.ok) return Astro.redirect(`${base}#host`, 303);
     Astro.response.status = done.status;
     if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
     goingOverProblem = done.status === 429 ? tooFast(done.retryAfter) : "Only the host can say they are going over it.";
+    if (!hosting) problem = goingOverProblem;
   } else if (intent === "timeline_mark") {
     const done = timelineMark(session, person, form, log);
     // back to the host's controls, saying which mark it was: the newest is last
-    if (done.ok) return Astro.redirect(`/s/${session.code}?marked=${marksOf(session.id).length}#host`, 303);
+    if (done.ok) return Astro.redirect(`${base}?marked=${marksOf(session.id).length}#host`, 303);
     Astro.response.status = done.status;
     if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
     markValue = String(form.get("label") ?? "");
     markProblem = done.status === 429 ? tooFast(done.retryAfter) : done.status === 422 ? `Use at most ${MAX_MARK} characters for a mark.` : refusal("timeline_mark", done.status);
     if (done.status !== 422) problem = markProblem;
+  } else if (intent === "recording") {
+    recordingValue = String(form.get("at") ?? "");
+    const lesson = latestClass(session.id);
+    const done = recordingStart(session, person, form, log, lesson?.endedAt ?? new Date());
+    if (done.ok) return Astro.redirect(`${base}#host`, 303);
+    Astro.response.status = done.status;
+    if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
+    recordingProblem = done.status === 429 ? tooFast(done.retryAfter)
+      : done.status === 403 ? "Only the host can save a mark or recording time."
+      : "Enter the recording start as a time, such as 14:02.";
+    if (done.status !== 422) problem = recordingProblem;
   } else if (intent === "state") {
     // the host's Answered and Hide, on the three most wanted
     const done = mark(session, person, form, log);
-    if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
+    if (done.ok) return Astro.redirect(`${base}?question=${done.question}#q-${done.question}`, 303);
     Astro.response.status = done.status;
     if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
     problem = done.status === 429 ? tooFast(done.retryAfter) : refusal("state", done.status);
@@ -135,7 +155,7 @@ if (form && intent === "guide") {
 if (!session) Astro.response.status = 404;
 
 const guideComplete = guideDone(guideContext, guideRole);
-const all = session ? listQuestions(session, signedIn ? person : "", "popular") : [];
+const all = session ? listQuestions(session, signedIn ? person : "", "popular").filter(q => !preview || q.state !== "hidden") : [];
 const listed = all.filter((q) => q.state !== "hidden").length;
 const wanted = all.filter((q) => q.state === "open").slice(0, 3);
 const parts = session && hosting ? marksOf(session.id) : [];
@@ -143,7 +163,6 @@ const parts = session && hosting ? marksOf(session.id) : [];
 const checkpoint = session && hosting ? partSoFar(session.id, people(session.id).size) : null;
 // once the class has ended, until the next one starts: when the room was lost in it
 const recap = session && hosting ? classRecap(session.id, people(session.id).size) : null;
-const openQuestions = all.filter((q) => q.state === "open").length;
 // the mark the host has just made, said back to them under the form
 const marked = Astro.request.method === "GET" ? parts[Number(Astro.url.searchParams.get("marked")) - 1] : undefined;
 
@@ -152,7 +171,7 @@ const marked = Astro.request.method === "GET" ? parts[Number(Astro.url.searchPar
 // they are the host, who teaches and is not counted. How long their own hand has been
 // up is put in their page, never in what the stream sends.
 const inRoom = session ? [...new Set([...people(session.id), ...(signedIn && !hosting ? [person] : [])])] : [];
-const mine = session && signedIn ? handOf(session.id, person) : undefined;
+const mine = session && signedIn && !hosting ? handOf(session.id, person) : undefined;
 // and when the session started and its last 16 minutes, for the small window's chart
 const room = {
   here: inRoom.length,
@@ -169,215 +188,19 @@ const lastClass = session ? latestClass(session.id) : undefined;
 
 {
   session ? (
-    <Layout title={`${session.title} · Hands Up`}>
-      <SessionBand code={session.code} title={session.title} hosting={hosting} guideComplete={guideComplete}>
-        <SessionTabs code={session.code} at="hall" count={listed} />
-      </SessionBand>
-
-      <main id="main" class="wrap hall-layout" data-live={`/s/${session.code}/events`}>
-        <section class="card hall" id="hall" aria-labelledby="hall-count">
-          {signedOutPost && (
-            <p class="alert" role="alert">Sign in to do that. <a href={authLink("signin", returnTo)}>Sign in</a></p>
-          )}
-          {problem && <p class="alert" role="alert">{problem}</p>}
-          {/* the hall is drawn here by src/scripts/hall.ts; the sentence under it says the same in words */}
-          <div class="hall-view" data-hall data-view={hosting ? "front" : "seat"} aria-hidden="true" />
-          <div class="hall-meta">
-            {!guideComplete && <p class="hint hall-caption">Seats and hands are placed at random on each screen.</p>}
-          </div>
-          <div class="hall-status">
-            <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-host={hosting ? "" : undefined} data-room={JSON.stringify(room)}>
-              {hosting && room.here === 0 ? "Waiting for students to join." : lostLabel(room.hands.length, room.here)}
-            </p>
-            {/* shown by the page's script once its stream is open */}
-            <p class="live" role="status" data-live-status hidden />
-          </div>
-          {hosting && session.code !== "HAND" && (
-            <form method="post" class="hall-class" data-plain>
-              <input type="hidden" name="intent" value={classNow === "on" ? "class-end" : "class-start"} />
-              <button class={classNow === "on" ? "button" : "button ink"} type="submit" aria-describedby="class-note">
-                {classNow === "on" ? "End class" : "Start class"}
-              </button>
-              <p class="hint" id="class-note">
-                {classNow === "on" && lastClass
-                  ? `Class started at ${moment(lastClass.startedAt)}. Hands are open.`
-                  : classNow === "over" && lastClass?.endedAt
-                    ? `Class ended at ${moment(lastClass.endedAt)}. All hands are down.`
-                    : "Hands open when you start the class."}
-              </p>
-            </form>
-          )}
-          {hosting && (
-            <a class="button ink hall-projector" href={`/s/${session.code}/present`}>Open projector page</a>
-          )}
-          <GoingOver age={goingOverAge(session.id)} />
-          <p class="hint hall-silence" data-silence hidden={room.hands.length > 0 || (hosting && room.here === 0)}>
-            {hosting || guideComplete ? SILENCE_SHORT : SILENCE}
-          </p>
-          <p class="hint">
-            <Icon name="lock" size={14} /> No one, the host included, is shown whose hand is up.
-          </p>
-          {signedIn && !hosting && (
-            <form method="post" class="hall-hand" data-hand data-class={classNow} data-class-before={classNote("before")} data-class-over={classNote("over")}>
-              <input type="hidden" name="intent" value="hand" />
-              <input type="hidden" name="up" value={mine === undefined ? "1" : "0"} />
-              <button class="button tomato lost-button" type="submit" aria-pressed={mine === undefined ? "false" : "true"} aria-describedby="hand-note" disabled={classNow !== "on" && mine === undefined}>
-                <Icon name="hand" size={22} /> I'm lost
-              </button>
-              <p class="hint hand-note" id="hand-note" data-hand-note aria-live="polite">
-                {classNow !== "on" && mine === undefined ? classNote(classNow) : handNote(until)}
-              </p>
-            </form>
-          )}
-          {!signedIn && (
-            <div class="hall-hand auth-prompt">
-              <a class="button tomato" href={authLink("signin", returnTo)}>
-                <Icon name="hand" size={22} /> Sign in to raise your hand
-              </a>
-              <p class="hint">
-                No account? <a href={authLink("signup", returnTo)}>Create one</a>: just a username and password.
-              </p>
-            </div>
-          )}
-          <div class="hall-links">
-            <a href={`/s/${session.code}/timeline`}>When the room was lost</a>
-            {/* shown by src/scripts/float.ts where the browser can keep a small window above the others */}
-            <div class="pop-control" hidden>
-              <button class="button pop" type="button" data-pop="hall" aria-describedby="hall-pop-note" hidden>
-                <Icon name="pop" size={16} /> Pop out
-              </button>
-              <p class="hint pop-note" id="hall-pop-note">Keep this tab open; you can switch to your slides.</p>
-            </div>
-          </div>
-          {!hosting && !guideComplete && <Guide role="student" />}
-        </section>
-
-        {hosting && (
-          <section class="card host-panel hall-host" id="host" aria-labelledby="host-title">
-            <h2 id="host-title">For the host</h2>
-            {!guideComplete && <p class="hint host-note">You teach: you have no hand here, and you aren't counted.</p>}
-            {/* refreshed by src/scripts/checkpoint.ts as the room changes; copied into the host's floating window */}
-            <section class="checkpoint" aria-labelledby="checkpoint-title" data-checkpoint hidden={!checkpoint}>
-              <h3 id="checkpoint-title">At your next pause</h3>
-              {checkpoint && (
-                <>
-                  <p class="hint checkpoint-part">
-                    {checkpoint.label ? `${checkpoint.label}, since ${clock(checkpoint.from)}.` : `Since the class started at ${clock(checkpoint.from)}.`}
-                  </p>
-                  <p class="checkpoint-most">
-                    {checkpoint.most
-                      ? `At ${clock(checkpoint.most.at)}, ${checkpoint.most.lost} of ${checkpoint.most.here} here said they were lost: the most in this part.`
-                      : `No one has said they were lost in this part. ${SILENCE_SHORT}`}
-                  </p>
-                  {wanted[0] && (
-                    <p class="checkpoint-question">
-                      Most wanted:{" "}
-                      <a href={`/s/${session.code}/questions#q-${wanted[0].id}`}>“{wanted[0].body}”</a>{" "}
-                      · {wanted[0].votes} Me too
-                    </p>
-                  )}
-                </>
-              )}
-            </section>
-            {recap && (
-              <section class="checkpoint recap" aria-labelledby="recap-title" data-recap>
-                <h3 id="recap-title">The class that ended</h3>
-                <p class="hint">
-                  {clock(recap.from)} to {moment(recap.to)}.
-                </p>
-                {recap.busiest.length > 0 ? (
-                  <ol class="recap-list" aria-label="The minutes most people were lost">
-                    {recap.busiest.map((m) => {
-                      const into = intoRecording(session.recordingAt, m.at);
-                      const part = partAt(parts, m.at)?.label;
-                      return (
-                        <li>
-                          <strong>{clock(m.at)}</strong>{" "}
-                          {[`${m.lost} of ${m.here} said they were lost`, part, into === undefined ? undefined : `${into} min into the recording`].filter(Boolean).join(" · ")}
-                        </li>
-                      );
-                    })}
-                  </ol>
-                ) : (
-                  <p>No one said they were lost in this class. {SILENCE_SHORT}</p>
-                )}
-                <p>
-                  {openQuestions === 0 ? "No questions left open." : `${openQuestions} ${openQuestions === 1 ? "question" : "questions"} left open.`}{" "}
-                  <a href={`/s/${session.code}/questions`}>Questions</a>{" · "}
-                  <a href={`/s/${session.code}/timeline`}>The whole timeline</a>
-                </p>
-              </section>
-            )}
-            {goingOverProblem && <p class="alert" role="alert">{goingOverProblem}</p>}
-            <form method="post" class="hall-going-over" data-going-over-form data-plain>
-              <input type="hidden" name="intent" value="going-over" />
-              <button class="button ink" type="submit" aria-describedby={guideComplete ? undefined : "going-over-note"}>Going over it</button>
-              {!guideComplete && <p class="hint" id="going-over-note">{GOING_OVER_NOTE}</p>}
-              <p class="alert" role="status" data-going-over-problem hidden />
-            </form>
-            <form method="post" class="hall-mark" data-plain>
-              <input type="hidden" name="intent" value="timeline_mark" />
-              <label for="mark-label">Mark a new part</label>
-              <div class="host-row">
-                <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${parts.length + 1}`} value={markValue} aria-describedby={markProblem ? "mark-problem" : undefined} />
-                <button class="button ink" type="submit">
-                  Mark
-                </button>
-              </div>
-              {markProblem && markValue && (
-                <p class="alert" role="alert" id="mark-problem">
-                  {markProblem}
-                </p>
-              )}
-              {marked && (
-                <p class="hint host-marked" role="status">
-                  Marked “{marked.label}” at {clock(marked.at)}.{" "}
-                  <a href={`/s/${session.code}/timeline`}>See it on the timeline</a>
-                </p>
-              )}
-            </form>
-            {!guideComplete && <Guide role="host" />}
-          </section>
-        )}
-
-        <section class="wanted" aria-labelledby="wanted-title">
-          <div class="bar">
-            <h2 id="wanted-title">Most wanted</h2>
-            <div class="bar-end">
-              <a class="count-label" href={`/s/${session.code}/questions`}>
-                All questions
-              </a>
-            </div>
-          </div>
-          {/* the three most wanted, fetched again from the server when the questions change */}
-          <div data-board data-refresh data-sort="popular">
-            <ReportedNotice list={all} hosting={hosting} link={(id) => `/s/${session.code}/questions#q-${id}`} />
-            <p class="card empty" data-empty hidden={wanted.length > 0}>
-              <Icon name="hand" size={22} /> {listed > 0 ? "No open questions." : "No questions yet."}{" "}
-              <a href={`/s/${session.code}/questions`}>{listed > 0 ? "Ask the next one." : "Ask the first one."}</a>
-            </p>
-            <ol aria-label="Most wanted" class="questions">
-              {wanted.map((q) => (
-                <Card q={q} hosting={hosting} reportable={session.host !== null} />
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {!hosting && (
-          <p class="foot session-foot">
-            <a href={`/s/${session.code}/present`}>Projector page</a>{!guideComplete && <> <span>For the screen at the front.</span></>}
-          </p>
-        )}
-      </main>
-      <script>
-        import "../../scripts/live.ts";
-        import "../../scripts/hand.ts";
-        import "../../scripts/float.ts";
-        import "../../scripts/checkpoint.ts";
-        // three.js is big: the button works before it arrives
-        void import("../../scripts/hall.ts");
-      </script>
+    <Layout title={`${hosting && !preview ? "Teaching · " : ""}${session.title} · Hands Up`}>
+      {hosting && !preview ? (
+        <TeachingWorkspace {session} {all} {room} {classNow} {lastClass} {parts} {marked}
+          {checkpoint} {recap} {guideComplete} {problem} {goingOverProblem} {markValue} {markProblem} {recordingValue} {recordingProblem} />
+      ) : (
+        <>
+          <SessionBand code={session.code} title={session.title} hosting={false} guideComplete={guideComplete}>
+            <SessionTabs code={session.code} at="hall" count={listed} />
+          </SessionBand>
+          <StudentRoom {session} {hosting} {signedIn} {returnTo} {room} {classNow} {until}
+            {guideComplete} {all} {wanted} {listed} {problem} signedOutPost={!!signedOutPost} />
+        </>
+      )}
     </Layout>
   ) : (
     <Layout title="No such session · Hands Up">
@@ -392,12 +215,3 @@ const lastClass = session ? latestClass(session.id) : undefined;
     </Layout>
   )
 }
-
-<style>
-  .hall-projector {
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    text-decoration: none;
-  }
-</style>

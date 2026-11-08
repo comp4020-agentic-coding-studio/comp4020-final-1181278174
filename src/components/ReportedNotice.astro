@@ -5,8 +5,8 @@
 // in while the page is open can show it (src/scripts/live.ts takes the new one).
 import type { QuestionView } from "../lib/board.ts";
 
-type Props = { list: QuestionView[]; hosting: boolean; link: (id: number) => string };
-const { list, hosting, link } = Astro.props;
+type Props = { list: QuestionView[]; hosting: boolean; link: (id: number) => string; reviewLink?: (id: number) => string };
+const { list, hosting, link, reviewLink } = Astro.props;
 const reported = list.filter((q) => q.reports > 0 && q.state !== "hidden").sort((a, b) => b.reports - a.reports);
 const n = reported.length;
 ---
@@ -18,6 +18,7 @@ const n = reported.length;
         <>
           {n === 1 ? "1 question has been reported." : `${n} questions have been reported.`}{" "}
           <a href={link(reported[0].id)}>{n === 1 ? "Show it" : "Show the most reported"}</a>
+          {reviewLink && <>{" · "}<a href={reviewLink(reported[0].id)}>Review here</a></>}
         </>
       )}
     </p>

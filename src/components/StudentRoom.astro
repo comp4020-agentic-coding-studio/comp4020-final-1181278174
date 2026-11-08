@@ -1,0 +1,168 @@
+---
+import Card from "./Card.astro";
+import GoingOver from "./GoingOver.astro";
+import Guide from "./Guide.astro";
+import Icon from "./Icon.astro";
+import { authLink } from "../lib/auth.ts";
+import type { QuestionView, Session } from "../lib/board.ts";
+import type { ClassState } from "../lib/classes.ts";
+import { goingOverAge } from "../lib/going-over.ts";
+import { classNote, handNote, lostLabel, SILENCE, SILENCE_SHORT } from "../lib/words.ts";
+
+type Props = {
+  session: Session;
+  /** The actual host can preview this view, but never gets a student's hand. */
+  hosting: boolean;
+  guideComplete: boolean;
+  signedIn: boolean;
+  returnTo: string;
+  room: { here: number; hands: number[]; mine: number | null; recent: number[]; startedAt?: number };
+  classNow: ClassState;
+  until: Date | undefined;
+  all: QuestionView[];
+  wanted: QuestionView[];
+  listed: number;
+  problem?: string;
+  signedOutPost?: boolean;
+};
+const { session, hosting, guideComplete, signedIn, returnTo, room, classNow, until, wanted, listed, problem = "", signedOutPost = false } = Astro.props;
+// Even if this is a host's preview, only public question states belong here.
+const visible = wanted.filter((q) => q.state === "open").slice(0, 3);
+---
+
+<main id="main" class="wrap student-room" data-live={`/s/${session.code}/events`}>
+  {hosting && (
+    <aside class="card quiet student-preview" aria-label="Student view preview">
+      <p><strong>Student view.</strong> You teach, so you have no hand here.</p>
+      <a href={`/s/${session.code}/teach`}>Back to teaching</a>
+    </aside>
+  )}
+
+  <section class="card hall student-signal" id="hall" aria-labelledby="hall-count">
+    {signedOutPost && (
+      <p class="alert" role="alert">Sign in to do that. <a href={authLink("signin", returnTo)}>Sign in</a></p>
+    )}
+    {problem && <p class="alert" role="alert">{problem}</p>}
+    <div class="student-status">
+      <p class="student-eyebrow">In the room</p>
+      <p class="live" role="status" data-live-status hidden />
+    </div>
+    <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
+      {lostLabel(room.hands.length, room.here)}
+    </p>
+    <GoingOver age={goingOverAge(session.id)} />
+
+    {signedIn && !hosting && (
+      <form method="post" class="hall-hand" data-hand data-class={classNow} data-class-before={classNote("before")} data-class-over={classNote("over")}>
+        <input type="hidden" name="intent" value="hand" />
+        <input type="hidden" name="up" value={room.mine === null ? "1" : "0"} />
+        <button class="button tomato lost-button" type="submit" aria-pressed={room.mine === null ? "false" : "true"} aria-describedby="hand-note" disabled={classNow !== "on" && room.mine === null}>
+          <Icon name="hand" size={24} /> I'm lost
+        </button>
+        <p class="hint hand-note" id="hand-note" data-hand-note aria-live="polite">
+          {classNow !== "on" && room.mine === null ? classNote(classNow) : handNote(until)}
+        </p>
+      </form>
+    )}
+    {!signedIn && (
+      <div class="hall-hand auth-prompt">
+        <a class="button tomato" href={authLink("signin", returnTo)}>
+          <Icon name="hand" size={22} /> Sign in to raise your hand
+        </a>
+        <p class="hint">No account yet? <a href={authLink("signup", returnTo)}>Create one</a>.</p>
+      </div>
+    )}
+    <p class="hint hall-silence" data-silence hidden={room.hands.length > 0}>{hosting || guideComplete ? SILENCE_SHORT : SILENCE}</p>
+    <p class="hint student-privacy"><Icon name="lock" size={14} /> No one, the host included, is shown whose hand is up.</p>
+
+    <div class="hall-links">
+      <a href={`/s/${session.code}/timeline`}>When the room was lost</a>
+      <div class="pop-control" hidden>
+        <button class="button pop" type="button" data-pop="hall" aria-describedby="hall-pop-note" hidden>
+          <Icon name="pop" size={16} /> Pop out
+        </button>
+        <p class="hint pop-note" id="hall-pop-note">Keep this tab open; you can switch to your slides.</p>
+      </div>
+    </div>
+    {!hosting && !guideComplete && <Guide role="student" />}
+  </section>
+
+  <section class="wanted student-questions" aria-labelledby="wanted-title">
+    <div class="bar">
+      <h2 id="wanted-title">Questions</h2>
+      <a class="count-label" href={`/s/${session.code}/questions`}>All questions</a>
+    </div>
+    <a class="student-ask button" href={`/s/${session.code}/questions#body`}>Ask a question</a>
+    <div data-board data-refresh data-sort="popular">
+      <p class="card empty" data-empty hidden={visible.length > 0}>
+        <Icon name="hand" size={22} /> {listed > 0 ? "No open questions." : "No questions yet."}
+      </p>
+      <ol aria-label="Most wanted" class="questions">
+        {visible.map((q) => <Card q={q} hosting={false} reportable={!hosting && session.host !== null} />)}
+      </ol>
+    </div>
+  </section>
+
+  <div class="student-extras">
+    <details class="student-detail" data-student-hall>
+      <summary>View the hall</summary>
+      <div class="hall-view" data-hall data-view={hosting ? "front" : "seat"} aria-hidden="true" />
+      {!guideComplete && <p class="hint">Seats and hands are placed at random on each screen.</p>}
+    </details>
+    <details class="student-detail">
+      <summary>How this works</summary>
+      <p>“Here” counts people using this session, not attendance. A hand comes down by itself after 3 minutes.</p>
+      <p>The lecturer can check at a pause. Raising a hand does not promise an immediate response.</p>
+      <a href="/help">More about Hands Up</a>
+    </details>
+    <p class="foot session-foot"><a href={`/s/${session.code}/present`}>Projector page</a>{!guideComplete && <> — For the screen at the front.</>}</p>
+  </div>
+</main>
+
+<script>
+  import "../scripts/live.ts";
+  import "../scripts/hand.ts";
+  import "../scripts/float.ts";
+  // The count and button need no 3D download. The illustration is optional.
+  const hall = document.querySelector<HTMLDetailsElement>("[data-student-hall]");
+  hall?.addEventListener("toggle", () => {
+    if (hall.open) void import("../scripts/hall.ts");
+  });
+</script>
+
+<style>
+  .student-room {
+    display: grid;
+    gap: var(--space-6);
+    padding-block: var(--space-8);
+  }
+  .student-room > * { min-width: 0; }
+  .student-signal { grid-row: auto; }
+  .student-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-4); }
+  .student-status p { margin: 0; }
+  .student-eyebrow { font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+  .student-signal .hall-count { font-size: clamp(1.625rem, 3.6vw, var(--text-4xl)); max-width: 20ch; }
+  .student-privacy, .hand-note { margin: 0; }
+  .student-questions { margin: 0; }
+  .student-questions .bar { padding: 0; margin-bottom: var(--space-3); }
+  .student-questions :global(.questions) { margin-top: var(--space-4); }
+  .student-ask { display: flex; margin-bottom: var(--space-4); }
+  .student-extras { display: flex; flex-direction: column; gap: var(--space-1); }
+  .student-detail { border-top: var(--line); }
+  .student-detail summary { min-height: var(--target-min); padding-block: var(--space-3); font-size: var(--text-sm); font-weight: var(--weight-semibold); cursor: pointer; }
+  .student-detail p { margin: 0 0 var(--space-3); font-size: var(--text-sm); color: var(--muted); }
+  .student-detail > a { display: inline-flex; align-items: center; min-height: var(--target-min); font-size: var(--text-sm); }
+  .student-detail .hall-view { margin-bottom: var(--space-3); }
+  .student-preview { padding: var(--space-3) var(--space-4); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
+  .student-preview p { margin: 0; font-size: var(--text-sm); }
+  .student-preview a { display: inline-flex; align-items: center; min-height: var(--target-min); font-weight: var(--weight-semibold); font-size: var(--text-sm); }
+  .session-foot { margin: 0; padding-bottom: 0; }
+  .session-foot a { display: inline-flex; align-items: center; min-height: var(--target-min); }
+  @media (min-width: 1100px) {
+    .student-room { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; column-gap: var(--space-8); }
+    .student-signal { grid-column: 1; }
+    .student-questions { grid-column: 2; grid-row: span 2; }
+    .student-extras { grid-column: 1; }
+    .student-preview { grid-column: 1 / -1; }
+  }
+</style>

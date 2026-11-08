@@ -1,0 +1,222 @@
+---
+import Card from "./Card.astro";
+import GoingOver from "./GoingOver.astro";
+import Guide from "./Guide.astro";
+import Icon from "./Icon.astro";
+import ReportedNotice from "./ReportedNotice.astro";
+import SessionBand from "./SessionBand.astro";
+import SessionTabs from "./SessionTabs.astro";
+import type { Session, QuestionView } from "../lib/board.ts";
+import type { Class, ClassState } from "../lib/classes.ts";
+import { goingOverAge } from "../lib/going-over.ts";
+import { intoRecording, MAX_MARK, partAt, type Mark, type PartSoFar, type ClassRecap } from "../lib/record.ts";
+import { clock, GOING_OVER_NOTE, lostLabel, moment, SILENCE_SHORT } from "../lib/words.ts";
+import "../styles/teaching.css";
+
+type Props = {
+  session: Session; all: QuestionView[]; classNow: ClassState; lastClass?: Class;
+  room: { here: number; hands: number[]; mine: number | null; recent: number[]; startedAt?: number };
+  parts: Mark[]; marked?: Mark; problem: string; goingOverProblem: string;
+  markValue: string; markProblem: string; recordingValue?: string; recordingProblem: string;
+  guideComplete: boolean; checkpoint: PartSoFar | null; recap: ClassRecap | null;
+};
+const { session, all, classNow, lastClass, room, parts, marked, problem, goingOverProblem,
+  markValue, markProblem, recordingValue, recordingProblem, guideComplete, checkpoint, recap } = Astro.props;
+const path = `/s/${session.code}`;
+const unanswered = all.filter(q => q.state === "open");
+const wanted = unanswered.slice(0, 3);
+const more = unanswered.slice(3);
+const answered = all.filter(q => q.state === "answered");
+const hidden = all.filter(q => q.state === "hidden");
+const listed = all.filter(q => q.state !== "hidden").length;
+const selected = Number(Astro.url.searchParams.get("question"));
+const selectedIn = (list: QuestionView[]) => list.some(q => q.id === selected);
+const now = new Date();
+const started = lastClass?.startedAt.getTime();
+const elapsed = lastClass ? Math.max(0, Math.floor(((lastClass.endedAt ?? now).getTime() - lastClass.startedAt.getTime()) / 60_000)) : 0;
+const checkedValue = Number(Astro.url.searchParams.get("checked"));
+const checkedAt = checkedValue >= (started ?? session.createdAt.getTime()) && checkedValue <= now.getTime() ? checkedValue : undefined;
+---
+<SessionBand code={session.code} title={session.title} hosting={true} {guideComplete}>
+  <SessionTabs code={session.code} at="hall" count={listed} />
+</SessionBand>
+<main id="main" class="wrap teaching-layout" data-live={`${path}/events`} data-teaching data-session={session.code} data-lesson={started ?? 0} data-class-state={classNow} data-checked-at={checkedAt}>
+  <div class="teaching-toolbar">
+    <p class="hint">Lecturer workspace</p>
+    <nav aria-label="Lecturer workspace">
+      <a href={`${path}?view=student`}>Student view</a>
+      <a href={`${path}/timeline`}>When the room was lost</a>
+      <a href="#recap-title" data-class-summary-link hidden={classNow !== "over"}>Class summary</a>
+    </nav>
+  </div>
+  {problem && <p class="alert teaching-problem" role="alert">{problem}</p>}
+
+  <div class="teaching-summary-slot" data-teaching-refresh="summary" id="class-summary">
+    {recap && (
+      <section class="checkpoint recap" aria-labelledby="recap-title" data-recap>
+        <h3 id="recap-title">The class that ended</h3>
+        <p class="hint">{clock(recap.from)} to {moment(recap.to)}.</p>
+        {recap.busiest.length > 0 ? (
+          <ol class="recap-list" aria-label="The minutes most people were lost">
+            {recap.busiest.map((m) => {
+              const into = intoRecording(session.recordingAt, m.at);
+              const part = partAt(parts, m.at)?.label;
+              return (
+                <li>
+                  <strong>{clock(m.at)}</strong>{" "}
+                  {[`${m.lost} of ${m.here} said they were lost`, part, into === undefined ? undefined : `${into} min into the recording`].filter(Boolean).join(" · ")}
+                </li>
+              );
+            })}
+          </ol>
+        ) : <p>No one said they were lost in this class. {SILENCE_SHORT}</p>}
+        <p>
+          {unanswered.length === 0 ? "No questions left open." : `${unanswered.length} ${unanswered.length === 1 ? "question" : "questions"} left open.`}{" "}
+          <a href="#teaching-questions">Questions</a>{" · "}
+          <a href={`${path}/timeline`}>The whole timeline</a>
+        </p>
+      </section>
+    )}
+  </div>
+
+  <section class="card hall teaching-room" id="hall" aria-labelledby="hall-count">
+    <div class="hall-status">
+      <p class="hall-count teaching-count" id="hall-count" data-lost data-host data-room={JSON.stringify(room)} aria-live="polite">
+        {room.here === 0 ? "Waiting for students to join." : lostLabel(room.hands.length, room.here)}
+      </p>
+      <p class="live" role="status" data-live-status hidden />
+    </div>
+    <p class="hint hall-silence" data-silence hidden={room.hands.length > 0 || room.here === 0}>{SILENCE_SHORT}</p>
+    <p class="hint"><Icon name="lock" size={14} /> No one, the host included, is shown whose hand is up.</p>
+    <form method="post" class="teaching-check" data-teaching-check data-plain>
+      <input type="hidden" name="intent" value="review" />
+      <p class="hint" data-check-difference role="status">{checkedAt ? `Checked at ${clock(new Date(checkedAt))}.` : "Check this at a pause in your explanation."}</p>
+      <button class="button" type="submit" data-check-now>Checked now</button>
+    </form>
+    <GoingOver age={goingOverAge(session.id)} />
+    <div data-teaching-refresh="class">
+      {session.code !== "HAND" && (
+        <form method="post" class="hall-class" data-plain>
+          <input type="hidden" name="intent" value={classNow === "on" ? "class-end" : "class-start"} />
+          <button class={classNow === "on" ? "button" : "button ink"} type="submit" aria-describedby="class-note">{classNow === "on" ? "End class" : "Start class"}</button>
+          <p class="hint" id="class-note">
+            {classNow === "on" && lastClass ? `Class started at ${moment(lastClass.startedAt)}. Hands are open.`
+              : classNow === "over" && lastClass?.endedAt ? `Class ended at ${moment(lastClass.endedAt)}. All hands are down.`
+              : "Hands open when you start the class."}
+          </p>
+          {classNow === "on" && started && <p class="hint" data-class-clock data-start={started}>{elapsed} min</p>}
+        </form>
+      )}
+    </div>
+    <div class="teaching-projector">
+      <a class="button ink hall-projector" href={`${path}/present`} target="_blank" rel="noopener">Open projector page</a>
+      <span class="hint">Code {session.code}</span>
+    </div>
+  </section>
+
+  <section class="card host-panel teaching-controls" id="host" aria-labelledby="teaching-controls-title">
+    <div class="teaching-section-top">
+      <h2 id="teaching-controls-title">Teaching controls</h2>
+      <div class="pop-control" hidden>
+        <button class="button pop" type="button" data-pop="hall" aria-describedby="hall-pop-note" hidden><Icon name="pop" size={16} /> Pop out</button>
+        <p class="hint pop-note" id="hall-pop-note">Keep this tab open; you can switch to your slides.</p>
+      </div>
+    </div>
+    {!guideComplete && <p class="hint host-note">You teach: you have no hand here, and you aren't counted.</p>}
+    {/* Main's card and refresh hook are also copied into main's host float. */}
+    <section class="checkpoint" aria-labelledby="checkpoint-title" data-checkpoint hidden={!checkpoint}>
+      <h3 id="checkpoint-title">At your next pause</h3>
+      {checkpoint && (
+        <>
+          <p class="hint checkpoint-part">
+            {checkpoint.label ? `${checkpoint.label}, since ${clock(checkpoint.from)}.` : `Since the class started at ${clock(checkpoint.from)}.`}
+          </p>
+          <p class="checkpoint-most">
+            {checkpoint.most
+              ? `At ${clock(checkpoint.most.at)}, ${checkpoint.most.lost} of ${checkpoint.most.here} here said they were lost: the most in this part.`
+              : `No one has said they were lost in this part. ${SILENCE_SHORT}`}
+          </p>
+          {wanted[0] && (
+            <p class="checkpoint-question">
+              Most wanted:{" "}<a href={`/s/${session.code}/questions#q-${wanted[0].id}`}>“{wanted[0].body}”</a>{" "}· {wanted[0].votes} Me too
+            </p>
+          )}
+        </>
+      )}
+    </section>
+    <p class="hint" role="status" data-teaching-status hidden>Class details could not refresh. Reload to check them.</p>
+    {goingOverProblem && <p class="alert" role="alert">{goingOverProblem}</p>}
+    <form method="post" class="hall-going-over" data-going-over-form data-plain>
+      <input type="hidden" name="intent" value="going-over" />
+      <button class="button ink" type="submit" aria-describedby={guideComplete ? undefined : "going-over-note"}>Going over it</button>
+      {!guideComplete && <p class="hint" id="going-over-note">{GOING_OVER_NOTE}</p>}
+      <p class="alert" role="status" data-going-over-problem hidden />
+    </form>
+    <form method="post" class="hall-mark" data-plain>
+      <input type="hidden" name="intent" value="timeline_mark" />
+      <label for="mark-label">Mark a new part</label>
+      <div class="host-row">
+        <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${parts.length + 1}`} value={markValue} aria-describedby={markProblem ? "mark-problem" : undefined} />
+        <button class="button ink" type="submit">Mark</button>
+      </div>
+      {markProblem && <p class="alert" role="alert" id="mark-problem">{markProblem}</p>}
+      {marked && <p class="hint host-marked" role="status">Marked “{marked.label}” at {clock(marked.at)}.{" "}<a href={`${path}/timeline`}>See it on the timeline</a></p>}
+    </form>
+    <details class="teaching-recording" data-teaching-refresh="recording" open={!!recordingProblem}>
+      <summary>Recording time <span>{session.recordingAt ? clock(session.recordingAt) : "Not set"}</span></summary>
+      <p class="hint">Timing starts with the class by default. This does not start your recording. Correct the time to match your recording.</p>
+      <form method="post" class="host-form" data-plain>
+        <input type="hidden" name="intent" value="recording" />
+        <label for="recording-at">Recording started at (Canberra time)</label>
+        <div class="host-row">
+          <input id="recording-at" name="at" type="time" required value={recordingValue ?? (session.recordingAt ? clock(session.recordingAt) : "")} aria-describedby={recordingProblem ? "recording-problem" : undefined} />
+          <button class="button" type="submit">Save</button>
+        </div>
+        {recordingProblem && <p class="alert" role="alert" id="recording-problem">{recordingProblem}</p>}
+      </form>
+    </details>
+    {!guideComplete && (
+      <>
+        <Guide role="host" />
+        <div class="teaching-preview-note">
+          <a href={`${path}?view=student`}>Preview the student's room</a>
+          <p class="hint">Seats and hands are placed at random on each screen.</p>
+        </div>
+      </>
+    )}
+  </section>
+
+  <section class="wanted teaching-questions" id="teaching-questions" aria-labelledby="teaching-questions-title">
+    <div class="bar">
+      <h2 id="teaching-questions-title">Questions</h2>
+      <a class="count-label" href={`${path}/questions`}>All questions</a>
+    </div>
+    <div data-board data-refresh data-grouped data-sort="popular">
+      <ReportedNotice list={all} hosting={true}
+        link={id => Astro.locals.teachingPath ? `?question=${id}#q-${id}` : `${path}/questions#q-${id}`}
+        reviewLink={Astro.locals.teachingPath ? undefined : id => `?question=${id}#q-${id}`} />
+      <p class="hint" data-board-label="unanswered">{unanswered.length} unanswered · most wanted first</p>
+      <p class="card empty" data-empty hidden={unanswered.length > 0}>No open questions. Students can ask from their page.</p>
+      <ol aria-label="Most wanted" class="questions" data-question-list="wanted">{wanted.map(q => <Card q={q} hosting={true} />)}</ol>
+      <details class="teaching-question-group" data-question-group="more" open={selectedIn(more)}>
+        <summary data-board-label="more">More unanswered ({more.length})</summary>
+        <ol aria-label="More unanswered questions" class="questions" data-question-list="more">{more.map(q => <Card q={q} hosting={true} />)}</ol>
+      </details>
+      <details class="teaching-question-group" data-question-group="answered" open={selectedIn(answered)}>
+        <summary data-board-label="answered">Answered ({answered.length})</summary>
+        <ol aria-label="Answered questions" class="questions" data-question-list="answered">{answered.map(q => <Card q={q} hosting={true} />)}</ol>
+      </details>
+      <details class="teaching-question-group" data-question-group="hidden" open={selectedIn(hidden)}>
+        <summary data-board-label="hidden">Hidden · only you ({hidden.length})</summary>
+        <ol aria-label="Hidden questions" class="questions" data-question-list="hidden">{hidden.map(q => <Card q={q} hosting={true} />)}</ol>
+      </details>
+    </div>
+  </section>
+</main>
+<script>
+  import "../scripts/live.ts";
+  import "../scripts/hand.ts";
+  import "../scripts/float.ts";
+  import "../scripts/checkpoint.ts";
+  import "../scripts/teaching.ts";
+</script>

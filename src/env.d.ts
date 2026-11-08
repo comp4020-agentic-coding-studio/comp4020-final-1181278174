@@ -1,5 +1,7 @@
 declare namespace App {
   interface Locals {
+    /** Canonical action target for the authorized /teach rewrite. */
+    teachingPath?: string;
     /** The signed-in account id, or this browser's id: never sent back in a page. */
     person: string;
     /** This browser's own id: wrong passwords are limited per browser, and it is the person while nobody is signed in. */

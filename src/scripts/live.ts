@@ -330,12 +330,14 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       return;
     } else {
       notice.hidden = freshNotice.hidden;
-      const link = notice.querySelector("a");
-      const freshLink = freshNotice.querySelector("a");
-      if (link && freshLink && link.textContent === freshLink.textContent) {
-        // the same link to another question: move it, keeping focus on it
-        link.href = freshLink.href;
-        if (link.previousSibling && freshLink.previousSibling) link.previousSibling.textContent = freshLink.previousSibling.textContent;
+      const links = [...notice.querySelectorAll("a")];
+      const freshLinks = [...freshNotice.querySelectorAll("a")];
+      if (links.length > 0 && links.length === freshLinks.length && links.every((link, i) => link.textContent === freshLinks[i].textContent)) {
+        // Keep focus on either the original board link or the workspace link.
+        links.forEach((link, i) => {
+          link.href = freshLinks[i].href;
+          if (link.previousSibling && freshLinks[i].previousSibling) link.previousSibling.textContent = freshLinks[i].previousSibling!.textContent;
+        });
       } else if (notice.innerHTML !== freshNotice.innerHTML) {
         notice.replaceChildren(...[...freshNotice.childNodes].map((node) => document.adoptNode(node)));
       }
@@ -352,32 +354,50 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     move(() => {
       const list = holder.querySelector("ol");
       const freshList = fresh.querySelector("ol");
+      const focusedCard = document.activeElement?.closest(CARD)?.id;
       if (!list || !freshList) {
         holder.replaceChildren(...fresh.childNodes);
       } else {
         const old = new Map(cards().map((li) => [li.id, li]));
-        const want = [...freshList.children].map((li) => {
-          const mine = old.get(li.id);
-          if (!mine) return document.adoptNode(li);
-          // a "Report to the host?" left open stays open while the card is redrawn
-          const asking = mine.querySelector<HTMLDetailsElement>("details[data-report]")?.open ?? false;
-          if (mine.innerHTML !== li.innerHTML) mine.replaceChildren(...li.childNodes);
-          const confirm = mine.querySelector<HTMLDetailsElement>("details[data-report]");
-          if (asking && confirm) confirm.open = true;
-          mine.dataset.state = (li as HTMLElement).dataset.state;
-          return mine;
-        });
-        arrange(list, want);
+        // Only the teaching workspace groups questions into separate lists.
+        const lists = holder.hasAttribute("data-grouped")
+          ? [...holder.querySelectorAll<HTMLOListElement>("ol[data-question-list]")].map((current) => ({
+            current, next: fresh.querySelector<HTMLOListElement>(`ol[data-question-list="${current.dataset.questionList}"]`),
+          }))
+          : [{ current: list, next: freshList }];
+        for (const { current, next } of lists) {
+          if (!next) continue;
+          const want = [...next.children].map((li) => {
+            const mine = old.get(li.id);
+            if (!mine) return document.adoptNode(li);
+            // a "Report to the host?" left open stays open while the card is redrawn
+            const asking = mine.querySelector<HTMLDetailsElement>("details[data-report]")?.open ?? false;
+            if (mine.innerHTML !== li.innerHTML) mine.replaceChildren(...li.childNodes);
+            const confirm = mine.querySelector<HTMLDetailsElement>("details[data-report]");
+            if (asking && confirm) confirm.open = true;
+            mine.dataset.state = (li as HTMLElement).dataset.state;
+            return mine;
+          });
+          arrange(current, want);
+        }
+        const focused = focusedCard ? holder.querySelector<HTMLElement>(`#${focusedCard}`) : null;
+        const group = focused?.closest<HTMLDetailsElement>("details[data-question-group]");
+        if (group) group.open = true;
+        for (const label of holder.querySelectorAll<HTMLElement>("[data-board-label]")) {
+          const next = fresh.querySelector<HTMLElement>(`[data-board-label="${label.dataset.boardLabel}"]`);
+          if (next) label.textContent = next.textContent;
+        }
       }
       reported(fresh);
       const empty = holder.querySelector<HTMLElement>("[data-empty]");
       const freshEmpty = fresh.querySelector<HTMLElement>("[data-empty]");
       if (empty && freshEmpty && empty.innerHTML !== freshEmpty.innerHTML) empty.replaceChildren(...freshEmpty.childNodes);
-      if (empty) empty.hidden = cards().length > 0;
+      if (empty) empty.hidden = holder.hasAttribute("data-grouped") ? freshEmpty?.hidden ?? false : cards().length > 0;
       const count = doc.querySelector("[data-count]")?.textContent;
       const label = document.querySelector("[data-count]");
       if (label && count) label.textContent = count;
     });
+    document.dispatchEvent(new CustomEvent("hands-up:page", { detail: doc }));
   }
 
   /**
