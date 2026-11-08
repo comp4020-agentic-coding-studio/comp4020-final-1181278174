@@ -82,6 +82,13 @@ describe("pages a real site has", () => {
     expect(await foot(new Visitor({ signedOut: true }))).toContain("Sign in to raise a hand.");
   });
 
+  it("sends a README link to a file in the repo to GitHub, so none leads nowhere", async () => {
+    const page = await new Visitor({ signedOut: true }).open("/readme/");
+    const hrefs = [...page.doc.querySelectorAll("main a[href]")].map((a) => a.getAttribute("href")!);
+    expect(hrefs.length).toBeGreaterThan(0);
+    for (const href of hrefs) expect(href, "a link relative to /readme/").toMatch(/^(https?:|\/|#|mailto:)/);
+  });
+
   it("sets two cookies and no more, as Privacy and rules says", async () => {
     // a browser's whole first visit: the home page, signing up, a session's pages
     const origin = (await new Visitor({ signedOut: true }).open("/")).url.origin;
