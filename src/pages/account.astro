@@ -46,7 +46,8 @@ if (Astro.request.method === "POST") {
   }
 }
 
-const done = Astro.url.searchParams.get("done");
+// what the last change did, said once, on the page it was sent to; never under a refusal
+const done = Astro.request.method === "GET" ? Astro.url.searchParams.get("done") : null;
 const ended = Number(Astro.url.searchParams.get("ended") ?? 0) || 0;
 const others = (n: number): string => (n === 1 ? "1 other browser" : `${n} other browsers`);
 const said =
@@ -62,7 +63,7 @@ const said =
     <p class="lead">You're signed in as <strong>{account.username}</strong>. Only you see your username.</p>
     {said && <p class="notice" role="status">{said}</p>}
 
-    <form method="post" class="card panel" aria-labelledby="password-title">
+    <form method="post" action="/account" class="card panel" aria-labelledby="password-title">
       <h2 id="password-title">Change your password</h2>
       <input type="hidden" name="intent" value="password" />
       <label for="current">Current password</label>
@@ -74,7 +75,7 @@ const said =
       <button class="button ink" type="submit">Change password</button>
     </form>
 
-    <form method="post" class="card panel" aria-labelledby="elsewhere-title">
+    <form method="post" action="/account" class="card panel" aria-labelledby="elsewhere-title">
       <h2 id="elsewhere-title">Signed in somewhere else?</h2>
       <input type="hidden" name="intent" value="elsewhere" />
       <p>Left yourself signed in on a shared computer? Sign out everywhere but here. Their open pages stop counting you at once.</p>

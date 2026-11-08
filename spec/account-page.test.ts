@@ -102,6 +102,12 @@ describe("your account", () => {
       expect(said(html)).toContain(message);
       for (const value of Object.values(fields)) expect(html).not.toContain(value);
     }
+    // a refusal sent back from the page that said the last change worked says only the refusal
+    const after = await owner.post("/account?done=password&ended=1", new URLSearchParams({ intent: "password", current: "wrong again, still wrong", password: "a brand new password" }));
+    expect(after.status).toBe(422);
+    const shown = said(await after.text());
+    expect(shown).toContain("Your current password is wrong.");
+    expect(shown).not.toContain("Your password is changed");
     // still signed in, and the password is unchanged
     expect((await owner.open("/account")).url.pathname).toBe("/account");
     expect((await new Visitor({ signedOut: true }).signIn(owner.username, owner.password)).status).toBe(200);
