@@ -1,4 +1,5 @@
 import { ago, hereLabel, howMany, votesLabel } from "../lib/words.ts";
+import { announceSessionChange, onSessionChange } from "./session-tabs.ts";
 
 // Keeps an open session page up to date. The server sends the state of the
 // session (src/lib/live.ts) when the page connects and after every change:
@@ -412,6 +413,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       }
       const { doc, ok } = reply;
       adopt(doc);
+      if (ok && fields.get("intent") === "vote") announceSessionChange();
       if (asking && text) {
         // a refused question comes back with the reason; an accepted one empties the box
         const reason = doc.querySelector("[data-ask] [role='alert']");
@@ -450,6 +452,10 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     if (form.getAttribute("aria-busy") === "true") return;
     void send(form, event.submitter);
   });
+
+  // The stream has no person's choices. A sibling tab's press or a return
+  // from the background needs this browser's own HTML, including aria-pressed.
+  onSessionChange(() => { void refresh(); });
 
   // The page no longer reloads, so "just now" has to be kept true here.
   setInterval(() => {

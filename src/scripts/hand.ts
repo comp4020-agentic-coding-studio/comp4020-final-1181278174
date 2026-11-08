@@ -1,5 +1,6 @@
 import { HAND_MS } from "../lib/hall.ts";
 import { handNote, lostLabel } from "../lib/words.ts";
+import { announceSessionChange, onSessionChange } from "./session-tabs.ts";
 
 // "I'm lost" on an open page: the button, its note, and the sentence that says
 // how many of the people here are lost. The server sends how many hands are up
@@ -43,6 +44,14 @@ function watch(line: HTMLElement): void {
   // reply must not leave an extra hand up, or subtract someone else's hand.
   let confirmedHands = [...hands];
   let pressing = false;
+  let optimistic = false;
+  // A reply started before another tab's change (or our own press) cannot
+  // overwrite a more recent picture. The next fetch takes that change too.
+  let revision = 0;
+  // Set when another tab of this browser changed something, or this tab comes
+  // back from the background: until this tab has asked the server again, its
+  // button may be out of date. Cleared once it has the server's picture.
+  let doubt = false;
   // this person's hand while a press that puts it down is on its way
   let lowered: number | null = null;
   // what went wrong with the last press, said under the button until the next one
@@ -75,11 +84,13 @@ function watch(line: HTMLElement): void {
     for (const el of document.querySelectorAll<HTMLElement>("[data-silence]")) el.hidden = lost > 0 || waiting;
     const until = mine === null ? undefined : new Date(Date.now() + HAND_MS - (now - mine));
     for (const form of forms()) {
+      if (pressing) form.setAttribute("aria-busy", "true");
+      else form.removeAttribute("aria-busy");
       const field = form.querySelector<HTMLInputElement>("input[name='up']");
       if (field) field.value = mine === null ? "1" : "0";
       form.querySelector("button")?.setAttribute("aria-pressed", String(mine !== null));
       const note = form.querySelector<HTMLElement>("[data-hand-note]");
-      const said = problem ? `${problem} ${handNote(until)}` : handNote(until);
+      const said = problem ? `${handNote(until)} ${problem}` : handNote(until);
       if (note && note.textContent?.trim() !== said) note.textContent = said;
     }
     const m = minute();
@@ -107,36 +118,153 @@ function watch(line: HTMLElement): void {
     confirmedHands = [...kept];
     hands = kept;
     const near = (since: number): number => hands.findIndex((h) => Math.abs(h - since) < 3000);
-    if (pressing && lowered !== null && near(lowered) >= 0) {
+    if (optimistic && lowered !== null && near(lowered) >= 0) {
       // the server has not had the press that put this hand down yet
       hands.splice(near(lowered), 1);
     }
     if (mine !== null && near(mine) < 0) {
       // not listed: the server has not had the press yet, or the hand was put
       // down in another tab of this browser, or its time ran out
-      if (pressing) hands.push(mine);
+      if (optimistic) hands.push(mine);
       else mine = null;
     }
     render();
   });
 
+  type OwnRoom = Board & { mine: number | null };
+
+  function readRoom(html: string): OwnRoom | undefined {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const room = JSON.parse(doc.querySelector<HTMLElement>("[data-lost][data-room]")?.dataset.room ?? "null") as OwnRoom | null;
+    if (!room || !Array.isArray(room.hands) || typeof room.here !== "number" || (room.mine !== null && typeof room.mine !== "number")) return undefined;
+    const now = performance.now();
+    return { here: room.here, hands: room.hands.map((ms) => now - ms), mine: room.mine === null ? null : now - room.mine };
+  }
+
+  function takeRoom(room: OwnRoom): void {
+    here = room.here;
+    hands = room.hands;
+    mine = room.mine;
+    confirmedHands = [...hands];
+  }
+
   /** The room and this person's hand as the server has them; undefined if it can't be reached. */
-  async function askServer(): Promise<(Board & { mine: number | null }) | undefined> {
+  async function askServer(): Promise<OwnRoom | undefined> {
     try {
-      const res = await fetch(location.href, { headers: { accept: "text/html" } });
+      const res = await fetch(location.href, { headers: { accept: "text/html" }, cache: "no-store" });
       if (!res.ok) return undefined;
-      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-      const room = JSON.parse(doc.querySelector<HTMLElement>("[data-lost][data-room]")?.dataset.room ?? "null") as (Board & { mine: number | null }) | null;
-      if (!room) return undefined;
-      const now = performance.now();
-      return { here: room.here, hands: room.hands.map((ms) => now - ms), mine: room.mine === null ? null : now - room.mine };
+      return readRoom(await res.text());
     } catch {
       return undefined;
     }
   }
 
-  // The form posts on its own without script. Here it is sent in the
-  // background: the hand goes up at once, and the stream confirms it.
+  let refreshing = false;
+  let refreshAgain = false;
+  async function refreshOwn(): Promise<void> {
+    if (refreshing || pressing) {
+      refreshAgain = true;
+      return;
+    }
+    refreshing = true;
+    try {
+      do {
+        refreshAgain = false;
+        const began = revision;
+        const room = await askServer();
+        if (pressing || began !== revision) {
+          refreshAgain = true;
+          if (pressing) return;
+          continue;
+        }
+        if (room) {
+          takeRoom(room);
+          doubt = false;
+          render();
+        }
+      } while (refreshAgain);
+    } finally {
+      refreshing = false;
+    }
+  }
+
+  onSessionChange(() => {
+    revision++;
+    doubt = true;
+    void refreshOwn();
+  });
+
+  async function press(form: HTMLFormElement): Promise<void> {
+    pressing = true;
+    revision++;
+    problem = "";
+    render();
+    try {
+      // A tab that may have missed a change in another tab asks the server
+      // for this browser's hand first, so it never sends a stale up or down.
+      // Otherwise the press goes at once.
+      if (doubt) {
+        let room: OwnRoom | undefined;
+        let began: number;
+        do {
+          began = revision;
+          room = await askServer();
+        } while (room && began !== revision);
+        if (!room) {
+          problem = "Couldn't check your hand. Try again when connected.";
+          return;
+        }
+        takeRoom(room);
+        doubt = false;
+        render();
+      }
+      const want = mine === null;
+      const before = mine;
+      const body = new URLSearchParams();
+      for (const [name, value] of new FormData(form)) body.append(name, String(value));
+      body.set("up", want ? "1" : "0");
+      const now = performance.now();
+      optimistic = true;
+      if (want) {
+        mine = now;
+        hands.push(now);
+      } else {
+        lowered = mine;
+        mine = null;
+        if (lowered !== null) hands = hands.filter((since) => since !== lowered);
+      }
+      render();
+      try {
+        const res = await fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } });
+        if (!res.ok) throw new Error(`the server answered ${res.status}`);
+        const real = readRoom(await res.text());
+        if (!real) throw new Error("No hand state in the response");
+        takeRoom(real);
+        announceSessionChange();
+      } catch {
+        // No answer. The press may still have reached the server, so ask it
+        // what this person's hand is now, rather than guess or press again.
+        const real = await askServer();
+        if (real === undefined) {
+          hands = [...confirmedHands];
+          mine = before === null ? null : hands.find((since) => Math.abs(since - before) < 3000) ?? null;
+        } else {
+          takeRoom(real);
+        }
+        if (real === undefined || (mine !== null) !== want) problem = "Couldn't confirm the press. Try again when connected.";
+        else announceSessionChange();
+      }
+    } finally {
+      pressing = false;
+      optimistic = false;
+      lowered = null;
+      render();
+      if (refreshAgain) void refreshOwn();
+    }
+  }
+
+  // The form posts on its own without script. Here the request stays in the
+  // background and the button follows the server's state for this browser.
   document.addEventListener(
     "submit",
     (event) => {
@@ -146,49 +274,7 @@ function watch(line: HTMLElement): void {
       // the page's other script sends every other form; this one is the hand's
       event.stopPropagation();
       if (pressing) return;
-      const body = new URLSearchParams();
-      for (const [name, value] of new FormData(form)) body.append(name, String(value));
-      const want = body.get("up") === "1";
-      const before = mine;
-      const now = performance.now();
-      pressing = true;
-      if (want) {
-        mine = now;
-        hands.push(now);
-      } else {
-        lowered = mine;
-        mine = null;
-        if (lowered !== null) hands = hands.filter((since) => since !== lowered);
-      }
-      problem = "";
-      render();
-      fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } })
-        .then((res) => {
-          if (!res.ok) throw new Error(`the server answered ${res.status}`);
-          confirmedHands = [...hands];
-        })
-        .catch(async () => {
-          // No answer. The press may still have reached the server, so ask it
-          // what this person's hand is now, rather than guess or press again.
-          const real = await askServer();
-          if (real === undefined) {
-            hands = [...confirmedHands];
-            // Restore this person's old hand only if the last server state
-            // still includes it. A stream update may have confirmed it down.
-            mine = before === null ? null : hands.find((since) => Math.abs(since - before) < 3000) ?? null;
-          } else {
-            here = real.here;
-            hands = real.hands;
-            mine = real.mine;
-            confirmedHands = [...hands];
-          }
-          if (real === undefined || (mine !== null) !== want) problem = "Couldn't confirm the press. Try again when connected.";
-        })
-        .finally(() => {
-          pressing = false;
-          lowered = null;
-          render();
-        });
+      void press(form);
     },
     true,
   );
