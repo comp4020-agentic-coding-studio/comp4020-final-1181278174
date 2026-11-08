@@ -84,6 +84,7 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
         <section class="card hall" id="hall" aria-labelledby="hall-count">
           {/* the hall is drawn here by src/scripts/hall.ts; the sentence under it says the same in words */}
           <div class="hall-view" data-hall data-view="seat" aria-hidden="true" />
+          <p class="hint hall-caption">Seats and hands are placed at random on each screen.</p>
           <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
             {lostLabel(room.hands.length, room.here)}
           </p>
