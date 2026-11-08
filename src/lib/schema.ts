@@ -135,3 +135,80 @@ export const goingOvers = sqliteTable(
   },
   (t) => [index("going_overs_by_session").on(t.sessionId, t.at)],
 );
+
+// People who have signed up: a username and a password, nothing else. No
+// email and no real name. The username is shown to nobody but its owner; to
+// everyone else the app shows what people did, never who did it.
+export const accounts = sqliteTable(
+  "accounts",
+  {
+    // random, like the browser ids before sign-in; this is the person the rest of the app counts
+    id: text("id").primaryKey(),
+    // as it was typed, to show back to its owner
+    username: text("username").notNull(),
+    // lower-cased, so "Song" and "song" are the same account
+    usernameKey: text("username_key").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [check("accounts_username_length", sql`length(${t.username}) BETWEEN 3 AND 30`)],
+);
+
+// A signed-in browser: the hash of the random token in its cookie, never the
+// token itself, so a copy of the database can't be used to sign in.
+export const signIns = sqliteTable(
+  "sign_ins",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    // set when the person signs out; the token stops working at once
+    endedAt: integer("ended_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("sign_ins_by_account").on(t.accountId)],
+);
+
+// Who asked a question, sealed to the auditor's public key: the app writes it
+// and cannot read it back. Only the auditor's private key, kept off the server,
+// opens it, one question at a time (scripts/reveal.ts).
+export const sealedAuthors = sqliteTable("sealed_authors", {
+  questionId: integer("question_id")
+    .primaryKey()
+    .references(() => questions.id),
+  keyVersion: integer("key_version").notNull(),
+  envelope: text("envelope").notNull(),
+});
+
+// "This should not be here": one report per account per question. A report
+// shows nobody who asked; it marks the question for the host and keeps it for
+// the auditor.
+export const reports = sqliteTable(
+  "reports",
+  {
+    questionId: integer("question_id")
+      .notNull()
+      .references(() => questions.id),
+    // a tag made from the account, not the account id
+    reporter: text("reporter").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.questionId, t.reporter] })],
+);
+
+// Each time the auditor opened a sealed author: which question, when, and why.
+export const reveals = sqliteTable("reveals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  questionId: integer("question_id").notNull(),
+  at: integer("at", { mode: "timestamp_ms" }).notNull(),
+  reason: text("reason").notNull(),
+});
+
+// Secrets the server makes for itself at first boot and keeps on the volume,
+// such as the key the tags are made with.
+export const secrets = sqliteTable("secrets", {
+  name: text("name").primaryKey(),
+  value: text("value").notNull(),
+});

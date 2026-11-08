@@ -43,6 +43,13 @@
       "when": 1794128060067,
       "tag": "0005_going_over",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794143074566,
+      "tag": "0006_accounts",
+      "breakpoints": true
     }
   ]
 }
