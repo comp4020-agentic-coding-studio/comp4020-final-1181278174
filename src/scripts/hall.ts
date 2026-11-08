@@ -542,6 +542,12 @@ function draw(view: HTMLElement): void {
     }
     const r0 = radius(0) - ROW_GAP / 2;
     for (const a of [-ARC * FIT.frontArc, ARC * FIT.frontArc]) points.push(new THREE.Vector3(r0 * Math.sin(a), 0, r0 * Math.cos(a)));
+    // the rows in front are always in view, seated or not, so someone alone sees a hall rather than their own back
+    for (let row = 0; row < Math.min(rows, ROWS); row++) {
+      for (const a of [-ARC * FIT.frontArc, 0, ARC * FIT.frontArc]) {
+        points.push(new THREE.Vector3(radius(row) * Math.sin(a), rise(row) + FIT.top, radius(row) * Math.cos(a)));
+      }
+    }
     let left = Infinity;
     let right = -Infinity;
     let low = Infinity;
