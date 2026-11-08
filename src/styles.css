@@ -1731,3 +1731,69 @@ body.float {
   display: inline-flex;
   align-items: center;
 }
+
+/* A timed acknowledgement. This expiry also runs with script disabled and
+   with reduced motion: it is a state change, not decorative movement. */
+.going-over {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: var(--line);
+  border-radius: 12px;
+  background: var(--sun);
+  font-weight: 700;
+  animation: going-over-expire 1ms step-end var(--going-over-left, 0ms) forwards;
+}
+
+.hall .going-over,
+.stage-hall .going-over {
+  margin: 0;
+}
+
+.stage-hall .going-over {
+  padding: 0.35em 0.6em;
+  font-size: 1.4em;
+}
+
+@keyframes going-over-expire {
+  to {
+    display: none;
+    visibility: hidden;
+    height: 0;
+    min-height: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    overflow: hidden;
+  }
+}
+
+.hall-going-over {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hall-going-over p {
+  margin: 0;
+}
+
+.hall-going-over button:disabled,
+.float-box button:disabled {
+  opacity: 0.65;
+  cursor: default;
+  box-shadow: none;
+}
+
+.float-going-over {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.going-over[hidden],
+.float-going-over[hidden],
+[data-going-over-problem][hidden] {
+  display: none;
+}

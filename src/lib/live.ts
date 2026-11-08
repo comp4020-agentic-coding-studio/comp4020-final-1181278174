@@ -1,5 +1,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "./db.ts";
+import { goingOverAge } from "./going-over.ts";
+import { GOING_OVER_MS } from "./hall.ts";
 import { popularOrder, voteCount } from "./order.ts";
 import { notePresence, startPresenceHeartbeat } from "./record.ts";
 import { handsUp } from "./room.ts";
@@ -22,6 +24,7 @@ export type Board = {
   here: number;
   questions: [id: number, votes: number, state: "open" | "answered"][];
   hands: number[];
+  goingOver: number | null;
 };
 
 /** One open stream. `person` is null for a screen nobody is asking from (the projector page). */
@@ -29,6 +32,7 @@ type Listener = { person: string | null; send: (event: string) => void };
 
 const listeners = new Map<number, Set<Listener>>();
 const waiting = new Map<number, ReturnType<typeof setTimeout>>();
+const goingOverTimers = new Map<number, ReturnType<typeof setTimeout>>();
 startPresenceHeartbeat(() => [...listeners.keys()].map((id) => [id, here(id)] as const));
 
 // Changes this close together go out as one event.
@@ -43,10 +47,25 @@ export function board(sessionId: number): Board {
     .orderBy(...popularOrder)
     .all();
   const present = [...people(sessionId)];
+  const goingOver = goingOverAge(sessionId);
+  // A connection opened after a restart also schedules the remaining time.
+  // Only one expiry is needed per session, however often its state changes.
+  if (goingOver !== null && !goingOverTimers.has(sessionId)) {
+    const timer = setTimeout(() => {
+      goingOverTimers.delete(sessionId);
+      publish(sessionId);
+    }, GOING_OVER_MS - goingOver);
+    timer.unref();
+    goingOverTimers.set(sessionId, timer);
+  } else if (goingOver === null) {
+    clearTimeout(goingOverTimers.get(sessionId));
+    goingOverTimers.delete(sessionId);
+  }
   return {
     here: present.length,
     questions: rows.map((q) => [q.id, Number(q.votes), q.state === "answered" ? "answered" : "open"]),
     hands: handsUp(sessionId, present),
+    goingOver,
   };
 }
 
@@ -104,7 +123,11 @@ export function listen(sessionId: number, listener: Listener): () => void {
   publish(sessionId);
   return () => {
     if (!room.delete(listener)) return;
-    if (room.size === 0) listeners.delete(sessionId);
+    if (room.size === 0) {
+      listeners.delete(sessionId);
+      clearTimeout(goingOverTimers.get(sessionId));
+      goingOverTimers.delete(sessionId);
+    }
     notePresence(sessionId, here(sessionId));
     publish(sessionId);
   };

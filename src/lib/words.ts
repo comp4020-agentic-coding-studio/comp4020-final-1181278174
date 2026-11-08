@@ -33,6 +33,10 @@ export const SILENCE = "That doesn't mean everyone follows. Lost? Raise yours, n
 /** The same, short enough for the projector and the small window. */
 export const SILENCE_SHORT = "That doesn't mean everyone follows.";
 
+/** The lecturer's acknowledgement, without claiming what it changed. */
+export const GOING_OVER_MESSAGE = "The lecturer is going over it.";
+export const GOING_OVER_NOTE = "Shows on every screen for 2 minutes.";
+
 /** The time a raised hand comes down by itself, as the clock in the room shows it: "14:08". */
 export const clock = (when: Date): string =>
   when.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Australia/Sydney" });

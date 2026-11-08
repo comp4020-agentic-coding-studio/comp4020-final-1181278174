@@ -6,6 +6,7 @@ import SessionTabs from "../../../components/SessionTabs.astro";
 import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { findSession, isCode, isHost, listQuestions, normaliseCode } from "../../../lib/board.ts";
+import { goingOversOf } from "../../../lib/going-over.ts";
 import { people } from "../../../lib/live.ts";
 import { recordingStart, timelineMark } from "../../../lib/actions.ts";
 import { intoRecording, type Minute, marksOf, MAX_MARK, partAt, sittings } from "../../../lib/record.ts";
@@ -19,6 +20,7 @@ const code = normaliseCode(raw);
 if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
   return Astro.redirect(`/s/${code}/timeline${Astro.url.search}`, 301);
 }
+
 let session = isCode(code) ? findSession(code) : undefined;
 const person = Astro.locals.person;
 const log = Astro.locals.log;
@@ -55,6 +57,7 @@ if (session && Astro.request.method === "POST") {
 const hosting = session !== undefined && isHost(session, person);
 const listed = session ? listQuestions(session, person, "popular").filter((q) => q.state !== "hidden").length : 0;
 const all = session ? marksOf(session.id) : [];
+const goingOvers = session ? goingOversOf(session.id) : [];
 const recordingAt = session?.recordingAt ?? null;
 /** What a minute says in words: when, how many lost, in which part, how far into the recording. */
 const about = (m: Minute): string[] => {
@@ -62,6 +65,7 @@ const about = (m: Minute): string[] => {
   return [
     `${m.lost} of ${m.here} said they were lost`,
     partAt(all, m.at)?.label ?? "",
+    goingOvers.some((event) => event.at >= m.at && event.at.getTime() < m.at.getTime() + 60_000) ? "Going over it" : "",
     into === undefined ? "" : `${into} min into the recording`,
   ].filter(Boolean);
 };
@@ -110,14 +114,19 @@ const busiest = (minutes: Minute[]): Minute[] =>
           const top = busiest(s.minutes);
           const id = `sitting-${s.from.getTime()}`;
           const lanes: number[] = [];
-          const marked = all.filter((mk) => mk.at >= s.from && mk.at < s.to).map((mk, i) => {
+          const events = [
+            ...all.filter((mk) => mk.at >= s.from && mk.at < s.to).map((mk, i) => ({ ...mk, kind: "part" as const, number: i + 1 })),
+            ...goingOvers.filter((event) => event.at >= s.from && event.at < s.to).map((event) => ({ ...event, kind: "going" as const })),
+          ].sort((a, b) => a.at.getTime() - b.at.getTime()).map((mk) => {
             const left = ((mk.at.getTime() - s.from.getTime()) / (s.to.getTime() - s.from.getTime())) * 100;
             // At phone width, nearby badges need separate rows. Labels live in the legend.
             let lane = lanes.findIndex((previous) => left - previous >= 18);
             if (lane < 0) lane = lanes.length;
             lanes[lane] = left;
-            return { ...mk, number: i + 1, left, lane };
+            return { ...mk, left, lane };
           });
+          const marked = events.filter((event) => event.kind === "part");
+          const going = events.filter((event) => event.kind === "going");
           const middle = Math.floor(s.minutes.length / 2);
           return (
             <section class="card sitting" aria-labelledby={id}>
@@ -153,6 +162,11 @@ const busiest = (minutes: Minute[]): Minute[] =>
                       <span>{mk.number}</span>
                     </span>
                   ))}
+                  {going.map((event) => (
+                    <span class="chart-mark going-mark" title="Going over it" style={`left: clamp(1rem, ${event.left}%, calc(100% - 1rem)); --lane: ${event.lane}`}>
+                      <span class="going-symbol">◇</span>
+                    </span>
+                  ))}
                 </div>
                 <div class="chart-ticks">
                   <span class="chart-start">{clock(s.from)}</span>
@@ -170,6 +184,17 @@ const busiest = (minutes: Minute[]): Minute[] =>
                     </li>
                   ))}
                 </ol>
+              )}
+              {going.length > 0 && (
+                <ul class="chart-legend" aria-label="Going over it">
+                  {going.map((event) => (
+                    <li>
+                      <span class="mark-number going-symbol" aria-hidden="true">◇</span>{" "}
+                      <time datetime={event.at.toISOString()}>{clock(event.at)}</time>{" "}
+                      <span>Going over it</span>
+                    </li>
+                  ))}
+                </ul>
               )}
               {top.length > 0 && (
                 <>
@@ -265,3 +290,22 @@ const busiest = (minutes: Minute[]): Minute[] =>
     </Layout>
   )
 }
+
+<style>
+  /* A separate symbol and dashed line keep this apart from numbered parts. */
+  .going-mark {
+    width: 0;
+    border-left: 2px dashed var(--ink);
+    background: none;
+  }
+
+  .going-mark .going-symbol,
+  .mark-number.going-symbol {
+    border: var(--line);
+    border-radius: 4px;
+    background: var(--sun);
+    color: var(--ink);
+    font-size: 20px;
+    line-height: 1;
+  }
+</style>

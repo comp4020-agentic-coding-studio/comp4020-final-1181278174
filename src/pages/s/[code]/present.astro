@@ -1,10 +1,12 @@
 ---
 import Icon from "../../../components/Icon.astro";
+import GoingOver from "../../../components/GoingOver.astro";
 import JoinForm from "../../../components/JoinForm.astro";
 import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { findSession, isCode, listQuestions, normaliseCode } from "../../../lib/board.ts";
 import { people } from "../../../lib/live.ts";
+import { goingOverAge } from "../../../lib/going-over.ts";
 import { handsUp } from "../../../lib/room.ts";
 import { howMany, lostLabel, SILENCE_SHORT } from "../../../lib/words.ts";
 import { renderSVG } from "uqr";
@@ -74,6 +76,7 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
             <p class="stage-lost" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
               {lostLabel(room.hands.length, room.here)}
             </p>
+            <GoingOver age={goingOverAge(session.id)} />
             <p class="stage-silence" data-silence hidden={room.hands.length > 0}>
               {SILENCE_SHORT}
             </p>

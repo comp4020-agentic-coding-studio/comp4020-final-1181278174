@@ -1,5 +1,6 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "./db.ts";
+import { goingOversOf } from "./going-over.ts";
 import { HAND_MS } from "./hall.ts";
 import { hands, marks, presence, sessions } from "./schema.ts";
 
@@ -47,10 +48,10 @@ export type Sitting = { from: Date; to: Date; minutes: Minute[]; most: number; m
 /** The newest sittings first, each minute by minute. `hereNow` is how many have it open at this moment. */
 export function sittings(sessionId: number, hereNow: number, now = Date.now()): Sitting[] {
   const rows = db.select().from(presence).where(eq(presence.sessionId, sessionId)).orderBy(asc(presence.minute)).all();
-  if (rows.length === 0) return [];
+  const goingOverMinutes = goingOversOf(sessionId).map((event) => Math.floor(event.at.getTime() / MINUTE));
+  if (rows.length === 0 && goingOverMinutes.length === 0) return [];
   const nowMinute = Math.floor(now / MINUTE);
-  const lastRow = rows[rows.length - 1];
-  const end = hereNow > 0 ? nowMinute : lastRow.minute;
+  const end = hereNow > 0 ? nowMinute : Math.max(rows.at(-1)?.minute ?? 0, goingOverMinutes.at(-1) ?? 0);
 
   // A missing row gets at most two minutes of grace. Longer gaps are quiet,
   // including after a restart that never got to write a final zero.
@@ -65,7 +66,13 @@ export function sittings(sessionId: number, hereNow: number, now = Date.now()): 
       for (let m = row.minute + 1; m <= carriedTo; m++) counted.push({ minute: m, here: row.last });
     }
   }
-  const occupied = counted.filter((c) => c.here > 0);
+  // A host can press Going over it without a student stream open. Keep that
+  // minute in the record too, without counting the host as someone here.
+  const activity = new Map(counted.filter((c) => c.here > 0).map((c) => [c.minute, c]));
+  for (const minute of goingOverMinutes) {
+    if (!activity.has(minute)) activity.set(minute, { minute, here: 0 });
+  }
+  const occupied = [...activity.values()].sort((a, b) => a.minute - b.minute);
   if (occupied.length === 0) return [];
 
   // split into sittings at quiet spells

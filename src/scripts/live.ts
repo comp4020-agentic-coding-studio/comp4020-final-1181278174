@@ -13,7 +13,7 @@ import { ago, hereLabel, howMany, votesLabel } from "../lib/words.ts";
 // background, so the page doesn't reload, and takes the list from the answer.
 // Without this script the page works as plain forms.
 
-type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[] };
+type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[]; goingOver: number | null };
 type Added = { id: number; body: string; at: number };
 
 const CARD = "li[id^='q-']";

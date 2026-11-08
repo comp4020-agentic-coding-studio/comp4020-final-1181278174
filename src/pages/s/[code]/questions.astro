@@ -1,5 +1,6 @@
 ---
 import Card from "../../../components/Card.astro";
+import GoingOver from "../../../components/GoingOver.astro";
 import Icon from "../../../components/Icon.astro";
 import JoinForm from "../../../components/JoinForm.astro";
 import SessionBand from "../../../components/SessionBand.astro";
@@ -20,6 +21,7 @@ import {
   type Sort,
 } from "../../../lib/board.ts";
 import { howMany } from "../../../lib/words.ts";
+import { goingOverAge } from "../../../lib/going-over.ts";
 
 // The questions, the second part of a session: asking, "Me too", and the
 // host's buttons. The hall, at /s/CODE, is the first.
@@ -110,6 +112,7 @@ const listed = list.filter((q) => q.state !== "hidden").length;
           </div>
         </div>
 
+        <GoingOver age={goingOverAge(session.id)} />
         {/* the page's script (src/scripts/live.ts) keeps what is in here up to date */}
         <div data-board data-sort={sort}>
           {/* shown while the list is empty; the script hides it when the first question arrives */}

@@ -121,3 +121,17 @@ export const marks = sqliteTable(
   },
   (t) => [index("marks_by_session").on(t.sessionId, t.at), check("marks_label_length", sql`length(${t.label}) BETWEEN 1 AND 60`)],
 );
+
+// Each time the host says they are going over it. Kept apart from part marks:
+// these moments neither start a new part nor change anyone's raised hand.
+export const goingOvers = sqliteTable(
+  "going_overs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => sessions.id),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("going_overs_by_session").on(t.sessionId, t.at)],
+);

@@ -1,0 +1,25 @@
+---
+import { GOING_OVER_MS } from "../lib/hall.ts";
+import { GOING_OVER_MESSAGE } from "../lib/words.ts";
+
+interface Props {
+  age: number | null;
+}
+
+const { age } = Astro.props;
+const active = age !== null && age < GOING_OVER_MS;
+---
+
+{/* The remaining-time CSS expiry also runs when JavaScript is off. */}
+<p
+  class="going-over"
+  role="status"
+  data-going-over
+  data-going-over-age={active ? age : ""}
+  hidden={!active}
+  style={`--going-over-left: ${active ? GOING_OVER_MS - age : 0}ms`}
+>{active ? GOING_OVER_MESSAGE : ""}</p>
+
+<script>
+  import "../scripts/going-over.ts";
+</script>

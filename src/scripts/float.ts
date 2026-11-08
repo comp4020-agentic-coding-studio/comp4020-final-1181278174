@@ -1,4 +1,5 @@
-import { lostLabel, SILENCE_SHORT } from "../lib/words.ts";
+import { GOING_OVER_MESSAGE, GOING_OVER_NOTE, lostLabel, SILENCE_SHORT } from "../lib/words.ts";
+import { goingOverBusy, goingOverLeft } from "./going-over.ts";
 import { type Hall, lastHall } from "./hand.ts";
 
 // A small window that stays above every other window (Chrome and Edge on a
@@ -6,8 +7,7 @@ import { type Hall, lastHall } from "./hand.ts";
 // someone watches Echo360, follows the slides or teaches from them.
 //
 // - On the hall, a student's window: how many are lost, the last 15 minutes,
-//   and "I'm lost". The host's: the same, with a mark for a new part instead
-//   of the button.
+//   and "I'm lost". The host's: the count, Going over it, and a mark for a new part.
 // - On the timeline: the newest sitting's chart, to keep beside the recording.
 //
 // The window holds its own copies of these, drawn from the page's state
@@ -50,7 +50,7 @@ function styled(win: Window): void {
 /** The hall in a small window: the count, the last 15 minutes, and the button or the host's mark. */
 async function popHall(): Promise<void> {
   const hosting = document.querySelector("form.hall-mark") !== null;
-  const win = await pip!.requestWindow({ width: 320, height: hosting ? 290 : 250 });
+  const win = await pip!.requestWindow({ width: 320, height: hosting ? 400 : 285 });
   styled(win);
   const doc = win.document;
   doc.title = "Hands Up";
@@ -58,6 +58,7 @@ async function popHall(): Promise<void> {
   box.className = "float-box";
   box.innerHTML = `
     <p class="float-count" aria-live="polite"></p>
+    <p class="float-going-over" role="status" hidden></p>
     <p class="float-silence" hidden></p>
     <div class="float-chart" aria-hidden="true"></div>
     <p class="float-axis" aria-hidden="true"><span>15 min ago</span><span>now</span></p>
@@ -70,7 +71,24 @@ async function popHall(): Promise<void> {
   for (let i = 0; i < 15; i++) chart.append(doc.createElement("span"));
 
   let press: HTMLButtonElement | undefined;
+  let goingPress: HTMLButtonElement | undefined;
+  let goingProblem: HTMLElement | undefined;
   if (hosting) {
+    goingPress = doc.createElement("button");
+    goingPress.type = "button";
+    goingPress.className = "button ink";
+    goingPress.textContent = "Going over it";
+    goingPress.setAttribute("aria-describedby", "float-going-over-note");
+    goingPress.addEventListener("click", () => document.querySelector<HTMLFormElement>("form[data-going-over-form]")?.requestSubmit());
+    const note = doc.createElement("p");
+    note.id = "float-going-over-note";
+    note.className = "float-said";
+    note.textContent = GOING_OVER_NOTE;
+    goingProblem = doc.createElement("p");
+    goingProblem.className = "float-said";
+    goingProblem.setAttribute("role", "status");
+    goingProblem.hidden = true;
+    box.append(goingPress, note, goingProblem);
     // the host's mark: the hall's own form, sent from here
     const form = doc.createElement("form");
     form.className = "float-mark";
@@ -122,9 +140,31 @@ async function popHall(): Promise<void> {
     press?.setAttribute("aria-pressed", String(hall.mine !== null));
   };
   const listen = (event: Event): void => draw((event as CustomEvent<Hall>).detail);
+  const goingLine = box.querySelector<HTMLElement>(".float-going-over")!;
+  let goingTimer: number | undefined;
+  const drawGoing = (): void => {
+    win.clearTimeout(goingTimer);
+    const left = goingOverLeft();
+    goingLine.hidden = left === 0;
+    goingLine.textContent = left > 0 ? GOING_OVER_MESSAGE : "";
+    if (goingPress) goingPress.disabled = left > 0 || goingOverBusy();
+    if (goingProblem) {
+      const problem = document.querySelector<HTMLElement>("[data-going-over-problem]");
+      goingProblem.hidden = !problem || problem.hidden;
+      goingProblem.textContent = problem?.textContent ?? "";
+    }
+    // The floating window has its own expiry, even when its parent tab is in the background.
+    if (left > 0) goingTimer = win.setTimeout(drawGoing, Math.ceil(left));
+  };
   if (lastHall) draw(lastHall);
+  drawGoing();
   document.addEventListener("hands-up:hall", listen);
-  win.addEventListener("pagehide", () => document.removeEventListener("hands-up:hall", listen));
+  document.addEventListener("hands-up:going-over", drawGoing);
+  win.addEventListener("pagehide", () => {
+    win.clearTimeout(goingTimer);
+    document.removeEventListener("hands-up:hall", listen);
+    document.removeEventListener("hands-up:going-over", drawGoing);
+  });
 }
 
 /** The newest sitting's chart in a small window, to keep beside the recording. */

@@ -494,8 +494,23 @@ Where the browser cannot do it, the button is not shown.
 
 Showing Echo360 inside the app: its pages need an ANU login the marker does not
 have, Wattle refuses to be shown inside another site, and Safari blocks a login
-inside one. Also not now: the lecturer's "I'll go over it", a line of words on a
-hand, an export.
+inside one. Also not now: a line of words on a hand, an export.
+
+### Going over it
+
+Added 8 November, 19:50, in its smallest version: the host
+has one "Going over it" button on the hall and in their floating window, with
+the note "Shows on every screen for 2 minutes." It records a moment separately
+from the numbered part marks. For two minutes the hall, questions, projector
+and floating windows say "The lecturer is going over it." Pressing again
+during those two minutes changes nothing; anyone else is refused and logged.
+Students' hands stay as they were.
+
+Pages opened during those two minutes render the banner on the server; the
+stream sends its elapsed time or null. It expires on open pages with or without
+script. The timeline gives each moment its own marker, legend entry and
+every-minute entry. What happens afterwards is just the counts in the minutes
+afterwards, with no claim that confusion was resolved or that it helped.
 
 ### Tests (`spec/`)
 

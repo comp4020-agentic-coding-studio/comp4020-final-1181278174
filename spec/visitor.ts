@@ -23,9 +23,10 @@ function page(status: number, url: URL, html: string): Page {
 /**
  * What the server sends an open page: how many people have the session open,
  * and every question's id, vote count and state, in Popular order. A hidden
- * question is not in it. Then how long each hand that is up has been up, in ms.
+ * question is not in it. Then how long each hand that is up has been up, in ms,
+ * and how long "Going over it" has been showing, or null when it is not.
  */
-export type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[] };
+export type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[]; goingOver: number | null };
 
 /** A question as it is sent to the pages that are open when it is asked: its words, and no person. */
 export type Added = { id: number; body: string; at: number };

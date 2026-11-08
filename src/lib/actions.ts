@@ -1,5 +1,6 @@
 import { isHost, type Session, setState, setVote, STATES } from "./board.ts";
 import { publish } from "./live.ts";
+import { recordGoingOver } from "./going-over.ts";
 import { addMark, atCanberra, MAX_MARK, setRecording } from "./record.ts";
 
 // What a form sent to either part of a session does, where both parts take the
@@ -8,6 +9,18 @@ import { addMark, atCanberra, MAX_MARK, setRecording } from "./record.ts";
 
 type Log = (what: string, fields?: Record<string, string | number | undefined>) => void;
 type Done = { ok: true; question: number } | { ok: false; status: number };
+
+/** The host is going over it now. Repeating this while active changes nothing. */
+export function goingOver(session: Session, person: string, log: Log): { ok: true } | { ok: false; status: number } {
+  if (!isHost(session, person)) {
+    log("refused", { action: "going_over", session: session.code, reason: "not-host" });
+    return { ok: false, status: 403 };
+  }
+  const changed = recordGoingOver(session.id);
+  log(changed ? "going_over_started" : "going_over_unchanged", { session: session.code });
+  if (changed) publish(session.id);
+  return { ok: true };
+}
 
 /** "Me too", or taking it back: `want` 1 or 0, never "toggle". */
 export function vote(session: Session, person: string, form: FormData, log: Log): Done {
