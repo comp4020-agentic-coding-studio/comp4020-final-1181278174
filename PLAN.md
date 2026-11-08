@@ -701,6 +701,21 @@ and brought onto main as it stood.
 - The projector shows the exercise and the timer, never tickets, queue counts
   or questions.
 
+### A lecturer's end and a student's end
+
+Decided 9 November, 09:06, with the tutorial mode. Built on its own branch that
+morning and brought onto main as it stood.
+
+- The host of a lecture gets the lecturer's workspace at the session's address
+  (and at `/s/CODE/teach`): the count largest, Start and End class, the pause
+  card, Going over it and marks, the questions with answer, hide and reports,
+  the recording time, and the recap once the class ends. "Checked now" notes
+  when the lecturer last looked, and the page says what changed since.
+- Everyone else gets the student's room: the count and the button first, then
+  the questions; the 3D hall and the repeated explanations are a press away.
+- The host can look at the student's room ("Student view"); a student can't
+  reach the lecturer's page. A tutorial's `/teach` leads to its tutorial room.
+
 ### Order of work
 
 1. this plan
