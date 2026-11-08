@@ -103,10 +103,12 @@ export function checkQuestion(body: string): string | undefined {
  */
 export function askQuestion(session: Session, asker: string, body: string): number {
   const createdAt = new Date();
+  // outside the transaction: the first tag ever made also makes the server's secret, which must not be rolled back
+  const askerTag = tagFor("asker", asker);
   const id = db.transaction((tx) => {
     const { id } = tx
       .insert(questions)
-      .values({ sessionId: session.id, body, asker: tagFor("asker", asker), createdAt })
+      .values({ sessionId: session.id, body, asker: askerTag, createdAt })
       .returning({ id: questions.id })
       .get();
     const envelope = seal({ account: asker, question: id, session: session.code, body, at: createdAt.getTime() });
