@@ -22,14 +22,14 @@ if (Astro.request.method === "POST") {
     }
   }
   const result = await verifyPassword(username, String(form.get("password") ?? ""), { browser: Astro.locals.browser, network });
-  if (result.ok) {
-    completeSignIn(result.account.id, Astro.cookies, Astro.url);
+  // the password may have changed while it was being checked: then it is the wrong one
+  if (result.ok && completeSignIn(result.account.id, Astro.cookies, Astro.url, result.verifiedHash)) {
     Astro.locals.log("signed_in");
     return Astro.redirect(returnTo, 303);
   }
   Astro.response.status = 422;
-  problem = result.message;
-  Astro.locals.log("refused", { action: "signin", reason: result.reason });
+  problem = result.ok ? "The username or password is wrong." : result.message;
+  Astro.locals.log("refused", { action: "signin", reason: result.ok ? "password-changed" : result.reason });
 }
 ---
 

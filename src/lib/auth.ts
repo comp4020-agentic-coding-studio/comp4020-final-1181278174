@@ -16,10 +16,14 @@ export function authLink(action: "signin" | "signup", path: string): string {
   return `/${action}?return=${encodeURIComponent(returnPath(path))}`;
 }
 
-/** Rotate this browser's sign-in: end the one it had, start a new one. */
-export function completeSignIn(accountId: string, cookies: AstroCookies, url: URL): void {
+/**
+ * Rotate this browser's sign-in: start a new one, then end the one it had.
+ * False when the password changed after it was checked (`verifiedHash`).
+ */
+export function completeSignIn(accountId: string, cookies: AstroCookies, url: URL, verifiedHash?: string): boolean {
+  const token = startSignIn(accountId, verifiedHash);
+  if (!token) return false;
   endSignIn(cookies.get(SIGNIN_COOKIE)?.value);
-  const token = startSignIn(accountId);
   cookies.set(SIGNIN_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
@@ -27,4 +31,5 @@ export function completeSignIn(accountId: string, cookies: AstroCookies, url: UR
     path: "/",
     maxAge: SIGNIN_SECONDS,
   });
+  return true;
 }

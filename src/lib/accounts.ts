@@ -8,7 +8,8 @@ export const SIGNIN_COOKIE = "hands_up_signin";
 export const SIGNIN_SECONDS = 60 * 60 * 24 * 30;
 
 export type Account = { id: string; username: string };
-export type AccountResult = { ok: true; account: Account } | { ok: false; reason: string; message: string };
+// `verifiedHash`: the password a sign-in was checked against, so the token is only given while it is still the password
+export type AccountResult = { ok: true; account: Account; verifiedHash?: string } | { ok: false; reason: string; message: string };
 
 const USERNAME = /^[A-Za-z0-9._-]{3,30}$/;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
@@ -144,7 +145,7 @@ export async function verifyPassword(
     const account = db.select().from(accounts).where(eq(accounts.usernameKey, key)).get();
     // an over-long password is wrong without being hashed
     const valid = [...password].length <= MAX_PASSWORD && (await matches(password, account?.passwordHash));
-    if (valid && account) return { ok: true, account: { id: account.id, username: account.username } };
+    if (valid && account) return { ok: true, account: { id: account.id, username: account.username }, verifiedHash: account.passwordHash };
     for (const c of counted) c.entry.failed.push(Date.now());
     return { ok: false, reason: "wrong-credentials", message: "The username or password is wrong." };
   } finally {
@@ -157,17 +158,28 @@ export async function verifyPassword(
 
 export const tokenHash = (token: string): string => createHash("sha256").update(token).digest("hex");
 
-/** Only the browser receives this token. The database holds its digest. */
-export function startSignIn(accountId: string): string {
+/**
+ * Only the browser receives this token. The database holds its digest. A
+ * sign-in checked against `verifiedHash` gets no token if the password has
+ * changed since: a sign-in with the old password that was still being checked
+ * when the owner changed it doesn't get in.
+ */
+export function startSignIn(accountId: string, verifiedHash?: string): string | null {
   const token = randomBytes(32).toString("base64url");
   const now = new Date();
-  db.insert(signIns).values({
-    tokenHash: tokenHash(token),
-    accountId,
-    createdAt: now,
-    expiresAt: new Date(now.getTime() + SIGNIN_SECONDS * 1000),
-  }).run();
-  return token;
+  return db.transaction((tx) => {
+    if (verifiedHash !== undefined) {
+      const current = tx.select({ hash: accounts.passwordHash }).from(accounts).where(eq(accounts.id, accountId)).get()?.hash;
+      if (current !== verifiedHash) return null;
+    }
+    tx.insert(signIns).values({
+      tokenHash: tokenHash(token),
+      accountId,
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + SIGNIN_SECONDS * 1000),
+    }).run();
+    return token;
+  });
 }
 
 /** Expired and ended tokens confer no account, even when their cookie remains. */
