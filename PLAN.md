@@ -638,6 +638,22 @@ could go up at night, and the timeline had no start or end for a lecture.
   host can change it on the timeline.
 - HAND is always open, with no class to start.
 
+### At your next pause
+
+Decided 9 November, 05:45, after a round with GPT on whether a lecturer really
+watches the count while they talk. They can't: watching a number breaks their
+rhythm. The count is for the room; the lecturer looks when they pause anyway,
+at the end of an explanation or when they ask for questions.
+
+- The host's hall has a card, "At your next pause": the part so far (since the
+  last mark in this class, or since the class started), its minute with the
+  most hands up, out of how many were here then, and the most wanted question.
+  A hand that came down still counts in the minutes it was up.
+- The host's floating window shows the same card in place of the moving chart.
+- Not yet: a cue that comes once when many hands go up together and stay up,
+  a recap when the class ends, a view for a tutor helping in the room. Whether
+  the card helps is something to try with a lecturer and a few students.
+
 ### Order of work
 
 1. this plan
