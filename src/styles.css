@@ -19,42 +19,6 @@
   font-display: swap;
 }
 
-/* The two typefaces, served from this app rather than from Google, so opening a
-   page tells no other site anything. Both are under the SIL Open Font License
-   (public/fonts/OFL-*.txt); latin and latin-ext only, as Google serves them. */
-@font-face {
-  font-family: "Bricolage Grotesque";
-  font-style: normal;
-  font-weight: 700 800;
-  font-display: swap;
-  src: url("/fonts/bricolage-grotesque-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: "Bricolage Grotesque";
-  font-style: normal;
-  font-weight: 700 800;
-  font-display: swap;
-  src: url("/fonts/bricolage-grotesque-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: "Instrument Sans";
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url("/fonts/instrument-sans-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: "Instrument Sans";
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url("/fonts/instrument-sans-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
 :root {
   /* Primitive palette: local values, never a runtime theme dependency. */
   --palette-paper: #f5f6f1;
@@ -211,8 +175,15 @@ body {
   font: var(--weight-normal) var(--text-md) / var(--leading-body) var(--text);
   -webkit-font-smoothing: antialiased;
 }
-body.sunny {
-  background: var(--ground);
+/* Keep the shared footer below page content without fixing it over the page.
+   The projector and Picture-in-Picture have no footer and retain their layout. */
+body:has(> .site-footer) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+body:has(> .site-footer) > :not(.skip) {
+  flex-shrink: 0;
 }
 [hidden] {
   display: none !important;
@@ -508,7 +479,7 @@ h4 {
 .panel form {
   margin: 0;
 }
-.panel > p {
+.panel > p:not(.alert) {
   color: var(--muted);
 }
 .panel form {
@@ -676,6 +647,7 @@ textarea:disabled {
   background: var(--color-error-soft);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
+  overflow-wrap: anywhere;
 }
 .alert a {
   color: inherit;
@@ -1137,12 +1109,19 @@ textarea:disabled {
   font-size: var(--text-xs);
   font-weight: var(--weight-normal);
 }
+.pop-control .pop-problem {
+  align-self: stretch;
+  text-align: left;
+}
 
 /* Questions: the content is primary, metadata and moderation are secondary. */
 .question-layout {
   max-width: var(--layout-reading);
   padding-top: var(--space-8);
   padding-bottom: var(--space-8);
+}
+.question-layout > .alert {
+  margin-bottom: var(--space-4);
 }
 .ask {
   display: flex;
@@ -1494,11 +1473,14 @@ span.me-too:hover {
 }
 [data-timeline-status]:not([hidden]) {
   margin: var(--space-4) 0;
-  padding: var(--space-3);
-  border: 1px solid var(--color-error);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-control-border);
+  border-left-width: 4px;
   border-radius: var(--radius-control);
-  color: var(--color-error);
-  background: var(--color-error-soft);
+  color: var(--ink);
+  background: var(--color-surface-subtle);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   overflow-wrap: anywhere;
 }
 .chart {
@@ -1676,6 +1658,10 @@ span.me-too:hover {
 .account-panel > p {
   font-size: var(--text-sm);
 }
+.account-panel .hint {
+  display: block;
+  line-height: var(--leading-body);
+}
 .auth-prompt {
   display: flex;
   flex-direction: column;
@@ -1757,6 +1743,93 @@ span.me-too:hover {
   border-bottom: var(--line);
   text-align: left;
   overflow-wrap: anywhere;
+}
+
+/* Information and recovery pages share the reading scale and card vocabulary. */
+.info {
+  max-width: var(--layout-reading);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-16);
+}
+.info h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 650;
+  font-size: var(--text-4xl);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-heading);
+  overflow-wrap: anywhere;
+}
+.info .lead {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-lg);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+.info .panel {
+  gap: var(--space-4);
+}
+.info .panel > p:not(.alert) {
+  color: var(--ink);
+  line-height: 1.65;
+}
+.info ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding-left: var(--space-6);
+  line-height: 1.65;
+}
+.info li {
+  padding-left: var(--space-1);
+}
+.info li::marker {
+  color: var(--muted);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.info .go {
+  max-width: 100%;
+  margin-top: 0;
+}
+.card.info-sun {
+  background: var(--color-hero);
+  border-top: 3px solid var(--sun);
+  box-shadow: var(--elevation-0);
+}
+.info-error {
+  max-width: 42rem;
+  padding-top: var(--space-16);
+}
+
+/* Shared navigation belongs at the foot, with the same wide shell as the header. */
+.site-footer {
+  margin-top: auto;
+  border-top: var(--line);
+  background: var(--card);
+}
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-6);
+  padding-block: var(--space-3);
+}
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.site-footer a:hover {
+  color: var(--blue);
 }
 
 /* Projector: recognisable yellow join rail; a quiet stage, designed to fit. */
@@ -1982,10 +2055,6 @@ span.me-too:hover {
 }
 
 /* Floating window inherits this sheet, including fonts and color scheme. */
-body.float {
-  margin: 0;
-  background: var(--ground);
-}
 .float-box {
   display: flex;
   flex-direction: column;
@@ -2325,6 +2394,26 @@ button:disabled,
   .prose h1 {
     font-size: var(--text-3xl);
   }
+  .info {
+    gap: var(--space-5);
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-10);
+  }
+  .info h1 {
+    font-size: var(--text-3xl);
+  }
+  .info .lead {
+    font-size: var(--text-md);
+  }
+  .info .panel {
+    padding: var(--space-5);
+  }
+  .info .panel h2 {
+    font-size: var(--text-xl);
+  }
+  .site-footer nav {
+    gap: var(--space-1) var(--space-5);
+  }
   .present {
     height: auto;
     min-height: 100dvh;
@@ -2449,76 +2538,4 @@ button:disabled,
   .live::before {
     background: CanvasText;
   }
-}
-
-/* How it works, Privacy and rules, Nothing here: one column of cards */
-
-.info {
-  max-width: 720px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding-top: 20px;
-  padding-bottom: 40px;
-}
-
-.info h1 {
-  margin: 0;
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 40px;
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.info .lead {
-  margin: 0;
-  font-size: 17px;
-  line-height: 1.4;
-}
-
-.info ol {
-  margin: 0;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  line-height: 1.4;
-}
-
-.info .panel p {
-  line-height: 1.4;
-}
-
-.info a {
-  color: var(--ink);
-}
-
-.card.info-sun {
-  background: var(--sun);
-  box-shadow: none;
-}
-
-/* the links at the foot of every page but the projector */
-
-.site-footer {
-  margin-top: 24px;
-  border-top: var(--line);
-}
-
-.site-footer nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 20px;
-  padding-top: 4px;
-  padding-bottom: 12px;
-}
-
-.site-footer a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
 }
