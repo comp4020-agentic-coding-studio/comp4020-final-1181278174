@@ -1,6 +1,7 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "./db.ts";
+import { endStreamsOf } from "./live.ts";
 import { accounts, sessions, signIns } from "./schema.ts";
 
 export const SIGNIN_COOKIE = "hands_up_signin";
@@ -148,7 +149,7 @@ export async function verifyPassword(
   }
 }
 
-const tokenHash = (token: string): string => createHash("sha256").update(token).digest("hex");
+export const tokenHash = (token: string): string => createHash("sha256").update(token).digest("hex");
 
 /** Only the browser receives this token. The database holds its digest. */
 export function startSignIn(accountId: string): string {
@@ -178,6 +179,7 @@ export function endSignIn(token?: string): void {
   if (!token || !TOKEN.test(token)) return;
   db.update(signIns).set({ endedAt: new Date() })
     .where(and(eq(signIns.tokenHash, tokenHash(token)), isNull(signIns.endedAt))).run();
+  endStreamsOf(tokenHash(token));
 }
 
 /** Keep sessions hosted before accounts existed attached to their lecturer. */

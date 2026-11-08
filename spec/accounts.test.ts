@@ -44,6 +44,23 @@ describe("accounts over plain HTTP", () => {
     expect(words(page)).toContain(`Signed in as ${owner.username}`);
   });
 
+  it("ends a page's live stream when its browser signs out, so it no longer counts as here", async () => {
+    const host = new Visitor();
+    const hall = await startSession(host, `Signed out stream ${tag()}`);
+    // the host watches: a host is never counted among those here
+    const watcher = await host.listen(await host.open(hall.url.pathname));
+    streams.push(watcher);
+    await watcher.until((board) => board.here === 0);
+    const student = new Visitor();
+    const theirs = await student.listen(await student.open(hall.url.pathname));
+    streams.push(theirs);
+    await watcher.until((board) => board.here === 1);
+    // only what the stream sends from now on counts
+    watcher.forget();
+    await student.signOut();
+    await watcher.until((board) => board.here === 0);
+  });
+
   it("refuses a common password, and one that contains the username", async () => {
     for (const password of ["password1", "12345678", "Qwerty123"]) {
       const response = await new Visitor({ signedOut: true }).post("/signup", new URLSearchParams({ username: `t${tag()}`, password, return: "/" }));

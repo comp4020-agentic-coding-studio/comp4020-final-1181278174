@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { findSession, isCode, normaliseCode } from "../../../lib/board.ts";
+import { SIGNIN_COOKIE, tokenHash } from "../../../lib/accounts.ts";
 import { asEvent, board, here, listen } from "../../../lib/live.ts";
 
 // The live stream of one session, as server-sent events. It opens with the
@@ -7,7 +8,7 @@ import { asEvent, board, here, listen } from "../../../lib/live.ts";
 // goes out now and then so Fly's proxy doesn't close a quiet connection.
 const BEAT_MS = 20_000;
 
-export const GET: APIRoute = ({ params, request, url, locals }) => {
+export const GET: APIRoute = ({ params, request, url, locals, cookies }) => {
   const code = normaliseCode(params.code ?? "");
   const session = isCode(code) ? findSession(code) : undefined;
   if (!session) return new Response("No such session.\n", { status: 404 });
@@ -25,7 +26,17 @@ export const GET: APIRoute = ({ params, request, url, locals }) => {
       };
       // the projector page asks with ?screen: it is not a person in the room
       const person = locals.account && !url.searchParams.has("screen") ? locals.person : null;
-      const stop = listen(session.id, { person, send });
+      const token = cookies.get(SIGNIN_COOKIE)?.value;
+      const signIn = person && token ? tokenHash(token) : undefined;
+      const end = (): void => {
+        leave();
+        try {
+          controller.close();
+        } catch {
+          // already closed
+        }
+      };
+      const stop = listen(session.id, { person, send, signIn, end });
       // who opened the session and when they left, with how many people are
       // here after; the projector page is a screen, not a person
       const opened = Date.now();

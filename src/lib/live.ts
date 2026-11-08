@@ -28,7 +28,13 @@ export type Board = {
 };
 
 /** One open stream. `person` is null for a signed-out viewer or projector. */
-type Listener = { person: string | null; send: (event: string) => void };
+type Listener = {
+  person: string | null;
+  send: (event: string) => void;
+  // the sign-in it was opened under (its token's digest), and how to end it
+  signIn?: string;
+  end?: () => void;
+};
 
 const listeners = new Map<number, Set<Listener>>();
 const waiting = new Map<number, ReturnType<typeof setTimeout>>();
@@ -134,6 +140,13 @@ export function listen(sessionId: number, listener: Listener): () => void {
     notePresence(sessionId, here(sessionId));
     publish(sessionId);
   };
+}
+
+/** A sign-in ended: its open streams end too, so they stop counting or standing for that account. */
+export function endStreamsOf(signIn: string): void {
+  for (const room of listeners.values()) {
+    for (const listener of [...room]) if (listener.signIn === signIn) listener.end?.();
+  }
 }
 
 /** Something in this session changed: tell every open page, soon. */
