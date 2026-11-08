@@ -182,5 +182,7 @@ export function endSignIn(token?: string): void {
 
 /** Keep sessions hosted before accounts existed attached to their lecturer. */
 export function claimSessions(browserId: string, accountId: string): void {
+  // an account's id copied into a browser cookie must not hand its sessions to someone else
+  if (db.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, browserId)).get()) return;
   db.update(sessions).set({ host: accountId }).where(eq(sessions.host, browserId)).run();
 }
