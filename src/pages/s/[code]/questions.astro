@@ -197,7 +197,7 @@ const room = {
           </p>
           <ol aria-label="Questions" class="questions">
             {list.map((q) => (
-              <Card q={q} hosting={hosting} />
+              <Card q={q} hosting={hosting} reportable={session.host !== null} />
             ))}
           </ol>
         </div>
@@ -206,6 +206,7 @@ const room = {
           <Card
             q={{ id: 0, body: "", createdAt: new Date(0), votes: 0, yours: false, voted: false, reported: false, reportedAt: null, reports: 0, state: "open" }}
             hosting={hosting}
+            reportable={session.host !== null}
           />
         </template>
         {!hosting && (

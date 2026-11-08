@@ -249,7 +249,7 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
             </p>
             <ol aria-label="Most wanted" class="questions">
               {wanted.map((q) => (
-                <Card q={q} hosting={hosting} />
+                <Card q={q} hosting={hosting} reportable={session.host !== null} />
               ))}
             </ol>
           </div>

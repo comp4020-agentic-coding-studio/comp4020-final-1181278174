@@ -75,6 +75,20 @@ async function watch(who: Visitor, path: string): Promise<Stream> {
 }
 
 describe("reports over plain HTTP", () => {
+  it("offers no report where a session has no host, and refuses one sent by hand", async () => {
+    // HAND starts with no host in a new database, as the checks' server has it
+    const body = `Nobody hosts this ${tag()}`;
+    const id = question(await ask(new Visitor(), "/s/HAND/questions", body), body)!.id;
+    const student = new Visitor();
+    for (const route of ["/s/HAND", "/s/HAND/questions"]) {
+      const page = await student.open(route);
+      if (page.doc.getElementById(`q-${id}`)) expect(reportFlag(page, id), route).toBeUndefined();
+    }
+    const refused = await student.post("/s/HAND/questions", reportData(id));
+    expect(refused.status).toBe(422);
+    expect(await refused.text()).toContain("This session has no host to report to.");
+  });
+
   it.each(["hall", "questions"] as const)("reports from the %s, once per account, with a count only for the host", async (from) => {
     const host = new Visitor();
     const hall = await startSession(host, `Reports ${tag()}`);

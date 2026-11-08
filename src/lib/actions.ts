@@ -64,6 +64,11 @@ export function report(session: Session, person: string, form: FormData, log: Lo
     log("refused", { action: "report", session: session.code, question: Number.isInteger(id) ? id : undefined, reason });
     return { ok: false, status: 404 };
   }
+  // a session with no host has no one to receive a report
+  if (session.host === null) {
+    log("refused", { action: "report", session: session.code, question: id, reason: "no-host" });
+    return { ok: false, status: 422 };
+  }
   const limited = accountRefusal(person, "report", log, session.code);
   if (limited) return limited;
   const { changes } = db.insert(reports)

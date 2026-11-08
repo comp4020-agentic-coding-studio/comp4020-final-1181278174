@@ -45,6 +45,7 @@ export function refusal(intent: string, status: number): string {
   if (status === 403) return intent === "hand" ? "The host teaches and has no hand." : "Only the host can do that.";
   if (status === 404) return intent === "unreport" ? "There's no report of yours to take back." : "That question isn't here any more.";
   if (status === 422 && intent === "unreport") return "A report can only be taken back within a minute.";
+  if (status === 422 && intent === "report") return "This session has no host to report to.";
   return "That didn't work. Reload the page and try again.";
 }
 
