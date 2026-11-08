@@ -161,3 +161,34 @@ describe("the two parts of a session", () => {
     expect(new URL(fromQuestions[0].getAttribute("href")!, questionsPage.url).pathname).toBe(hallPage.url.pathname);
   });
 });
+
+describe("the host", () => {
+  it("the host teaches: no hand on their hall, and not counted among those here", async () => {
+    const host = new Visitor();
+    const hallPage = await startSession(host, `Host ${tag()}`);
+    const path = hallPage.url.pathname;
+    const own = await host.open(path);
+    expect([...own.doc.querySelectorAll("button")].some((b) => /i'm lost/i.test(b.textContent ?? "")), "the host has a hand").toBe(false);
+
+    const hostStream = await host.listen(own);
+    open.push(hostStream);
+    await here(path);
+    await hostStream.until((board) => board.here === 1);
+    await settle();
+    expect(hostStream.last?.here, "the host was counted").toBe(1);
+  });
+
+  it("the host can mark one of the most wanted answered from the hall", async () => {
+    const host = new Visitor();
+    const hallPage = await startSession(host, `Answered ${tag()}`);
+    const body = `Answer me ${tag()}`;
+    await ask(new Visitor(), questionsPath(hallPage), body);
+    const page = await host.open(hallPage.url.pathname);
+    const card = questions(page, "Most wanted").find((q) => q.text.includes(body))!;
+    const answered = card.button(/^answered/i);
+    expect(answered, "no Answered button on the host's hall").toBeDefined();
+    const after = await host.submit(page, answered!.closest("form")!, answered);
+    expect(after.url.pathname).toBe(hallPage.url.pathname);
+    expect(questions(after, "Most wanted").some((q) => q.text.includes(body))).toBe(false);
+  });
+});

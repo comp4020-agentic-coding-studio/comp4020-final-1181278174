@@ -6,7 +6,7 @@ import SessionBand from "../../components/SessionBand.astro";
 import SessionTabs from "../../components/SessionTabs.astro";
 import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
-import { timelineMark, vote } from "../../lib/actions.ts";
+import { mark, timelineMark, vote } from "../../lib/actions.ts";
 import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
 import { HAND_MS } from "../../lib/hall.ts";
 import { people } from "../../lib/live.ts";
@@ -48,6 +48,11 @@ if (session && Astro.request.method === "POST") {
     const done = timelineMark(session, person, form, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#hall`, 303);
     Astro.response.status = done.status;
+  } else if (intent === "state") {
+    // the host's Answered and Hide, on the three most wanted
+    const done = mark(session, person, form, log);
+    if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
+    Astro.response.status = done.status;
   }
 }
 if (!session) Astro.response.status = 404;
@@ -59,9 +64,10 @@ const wanted = all.filter((q) => q.state === "open").slice(0, 3);
 const parts = session && hosting ? marksOf(session.id) : [];
 
 // The hall as this person is about to see it: everyone with the session open,
-// and this person, who will be once the page's stream opens. How long their own
-// hand has been up is put in their page, never in what the stream sends.
-const inRoom = session ? [...new Set([...people(session.id), person])] : [];
+// and this person, who will be once the page's stream opens, unless they are
+// the host, who teaches and is not counted. How long their own hand has been
+// up is put in their page, never in what the stream sends.
+const inRoom = session ? [...new Set([...people(session.id), ...(hosting ? [] : [person])])] : [];
 const mine = session ? handOf(session.id, person) : undefined;
 // and the last 15 minutes, for the small window's chart
 const room = {
@@ -83,24 +89,32 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
       <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
         <section class="card hall" id="hall" aria-labelledby="hall-count">
           {/* the hall is drawn here by src/scripts/hall.ts; the sentence under it says the same in words */}
-          <div class="hall-view" data-hall data-view="seat" aria-hidden="true" />
-          <p class="hint hall-caption">Seats and hands are placed at random on each screen.</p>
+          <div class="hall-view" data-hall data-view={hosting ? "front" : "seat"} aria-hidden="true" />
+          <div class="hall-meta">
+            <p class="hint hall-caption">Seats and hands are placed at random on each screen.</p>
+            {/* shown by the page's script once its stream is open */}
+            <p class="live" role="status" data-live-status hidden />
+          </div>
           <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
             {lostLabel(room.hands.length, room.here)}
           </p>
           <p class="hint">
             <Icon name="lock" size={14} /> Nobody, the host included, can see whose hands they are.
           </p>
-          <form method="post" class="hall-hand" data-hand>
-            <input type="hidden" name="intent" value="hand" />
-            <input type="hidden" name="up" value={mine === undefined ? "1" : "0"} />
-            <button class="button tomato lost-button" type="submit" aria-pressed={mine === undefined ? "false" : "true"} aria-describedby="hand-note">
-              <Icon name="hand" size={22} /> I'm lost
-            </button>
-            <p class="hint hand-note" id="hand-note" data-hand-note>
-              {handNote(until)}
-            </p>
-          </form>
+          {hosting ? (
+            <p class="hint host-note">You started this session, so you teach: you have no hand here, and you are not counted.</p>
+          ) : (
+            <form method="post" class="hall-hand" data-hand>
+              <input type="hidden" name="intent" value="hand" />
+              <input type="hidden" name="up" value={mine === undefined ? "1" : "0"} />
+              <button class="button tomato lost-button" type="submit" aria-pressed={mine === undefined ? "false" : "true"} aria-describedby="hand-note">
+                <Icon name="hand" size={22} /> I'm lost
+              </button>
+              <p class="hint hand-note" id="hand-note" data-hand-note aria-live="polite">
+                {handNote(until)}
+              </p>
+            </form>
+          )}
           {hosting && (
             <form method="post" class="hall-mark" data-plain>
               <input type="hidden" name="intent" value="timeline_mark" />
@@ -126,8 +140,6 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           <div class="bar">
             <h2 id="wanted-title">Most wanted</h2>
             <div class="bar-end">
-              {/* shown by the page's script once its stream is open */}
-              <p class="live" role="status" data-live-status hidden />
               <a class="count-label" href={`/s/${session.code}/questions`}>
                 All <span data-questions-n>{listed}</span> questions
               </a>
@@ -141,7 +153,7 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
             </p>
             <ol aria-label="Most wanted" class="questions">
               {wanted.map((q) => (
-                <Card q={q} hosting={false} />
+                <Card q={q} hosting={hosting} />
               ))}
             </ol>
           </div>

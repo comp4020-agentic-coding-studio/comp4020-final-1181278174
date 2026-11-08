@@ -3,7 +3,7 @@ import { db } from "./db.ts";
 import { popularOrder, voteCount } from "./order.ts";
 import { notePresence } from "./record.ts";
 import { handsUp } from "./room.ts";
-import { questions } from "./schema.ts";
+import { questions, sessions } from "./schema.ts";
 
 // Live updates: every open page holds one server-sent events stream
 // (src/pages/s/[code]/events.ts), and a write to a session tells its streams.
@@ -49,10 +49,22 @@ export function board(sessionId: number): Board {
   };
 }
 
-/** Everyone with the session open. Never sent anywhere: only how many. */
+// Who started each session: the host teaches, so they are not one of the
+// people "here" and have no hand. Read once per session; a host never changes.
+const hosts = new Map<number, string | null>();
+function hostOf(sessionId: number): string | null {
+  if (!hosts.has(sessionId)) {
+    const row = db.select({ host: sessions.host }).from(sessions).where(eq(sessions.id, sessionId)).get();
+    hosts.set(sessionId, row?.host ?? null);
+  }
+  return hosts.get(sessionId) ?? null;
+}
+
+/** Everyone with the session open, the host left out. Never sent anywhere: only how many. */
 export function people(sessionId: number): Set<string> {
+  const host = hostOf(sessionId);
   const found = new Set<string>();
-  for (const { person } of listeners.get(sessionId) ?? []) if (person) found.add(person);
+  for (const { person } of listeners.get(sessionId) ?? []) if (person && person !== host) found.add(person);
   return found;
 }
 
