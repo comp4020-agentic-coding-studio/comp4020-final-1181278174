@@ -439,10 +439,14 @@ second part.
 
 ### Two parts
 
-1. The hall, `/s/CODE`: a 3D lecture hall with a figure for everyone who has the
-   session open, an "I'm lost" button, "3 of 12 here are lost", and under it the
-   three open questions with the most "Me too", which can be voted on there.
-2. The questions, `/s/CODE/questions`: the board as it was.
+1. The hall, `/s/CODE`: a 3D lecture hall with a figure for each person here
+   (everyone with the session open, and anyone whose hand is still up; never the
+   host), an "I'm lost" button, "3 of 12 here say they're lost", and beside it
+   (under it on a narrow screen) the three open questions with the most "Me too",
+   which can be voted on there.
+2. The questions, `/s/CODE/questions`: the board as it was. After asking it says
+   "Question posted." with a link to the question and one back to the hall, and
+   the host sees the room's count above the list.
 
 The hall's record is at `/s/CODE/timeline`, the projector at `/s/CODE/present`.
 
@@ -450,22 +454,29 @@ The hall's record is at `/s/CODE/timeline`, the projector at `/s/CODE/present`.
 
 - One press, no words. A person has at most one hand up. It comes down when
   they press again, or by itself after 3 minutes, so the hall shows now.
-- Every count has its denominator: "3 of 12 here are lost".
-- Nobody can tell whose hand it is, the host included. Proposed 8 November,
+- Every count has its denominator and says what people said: "3 of 12 here say
+  they're lost". With no hand up it says "12 here. No hands up right now." and
+  "That doesn't mean everyone follows."
+- No one, the host included, is shown whose hand is up. Proposed 8 November,
   18:10, to be confirmed: the server sends how many hands are up and how long
   each has been up, never a seat or a person. Each screen places the figures
-  itself, with its own person at the back in the middle, so the whole room is
-  in front of them, and puts the other hands on figures it picks. The other
+  itself. A student's screen puts its own person at the back in the middle, so
+  the whole room is in front of them, and puts the other hands on figures it
+  picks; the host's screen and the projector look from the front. The other
   option, a fixed seat per person, lets anyone who sees a phone pressed learn
   which seat is that person.
-- The figures are all the same and have no faces. The room is in paper and ink
-  colours, and the only strong colour is a raised hand, in tomato. Your own
-  figure is blue, on your screen only.
+- The host teaches: they have no hand and are not counted, live or in the
+  timeline. A hand sent from the host's browser is refused.
+- A hand counts as here until it comes down, page open or not: a hand that left
+  with a locked phone and came back would show whose it was.
+- The figures are all the same and have no faces. The steps are the app's
+  yellow, a raised hand is tomato, and your own figure is blue, on your screen
+  only.
 - The projector shows the hall from the front, so the room sees itself.
-- A screen at the front of the 3D hall shows the question with the most
-  "Me too".
-- A hand sinks slowly as its 3 minutes run out. With reduced motion set,
-  nothing moves except what changed.
+- The 3D hall has no screen of its own: the questions sit beside it in words,
+  so the people fill the picture.
+- A hand stays up until it is put down or its 3 minutes end; the note under the
+  button says when. With reduced motion set, nothing moves except what changed.
 
 ### The record
 
@@ -474,27 +485,38 @@ The hall's record is at `/s/CODE/timeline`, the projector at `/s/CODE/present`.
   there the next day.
 - The host can add a mark with a short label when the lecture moves on, such as
   "Part 3: proofs". Marks show on the timeline.
-- The host can say when the recording started. Every point then also says how
-  far into the recording it is, so it can be found in Echo360. A link that
+- The host can say when the recording started. Every minute from then on also
+  says how far into the recording it is, so it can be found in Echo360. A link that
   starts an Echo360 recording at a given time is made by the video's owner in
   Echo360, so the app does not make one.
+- A hand sent with no page listening, as a page without script sends it, is
+  kept too.
+- The timeline shows the newest five sittings; a quiet spell longer than 20
+  minutes starts a new one.
 
 ### Floating windows
 
 Chrome and Edge on a computer can keep a small window above every other window
 (Document Picture-in-Picture). Three uses:
 
-- a student's: the count, the button and the last 15 minutes
-- the host's: the count, the last 15 minutes and the mark button
-- after class: the whole timeline beside the Echo360 recording
+- a student's: the count, the button, and a chart of the minutes since the
+  session started, at most the last 15
+- the host's: the count, the same chart, Going over it and the mark
+- after class: the newest sitting of the timeline beside the Echo360 recording,
+  following the page as it changes
 
-Where the browser cannot do it, the button is not shown.
+Where the browser cannot do it, the button is not shown. Next to it: "Keep this
+tab open; you can switch to your slides." Each window says it closes if the
+hall tab closes.
 
 ### Not building
 
 Showing Echo360 inside the app: its pages need an ANU login the marker does not
 have, Wattle refuses to be shown inside another site, and Safari blocks a login
-inside one. Also not now: a line of words on a hand, an export.
+inside one. Also not now: a line of words on a hand, an export, an "End
+lecture" button. Figures modelled in Blender were tried on 8 November and left
+out: at the size a phone draws them their detail can't be seen, and their style
+did not match the rest.
 
 ### Going over it
 
@@ -514,9 +536,9 @@ afterwards, with no claim that confusion was resolved or that it helped.
 
 ### Tests (`spec/`)
 
-- a hand needs no words: a form with only the intent raises it
+- a hand needs no words: the form sends `intent=hand` and `up=1`, nothing typed
 - a raised hand reaches another open page within a second
-- no page and no event ties a hand to a person or a seat
+- no page another person is sent and no event ties a hand to a person or a seat
 - two raises from one person at once make one hand
 - the person whose hand is up is told when it comes down by itself, 3 minutes
   on. The coming down itself is checked by hand: the checks in CI run the
@@ -528,6 +550,38 @@ afterwards, with no claim that confusion was resolved or that it helped.
 The 3D view, the floating windows and how the hall feels are checked by hand at
 both widths. That the record survives a restart is checked by hand after a
 deploy.
+
+### Changed on the evening of 8 November
+
+After the first version was live I had it reviewed, screen by screen, and
+changed these. Each is in the code and, where HTTP can see it, in `spec/`.
+
+- 19:47: the count says "say they're lost", not "are lost", because a raised
+  hand reports what someone said, and no hand up is not everyone following.
+- 19:47: a press that can't be confirmed asks the server what the hand is,
+  rather than guess.
+- 19:47: the host has no hand and is not counted, because they teach. From
+  20:19 a hand sent from the host's browser is refused: before that, the host
+  could put a hand up and make the timeline show a student lost.
+- 20:19: a raised hand counts as here until it comes down, because a hand that
+  left with a locked phone and came back would show whose it was.
+- 20:19: the pages say who is shown ("No one, the host included, is shown whose
+  hand is up"), not that nobody could work it out: whoever runs the server, a
+  very small room and someone looking at your screen are limits.
+- 20:19: a question that may have been saved keeps its draft and is never sent
+  again by itself.
+- 20:27: the 3D hall draws only the seats in use and caps its pixel density, so
+  a phone draws it and stops.
+- 20:31: two columns from 1100 px: the hall on the left, the questions and the
+  host's controls on the right.
+- 20:42: "Question posted." after asking, with the way back to the hall; the
+  host's questions page shows the room's count; the small window's chart starts
+  when the session did.
+- 20:56: the host's controls in their own card, "For the host"; after a mark
+  the hall says which part was marked and when.
+- 21:06: after a dropped connection a page fetches its list again before it
+  says "Live"; two tabs of one browser agree on its hand and votes.
+- 21:13: a hand sent with no page listening is kept in the record.
 
 ### Order of work
 
