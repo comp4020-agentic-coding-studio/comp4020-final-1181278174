@@ -17,6 +17,9 @@ export type Hall = { here: number; others: number[]; mine: number | null };
 
 type Board = { here: number; hands: number[] };
 
+/** The picture most recently sent, for whatever starts drawing after the first one. */
+export let lastHall: Hall | undefined;
+
 const line = document.querySelector<HTMLElement>("[data-lost][data-room]");
 if (line) watch(line);
 
@@ -62,7 +65,8 @@ function watch(line: HTMLElement): void {
       const said = handNote(until);
       if (note && note.textContent?.trim() !== said) note.textContent = said;
     }
-    document.dispatchEvent(new CustomEvent<Hall>("hands-up:hall", { detail: { here: Math.max(here, lost), others: rest, mine } }));
+    lastHall = { here: Math.max(here, lost), others: rest, mine };
+    document.dispatchEvent(new CustomEvent<Hall>("hands-up:hall", { detail: lastHall }));
   }
 
   document.addEventListener("hands-up:board", (event) => {
