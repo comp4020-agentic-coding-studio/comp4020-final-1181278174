@@ -14,7 +14,7 @@ import { goingOverAge } from "../../lib/going-over.ts";
 import { people } from "../../lib/live.ts";
 import { MAX_MARK, marksOf, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
-import { GOING_OVER_NOTE, handNote, lostLabel, SILENCE, SILENCE_SHORT } from "../../lib/words.ts";
+import { clock, GOING_OVER_NOTE, handNote, lostLabel, SILENCE, SILENCE_SHORT } from "../../lib/words.ts";
 
 // The hall, the first part of a session: "I'm lost", and how many of the
 // people here have pressed it. Under it, the three open questions the room
@@ -58,7 +58,8 @@ if (session && Astro.request.method === "POST") {
     goingOverProblem = "Only the host can say they are going over it.";
   } else if (intent === "timeline_mark") {
     const done = timelineMark(session, person, form, log);
-    if (done.ok) return Astro.redirect(`/s/${session.code}#host`, 303);
+    // back to the host's controls, saying which mark it was: the newest is last
+    if (done.ok) return Astro.redirect(`/s/${session.code}?marked=${marksOf(session.id).length}#host`, 303);
     Astro.response.status = done.status;
   } else if (intent === "state") {
     // the host's Answered and Hide, on the three most wanted
@@ -74,6 +75,8 @@ const all = session ? listQuestions(session, person, "popular") : [];
 const listed = all.filter((q) => q.state !== "hidden").length;
 const wanted = all.filter((q) => q.state === "open").slice(0, 3);
 const parts = session && hosting ? marksOf(session.id) : [];
+// the mark the host has just made, said back to them under the form
+const marked = Astro.request.method === "GET" ? parts[Number(Astro.url.searchParams.get("marked")) - 1] : undefined;
 
 // The hall as this person is about to see it: everyone with the session open,
 // and this person, who will be once the page's stream opens, unless they are
@@ -165,6 +168,12 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
                   Mark
                 </button>
               </div>
+              {marked && (
+                <p class="hint host-marked" role="status">
+                  Marked “{marked.label}” at {clock(marked.at)}.{" "}
+                  <a href={`/s/${session.code}/timeline`}>See it on the timeline</a>
+                </p>
+              )}
             </form>
           </section>
         )}

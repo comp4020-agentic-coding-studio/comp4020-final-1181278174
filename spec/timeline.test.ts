@@ -263,6 +263,28 @@ describe("the host's marks and the recording", () => {
     expect(busiest(page).some((line) => line.includes(part)), `busiest: ${busiest(page).join(" | ")}`).toBe(true);
   });
 
+  it("says back to the host the part just marked, with a way to the timeline, and to nobody else", async () => {
+    const host = new Visitor();
+    const path = (await startSession(host, `Said back ${tag()}`)).url.pathname;
+    const part = `Part 2: limits ${tag()}`;
+    const form = formWithButton(await host.open(path), /^mark$/i);
+    fill(form, part);
+    const after = await host.submit(await host.open(path), form);
+    expect(after.status).toBe(200);
+
+    const controls = after.doc.getElementById("host");
+    expect(controls, "the host's controls have no section of their own").not.toBeNull();
+    const said = [...controls!.querySelectorAll("p")].find((p) => p.textContent?.includes("Marked “"));
+    expect(said?.textContent).toContain(`Marked “${part}” at`);
+    const link = [...said!.querySelectorAll("a")].find((a) => a.textContent?.trim() === "See it on the timeline");
+    expect(new URL(link!.getAttribute("href")!, after.url).pathname).toBe(`${path}/timeline`);
+
+    // the same address opened by someone else: no controls, no mark said back
+    const student = await new Visitor().open(after.url);
+    expect(student.doc.getElementById("host")).toBeNull();
+    expect(student.doc.body.textContent).not.toContain(part);
+  });
+
   it("the host can say when the recording started, and each minute says how far into it", async () => {
     const host = new Visitor();
     const path = (await startSession(host, `Recording ${tag()}`)).url.pathname;
