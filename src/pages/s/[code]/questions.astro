@@ -50,7 +50,7 @@ if (session && Astro.request.method === "POST") {
     if (!problem) {
       const id = askQuestion(session, person, draft);
       log("question_asked", { session: session.code, question: id });
-      return Astro.redirect(here, 303);
+      return Astro.redirect(`${here}${sort === "recent" ? "&" : "?"}posted=${id}`, 303);
     }
     Astro.response.status = 422;
     const reason = draft.length === 0 ? "empty" : "too-long";
@@ -66,6 +66,10 @@ if (!session) Astro.response.status = 404;
 const list = session ? listQuestions(session, person, sort) : [];
 const hosting = session !== undefined && isHost(session, person);
 const listed = list.filter((q) => q.state !== "hidden").length;
+// Only confirm a question this person can still find in this session's list.
+const posted = Astro.request.method === "GET"
+  ? list.find((q) => q.id === Number(Astro.url.searchParams.get("posted")) && q.yours)
+  : undefined;
 ---
 
 {
@@ -94,6 +98,15 @@ const listed = list.filter((q) => q.state !== "hidden").length;
             </button>
           </div>
         </form>
+
+        <p class="question-posted" role="status" data-question-posted hidden={!posted}>
+          {posted && (
+            <>
+              Question posted. <a href={`#q-${posted.id}`}>View your question</a>{" "}
+              <a href={`/s/${session.code}#hall`}>Back to the hall</a>
+            </>
+          )}
+        </p>
 
         <div class="bar">
           <nav class="tabs" aria-label="Order">

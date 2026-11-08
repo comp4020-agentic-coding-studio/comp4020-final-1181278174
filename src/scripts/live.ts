@@ -293,6 +293,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     for (const [name, value] of new FormData(form)) fields.append(name, String(value));
     if (button instanceof HTMLButtonElement && button.name) fields.append(button.name, button.value);
     const asking = form.matches("[data-ask]");
+    const posted = asking ? main.querySelector<HTMLElement>("[data-question-posted]") : null;
     const text = form.querySelector("textarea");
     const submitted = text?.value;
     const action = form.action;
@@ -334,7 +335,13 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     const pressed = button?.getAttribute("aria-pressed");
     if (button && pressed) button.setAttribute("aria-pressed", pressed === "true" ? "false" : "true");
     form.setAttribute("aria-busy", "true");
-    if (asking) form.querySelector("[role='alert']")?.remove();
+    if (asking) {
+      form.querySelector("[role='alert']")?.remove();
+      if (posted) {
+        posted.hidden = true;
+        posted.replaceChildren();
+      }
+    }
     else main.querySelector("[data-send-problem]")?.remove();
     try {
       let reply;
@@ -353,7 +360,14 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         const reason = doc.querySelector("[data-ask] [role='alert']");
         if (reason) text.after(document.adoptNode(reason));
         else if (!ok) problem("Could not send the question. Check the list before trying again.");
-        else if (text.value === submitted) text.value = "";
+        else {
+          if (text.value === submitted) text.value = "";
+          const confirmation = doc.querySelector<HTMLElement>("[data-question-posted]");
+          if (posted && confirmation && !confirmation.hidden) {
+            posted.replaceChildren(...confirmation.childNodes);
+            posted.hidden = false;
+          }
+        }
       } else if (!ok) {
         problem("Could not save that change. Check the list before trying again.");
       }

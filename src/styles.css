@@ -1893,3 +1893,27 @@ body.float {
     flex-shrink: 0;
   }
 }
+
+/* "Question posted", after asking */
+.question-posted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 1em;
+  margin: 16px 0 0;
+  padding: 2px 14px;
+  border: var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  font-weight: 700;
+}
+
+.question-posted a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.question-posted[hidden] {
+  display: none;
+}

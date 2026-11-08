@@ -180,6 +180,18 @@ export class Visitor {
     return new Stream(res.status, res.body, abort);
   }
 
+  /** Send a plain POST without following its redirect, keeping this visitor's cookies. */
+  async post(path: string | URL, data: URLSearchParams): Promise<Response> {
+    return this.send(new URL(path, baseUrl), {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        origin: new URL(baseUrl).origin,
+      },
+      body: data,
+    });
+  }
+
   /** Submit a form as pressing `button` (else its first submit button) would. */
   async submit(from: Page, form: HTMLFormElement, button?: HTMLButtonElement): Promise<Page> {
     const data = new URLSearchParams();
@@ -197,14 +209,7 @@ export class Visitor {
       action.search = data.toString();
       return this.open(action);
     }
-    const res = await this.send(action, {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        origin: new URL(baseUrl).origin,
-      },
-      body: data,
-    });
+    const res = await this.post(action, data);
     const location = res.headers.get("location");
     if (res.status >= 300 && res.status < 400 && location) {
       return this.open(new URL(location, action));
