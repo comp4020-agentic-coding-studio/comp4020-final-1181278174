@@ -19,7 +19,7 @@ const minutes = (ms: number): string => `${Math.round(ms / 60_000)} minutes`;
       <ol>
         <li>Join with the code or the QR code on the screen at the front.</li>
         <li>Anyone can look. To take part, <a href="/signup">create an account</a>: a username and a password, nothing else.</li>
-        <li>Lost? Press <strong>I'm lost</strong>. No words. Your hand comes down by itself after {minutes(HAND_MS)}.</li>
+        <li>Lost? Press <strong>I'm lost</strong>. No words. Your hand comes down by itself after {minutes(HAND_MS)}. Hands can go up while the host's class is on.</li>
         <li>The hall and the projector show how many of the people counted here say they're lost, never whose hand it is. Counted are those signed in with the session open or with a hand still up; the host and the projector aren't.</li>
         <li>Ask a question without your name, or press <strong>Me too</strong> on one you share.</li>
         <li>A question that shouldn't be there? Open the small triangle and press <strong>Report</strong>. The host sees how many reported it.</li>
@@ -31,6 +31,7 @@ const minutes = (ms: number): string => `${Math.round(ms / 60_000)} minutes`;
       <h2 id="teaching">Teaching</h2>
       <ol>
         <li>Start a session and put its projector page up.</li>
+        <li>Press <strong>Start class</strong> when you begin: hands can go up until you press <strong>End class</strong>, which takes every hand down. Next week, start the same code again; the timeline shows when each class started and ended.</li>
         <li>You teach: you have no hand, and you aren't counted.</li>
         <li><strong>Going over it</strong> shows a message on the hall, the questions, the projector and the floating window, for {minutes(GOING_OVER_MS)}.</li>
         <li>Mark the parts of the lecture and when the recording started. The timeline keeps how many of those counted said they were lost, minute by minute, so you can find the moment in the recording.</li>

@@ -44,6 +44,10 @@ const busiest = (p: Page): string[] =>
 
 const text = (el: Element): string => el.textContent?.replace(/\s+/g, " ").trim() ?? "";
 
+/** A busiest-minute line for that minute with that count; it may go on to say the class started then. */
+const counted = (line: string, minute: string, count: string): boolean =>
+  line === `${minute} ${count} said they were lost` || line === `${minute} ${count} said they were lost Class started`;
+
 /** The chart's complete reading, including minutes when nobody raised a hand. */
 const everyMinute = (p: Page): Element[] => [...p.doc.querySelectorAll('details ol[aria-label="Every minute"] > li')];
 
@@ -88,7 +92,7 @@ describe("the timeline", () => {
     const page = await timeline(new Visitor(), path);
     expect(page.status).toBe(200);
     const minutes = [clock(pressed), clock(pressed + 2000)];
-    expect(busiest(page).some((line) => minutes.some((m) => line === `${m} 1 of 2 said they were lost`)), `busiest: ${busiest(page).join(" | ")}`).toBe(true);
+    expect(busiest(page).some((line) => minutes.some((m) => counted(line, m, "1 of 2"))), `busiest: ${busiest(page).join(" | ")}`).toBe(true);
   });
 
   it("keeps a hand sent with no page listening, as a page without script sends it", async () => {
@@ -98,7 +102,7 @@ describe("the timeline", () => {
 
     const page = await timeline(new Visitor(), path);
     const minutes = [clock(pressed), clock(pressed + 2000)];
-    expect(busiest(page).some((line) => minutes.some((m) => line === `${m} 1 of 1 said they were lost`)), `busiest: ${busiest(page).join(" | ")}`).toBe(true);
+    expect(busiest(page).some((line) => minutes.some((m) => counted(line, m, "1 of 1"))), `busiest: ${busiest(page).join(" | ")}`).toBe(true);
   });
 
   it("names a live stream that keeps its reader and their raised hand here after the hall closes", async () => {
@@ -179,7 +183,8 @@ describe("the timeline", () => {
 
   it("says when nobody has had the session open", async () => {
     const host = new Visitor();
-    const path = (await startSession(host, `Record ${tag()}`)).url.pathname;
+    // a class not yet started: starting one is itself kept on the timeline
+    const path = (await startSession(host, `Record ${tag()}`, { started: false })).url.pathname;
     const page = await timeline(new Visitor(), path);
     expect(page.doc.body.textContent).toMatch(/nobody has had this session open yet/i);
   });

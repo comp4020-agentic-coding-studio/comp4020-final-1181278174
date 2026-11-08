@@ -27,7 +27,7 @@ function page(status: number, url: URL, html: string): Page {
  * question is not in it. Then how long each hand that is up has been up, in ms,
  * and how long "Going over it" has been showing, or null when it is not.
  */
-export type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[]; goingOver: number | null };
+export type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[]; goingOver: number | null; classState: "before" | "on" | "over" };
 
 /** A question as it is sent to the pages that are open when it is asked: its words, and no person. */
 export type Added = { id: number; body: string; at: number };
@@ -383,11 +383,14 @@ export function questionsPath(session: Page): string {
 }
 
 /** Start a session from the home page; returns its page, at /s/<code>: the hall. */
-export async function startSession(host: Visitor, title: string): Promise<Page> {
+/** Start a session and, unless `started` is false, its class: most checks want hands that can go up. */
+export async function startSession(host: Visitor, title: string, options: { started?: boolean } = {}): Promise<Page> {
   const home = await host.open("/");
   const form = formWithButton(home, /start/i);
   fill(form, title);
-  return host.submit(home, form);
+  const hall = await host.submit(home, form);
+  if (options.started === false) return hall;
+  return host.submit(hall, formWithButton(hall, /^start class$/i));
 }
 
 export async function ask(who: Visitor, sessionPath: string, body: string): Promise<Page> {

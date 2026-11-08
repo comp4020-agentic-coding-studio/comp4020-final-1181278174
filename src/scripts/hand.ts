@@ -21,7 +21,7 @@ import { announceSessionChange, onSessionChange } from "./session-tabs.ts";
 // `problem`: why the last press didn't go through, if it didn't, for the floating window too
 export type Hall = { here: number; others: number[]; mine: number | null; recent: number[]; startedAt: number; problem: string };
 
-type Board = { here: number; hands: number[] };
+type Board = { here: number; hands: number[]; classState?: "before" | "on" | "over" };
 
 /** The picture most recently sent, for whatever starts drawing after the first one. */
 export let lastHall: Hall | undefined;
@@ -59,6 +59,9 @@ function watch(line: HTMLElement): void {
   let problem = "";
 
   const forms = (): HTMLFormElement[] => [...document.querySelectorAll<HTMLFormElement>("form[data-hand]")];
+  // Hands go up only while the class is on (src/lib/classes.ts). The page says
+  // where the class is; the stream says when that changes.
+  let lesson = forms()[0]?.dataset.class ?? "on";
 
   /** The other people's hands: every hand, less the one closest in age to this person's own. */
   function others(now: number): number[] {
@@ -89,9 +92,13 @@ function watch(line: HTMLElement): void {
       else form.removeAttribute("aria-busy");
       const field = form.querySelector<HTMLInputElement>("input[name='up']");
       if (field) field.value = mine === null ? "1" : "0";
-      form.querySelector("button")?.setAttribute("aria-pressed", String(mine !== null));
+      const button = form.querySelector<HTMLButtonElement>("button");
+      button?.setAttribute("aria-pressed", String(mine !== null));
+      // outside a class the button can't put a hand up; the note says why
+      if (button) button.disabled = lesson !== "on" && mine === null;
       const note = form.querySelector<HTMLElement>("[data-hand-note]");
-      const said = problem ? `${handNote(until)} ${problem}` : handNote(until);
+      const closed = lesson !== "on" && mine === null ? form.dataset[lesson === "before" ? "classBefore" : "classOver"] ?? "" : "";
+      const said = closed || (problem ? `${handNote(until)} ${problem}` : handNote(until));
       if (note && note.textContent?.trim() !== said) note.textContent = said;
     }
     const m = minute();
@@ -106,6 +113,7 @@ function watch(line: HTMLElement): void {
   document.addEventListener("hands-up:board", (event) => {
     heard++;
     const board = (event as CustomEvent<Board>).detail;
+    if (board.classState) lesson = board.classState;
     const now = performance.now();
     here = board.here;
     // keep the times already known for hands that are still up, so nothing jumps

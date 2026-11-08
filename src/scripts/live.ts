@@ -14,7 +14,7 @@ import { announceSessionChange, onSessionChange } from "./session-tabs.ts";
 // background, so the page doesn't reload, and takes the list from the answer.
 // Without this script the page works as plain forms.
 
-type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[]; goingOver: number | null };
+type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[]; goingOver: number | null; classState?: "before" | "on" | "over" };
 type Added = { id: number; body: string; at: number };
 
 const CARD = "li[id^='q-']";

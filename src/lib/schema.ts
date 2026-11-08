@@ -136,6 +136,27 @@ export const goingOvers = sqliteTable(
   (t) => [index("going_overs_by_session").on(t.sessionId, t.at)],
 );
 
+// Each class held under a session's code: the host starts it and ends it,
+// and hands can go up only while one is on. The same code can hold a class
+// every week, so a session keeps every class it has had.
+export const classes = sqliteTable(
+  "classes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => sessions.id),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+    // null while the class is on
+    endedAt: integer("ended_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    index("classes_by_session").on(t.sessionId, t.startedAt),
+    // at most one class on at a time, even when two presses arrive together
+    uniqueIndex("classes_one_on").on(t.sessionId).where(sql`ended_at IS NULL`),
+  ],
+);
+
 // People who have signed up: a username and a password, nothing else. No
 // email and no real name. The username is shown to nobody but its owner; to
 // everyone else the app shows what people did, never who did it.

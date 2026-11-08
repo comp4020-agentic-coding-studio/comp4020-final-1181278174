@@ -8,16 +8,17 @@ import SessionBand from "../../components/SessionBand.astro";
 import SessionTabs from "../../components/SessionTabs.astro";
 import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
-import { goingOver, mark, report, timelineMark, unreport, vote } from "../../lib/actions.ts";
+import { endClass, goingOver, mark, report, startClass, timelineMark, unreport, vote } from "../../lib/actions.ts";
 import { authLink } from "../../lib/auth.ts";
 import { accountRefusal } from "../../lib/abuse.ts";
 import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
+import { classState, latestClass } from "../../lib/classes.ts";
 import { HAND_MS } from "../../lib/hall.ts";
 import { goingOverAge } from "../../lib/going-over.ts";
 import { people } from "../../lib/live.ts";
 import { MAX_MARK, marksOf, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
-import { clock, GOING_OVER_NOTE, handNote, lostLabel, refusal, SILENCE, SILENCE_SHORT, tooFast } from "../../lib/words.ts";
+import { classNote, clock, GOING_OVER_NOTE, handNote, lostLabel, moment, refusal, SILENCE, SILENCE_SHORT, tooFast } from "../../lib/words.ts";
 
 // The hall, the first part of a session: "I'm lost", and how many of the
 // people here have pressed it. Under it, the three open questions the room
@@ -54,7 +55,13 @@ if (signedOutPost) {
   } else if (intent === "hand") {
     // "I'm lost": one press, no words. Like a vote, it sends up (1) or down (0).
     const up = form.get("up");
-    if (up === "1" || up === "0") {
+    const lesson = classState(session);
+    if (up === "1" && lesson !== "on") {
+      // a hand goes up only while the class is on; coming down is always fine
+      Astro.response.status = 422;
+      problem = classNote(lesson);
+      log("refused", { action: "hand", session: session.code, reason: lesson === "before" ? "class-not-started" : "class-ended" });
+    } else if (up === "1" || up === "0") {
       const limited = accountRefusal(person, "hand", log, session.code);
       if (limited) {
         Astro.response.status = limited.status;
@@ -70,6 +77,13 @@ if (signedOutPost) {
       problem = refusal("hand", 422);
       log("refused", { action: "hand", session: session.code, reason: "no-such-value" });
     }
+  } else if (intent === "class-start" || intent === "class-end") {
+    // the host starts or ends the class (src/lib/actions.ts)
+    const done = (intent === "class-start" ? startClass : endClass)(session, person, log);
+    if (done.ok) return Astro.redirect(`/s/${session.code}#host`, 303);
+    Astro.response.status = done.status;
+    if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
+    problem = done.status === 429 ? tooFast(done.retryAfter) : refusal(intent, done.status);
   } else if (intent === "vote" || intent === "report" || intent === "unreport") {
     const done = (intent === "vote" ? vote : intent === "report" ? report : unreport)(session, person, form, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
@@ -129,6 +143,9 @@ const room = {
   startedAt: session?.createdAt.getTime(),
 };
 const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - mine);
+// before the host starts the class, on, or over: hands go up only while it is on
+const classNow = session ? classState(session) : "on";
+const lastClass = session ? latestClass(session.id) : undefined;
 ---
 
 {
@@ -154,6 +171,21 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-host={hosting ? "" : undefined} data-room={JSON.stringify(room)}>
             {hosting && room.here === 0 ? "Waiting for students to join." : lostLabel(room.hands.length, room.here)}
           </p>
+          {hosting && session.code !== "HAND" && (
+            <form method="post" class="hall-class" data-plain>
+              <input type="hidden" name="intent" value={classNow === "on" ? "class-end" : "class-start"} />
+              <button class={classNow === "on" ? "button" : "button ink"} type="submit" aria-describedby="class-note">
+                {classNow === "on" ? "End class" : "Start class"}
+              </button>
+              <p class="hint" id="class-note">
+                {classNow === "on" && lastClass
+                  ? `Class started at ${moment(lastClass.startedAt)}. Hands can go up until you end it.`
+                  : classNow === "over" && lastClass?.endedAt
+                    ? `Class ended at ${moment(lastClass.endedAt)}. Every hand came down; start the class again to open them.`
+                    : "Hands open when you start the class."}
+              </p>
+            </form>
+          )}
           {hosting && (
             <a class="button ink hall-projector" href={`/s/${session.code}/present`}>Open projector page</a>
           )}
@@ -165,14 +197,14 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
             <Icon name="lock" size={14} /> No one, the host included, is shown whose hand is up.
           </p>
           {signedIn && !hosting && (
-            <form method="post" class="hall-hand" data-hand>
+            <form method="post" class="hall-hand" data-hand data-class={classNow} data-class-before={classNote("before")} data-class-over={classNote("over")}>
               <input type="hidden" name="intent" value="hand" />
               <input type="hidden" name="up" value={mine === undefined ? "1" : "0"} />
-              <button class="button tomato lost-button" type="submit" aria-pressed={mine === undefined ? "false" : "true"} aria-describedby="hand-note">
+              <button class="button tomato lost-button" type="submit" aria-pressed={mine === undefined ? "false" : "true"} aria-describedby="hand-note" disabled={classNow !== "on" && mine === undefined}>
                 <Icon name="hand" size={22} /> I'm lost
               </button>
               <p class="hint hand-note" id="hand-note" data-hand-note aria-live="polite">
-                {handNote(until)}
+                {classNow !== "on" && mine === undefined ? classNote(classNow) : handNote(until)}
               </p>
             </form>
           )}

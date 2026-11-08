@@ -33,6 +33,10 @@ export const SILENCE = "That doesn't mean everyone follows. Lost? Raise yours, n
 /** The same, short enough for the projector and the small window. */
 export const SILENCE_SHORT = "That doesn't mean everyone follows.";
 
+/** Why a hand can't go up now: the class hasn't started, or has ended. */
+export const classNote = (state: "before" | "on" | "over"): string =>
+  state === "before" ? "The class hasn't started. Hands open when the host starts it." : state === "over" ? "The class has ended." : "";
+
 /** The lecturer's acknowledgement, without claiming what it changed. */
 /** A refusal for going too fast, saying how long to wait. */
 export function tooFast(seconds = 60): string {
@@ -65,3 +69,7 @@ export const handNote = (until: Date | undefined): string =>
 /** A day as the room says it: "Monday 9 November". */
 export const day = (when: Date): string =>
   when.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", timeZone: "Australia/Sydney" });
+
+/** A time today ("14:02"), or on another day ("14:02 on Monday 2 November"). */
+export const moment = (when: Date, now = new Date()): string =>
+  day(when) === day(now) ? clock(when) : `${clock(when)} on ${day(when)}`;

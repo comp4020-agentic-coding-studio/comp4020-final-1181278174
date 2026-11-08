@@ -6,6 +6,7 @@ import SessionTabs from "../../../components/SessionTabs.astro";
 import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { findSession, isCode, isHost, listQuestions, normaliseCode } from "../../../lib/board.ts";
+import { classesOf } from "../../../lib/classes.ts";
 import { goingOversOf } from "../../../lib/going-over.ts";
 import { people } from "../../../lib/live.ts";
 import { recordingStart, timelineMark } from "../../../lib/actions.ts";
@@ -69,14 +70,21 @@ const hosting = signedIn && session !== undefined && isHost(session, person);
 const listed = session ? listQuestions(session, signedIn ? person : "", "popular").filter((q) => q.state !== "hidden").length : 0;
 const all = session ? marksOf(session.id) : [];
 const goingOvers = session ? goingOversOf(session.id) : [];
+// when each class started and ended, kept apart from the numbered parts
+const lessons = (session ? classesOf(session.id) : []).flatMap((c) => [
+  { at: c.startedAt, label: "Class started" },
+  ...(c.endedAt ? [{ at: c.endedAt, label: "Class ended" }] : []),
+]);
+const inMinute = (at: Date, m: Minute): boolean => at >= m.at && at.getTime() < m.at.getTime() + 60_000;
 const recordingAt = session?.recordingAt ?? null;
 /** What a minute says in words: when, how many lost, in which part, how far into the recording. */
 const about = (m: Minute): string[] => {
   const into = intoRecording(recordingAt, m.at);
   return [
     `${m.lost} of ${m.here} said they were lost`,
+    ...lessons.filter((event) => inMinute(event.at, m)).map((event) => event.label),
     partAt(all, m.at)?.label ?? "",
-    goingOvers.some((event) => event.at >= m.at && event.at.getTime() < m.at.getTime() + 60_000) ? "Going over it" : "",
+    goingOvers.some((event) => inMinute(event.at, m)) ? "Going over it" : "",
     into === undefined ? "" : `${into} min into the recording`,
   ].filter(Boolean);
 };
@@ -133,6 +141,7 @@ const busiest = (minutes: Minute[]): Minute[] =>
           const events = [
             ...all.filter((mk) => mk.at >= s.from && mk.at < s.to).map((mk, i) => ({ ...mk, kind: "part" as const, number: i + 1 })),
             ...goingOvers.filter((event) => event.at >= s.from && event.at < s.to).map((event) => ({ ...event, kind: "going" as const })),
+            ...lessons.filter((event) => event.at >= s.from && event.at < s.to).map((event) => ({ ...event, kind: "class" as const })),
           ].sort((a, b) => a.at.getTime() - b.at.getTime()).map((mk) => {
             const left = ((mk.at.getTime() - s.from.getTime()) / (s.to.getTime() - s.from.getTime())) * 100;
             // At phone width, nearby badges need separate rows. Labels live in the legend.
@@ -143,6 +152,7 @@ const busiest = (minutes: Minute[]): Minute[] =>
           });
           const marked = events.filter((event) => event.kind === "part");
           const going = events.filter((event) => event.kind === "going");
+          const lesson = events.filter((event) => event.kind === "class");
           const middle = Math.floor(s.minutes.length / 2);
           return (
             <section class="card sitting" aria-labelledby={id}>
@@ -183,6 +193,11 @@ const busiest = (minutes: Minute[]): Minute[] =>
                       <span class="going-symbol">◇</span>
                     </span>
                   ))}
+                  {lesson.map((event) => (
+                    <span class="chart-mark class-mark" title={event.label} style={`left: clamp(1rem, ${event.left}%, calc(100% - 1rem)); --lane: ${event.lane}`}>
+                      <span class="class-symbol">{event.label === "Class started" ? "▸" : "■"}</span>
+                    </span>
+                  ))}
                 </div>
                 <div class="chart-ticks">
                   <span class="chart-start">{clock(s.from)}</span>
@@ -200,6 +215,17 @@ const busiest = (minutes: Minute[]): Minute[] =>
                     </li>
                   ))}
                 </ol>
+              )}
+              {lesson.length > 0 && (
+                <ul class="chart-legend" aria-label="Class">
+                  {lesson.map((event) => (
+                    <li>
+                      <span class="mark-number class-symbol" aria-hidden="true">{event.label === "Class started" ? "▸" : "■"}</span>{" "}
+                      <time datetime={event.at.toISOString()}>{clock(event.at)}</time>{" "}
+                      <span>{event.label}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
               {going.length > 0 && (
                 <ul class="chart-legend" aria-label="Going over it">
@@ -317,6 +343,23 @@ const busiest = (minutes: Minute[]): Minute[] =>
     width: 0;
     border-left: 2px dashed var(--ink);
     background: none;
+  }
+
+  /* A class's start and end: a solid line, the bounds the hands were open between. */
+  .class-mark {
+    width: 0;
+    border-left: 2px solid var(--ink);
+    background: none;
+  }
+
+  .class-mark .class-symbol,
+  .mark-number.class-symbol {
+    border: var(--line);
+    border-radius: 4px;
+    background: var(--card);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1;
   }
 
   .going-mark .going-symbol,

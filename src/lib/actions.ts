@@ -1,9 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { isHost, type Session, setState, setVote, STATES, UNSHOWABLE } from "./board.ts";
+import { beginClass, finishClass } from "./classes.ts";
 import { db } from "./db.ts";
-import { nudge, publish } from "./live.ts";
+import { here, nudge, publish } from "./live.ts";
 import { recordGoingOver } from "./going-over.ts";
-import { addMark, atCanberra, MAX_MARK, setRecording } from "./record.ts";
+import { addMark, atCanberra, MAX_MARK, notePresence, setRecording } from "./record.ts";
 import { questions, reports } from "./schema.ts";
 import { tagFor } from "./tags.ts";
 import { accountRefusal, type Refused } from "./abuse.ts";
@@ -157,6 +158,49 @@ export function recordingStart(session: Session, person: string, form: FormData,
   if (limited) return limited;
   setRecording(session.id, at);
   log("recording_set", { session: session.code });
+  publish(session.id);
+  return { ok: true };
+}
+
+/**
+ * The host starts the class: hands can go up from now, and the recording is
+ * taken to start now (the host can change it on the timeline). Starting a
+ * class that is on changes nothing.
+ */
+export function startClass(session: Session, person: string, log: Log): { ok: true } | Refused {
+  if (!isHost(session, person)) {
+    log("refused", { action: "class_start", session: session.code, reason: "not-host" });
+    return { ok: false, status: 403 };
+  }
+  const limited = accountRefusal(person, "class", log, session.code);
+  if (limited) return limited;
+  const now = new Date();
+  if (session.code === "HAND" || !beginClass(session.id, now)) {
+    log("class_unchanged", { session: session.code });
+    return { ok: true };
+  }
+  setRecording(session.id, now);
+  log("class_started", { session: session.code });
+  publish(session.id);
+  return { ok: true };
+}
+
+/** The host ends the class: every hand comes down, and none can go up until a class starts again. */
+export function endClass(session: Session, person: string, log: Log): { ok: true } | Refused {
+  if (!isHost(session, person)) {
+    log("refused", { action: "class_end", session: session.code, reason: "not-host" });
+    return { ok: false, status: 403 };
+  }
+  const limited = accountRefusal(person, "class", log, session.code);
+  if (limited) return limited;
+  const lowered = session.code === "HAND" ? null : finishClass(session.id, new Date());
+  if (lowered === null) {
+    log("class_unchanged", { session: session.code });
+    return { ok: true };
+  }
+  // the hands that came down no longer count their people as here
+  notePresence(session.id, here(session.id));
+  log("class_ended", { session: session.code, lowered });
   publish(session.id);
   return { ok: true };
 }

@@ -1074,6 +1074,18 @@ textarea {
   font-size: 14px;
 }
 
+/* the host's Start class / End class, where a student has their hand button */
+.hall-class {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hall-class p {
+  margin: 0;
+}
+
 .present .stage-hall {
   flex: 1.3;
   min-height: 0;
@@ -1838,7 +1850,9 @@ body.float {
 }
 
 .hall-going-over button:disabled,
-.float-box button:disabled {
+.float-box button:disabled,
+/* outside a class: the note under it says why */
+.lost-button:disabled {
   opacity: 0.65;
   cursor: default;
   box-shadow: none;

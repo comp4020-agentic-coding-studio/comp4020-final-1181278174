@@ -256,6 +256,9 @@ describe("accounts over plain HTTP", () => {
     expect(publicQuestions.doc.querySelector('[aria-label="Questions"]')?.textContent).toMatch(/0\s*Me too|Me too\s*0/i);
     const stream = await watch(stranger, path);
     await stream.until((board) => board.here === 0 && board.hands.length === 0 && board.questions.length === 1);
+    // starting the class set the recording time; a stranger's write must not move it
+    const recordingAt = (await host.open(`${path}/timeline`)).doc.querySelector<HTMLInputElement>('input[name="at"]')?.value;
+    expect(recordingAt).toMatch(/^\d{2}:\d{2}$/);
 
     const writes: [string, Record<string, string>][] = [
       ["/", { title: `Cannot start ${tag()}` }],
@@ -263,6 +266,8 @@ describe("accounts over plain HTTP", () => {
       [path, { intent: "hand", up: "0" }],
       [path, { intent: "vote", question: String(id), want: "1" }],
       [path, { intent: "going-over" }],
+      [path, { intent: "class-end" }],
+      [path, { intent: "class-start" }],
       [path, { intent: "timeline_mark", label: "Must not be marked" }],
       [path, { intent: "state", question: String(id), to: "answered" }],
       [path, { intent: "state", question: String(id), to: "hidden" }],
@@ -281,11 +286,11 @@ describe("accounts over plain HTTP", () => {
     expect(question(after, body)?.button(/^hide/i)).toBeDefined();
     expect(words(await host.open(path))).not.toContain("Must not be marked");
     const timeline = await host.open(`${path}/timeline`);
-    expect(timeline.doc.querySelector<HTMLInputElement>('input[name="at"]')?.value).toBe("");
+    expect(timeline.doc.querySelector<HTMLInputElement>('input[name="at"]')?.value).toBe(recordingAt);
     expect(words(timeline)).not.toContain("Must not be marked");
     const fresh = await watch(stranger, path);
     const unchanged = await fresh.until(() => true);
-    expect(unchanged.board).toEqual({ here: 0, hands: [], questions: [[id, 0, "open"]], goingOver: null });
+    expect(unchanged.board).toEqual({ here: 0, hands: [], questions: [[id, 0, "open"]], goingOver: null, classState: "on" });
   });
 
   it("the same account has its host controls and sessions in a second browser", async () => {

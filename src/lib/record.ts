@@ -1,5 +1,6 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "./db.ts";
+import { classesOf } from "./classes.ts";
 import { goingOversOf } from "./going-over.ts";
 import { HAND_MS } from "./hall.ts";
 import { hands, marks, presence, sessions } from "./schema.ts";
@@ -52,10 +53,14 @@ export type Sitting = { from: Date; to: Date; minutes: Minute[]; most: number; m
 /** The newest sittings first, each minute by minute. `hereNow` is how many have it open at this moment. */
 export function sittings(sessionId: number, hereNow: number, now = Date.now()): Sitting[] {
   const rows = db.select().from(presence).where(eq(presence.sessionId, sessionId)).orderBy(asc(presence.minute)).all();
-  const goingOverMinutes = goingOversOf(sessionId).map((event) => Math.floor(event.at.getTime() / MINUTE));
-  if (rows.length === 0 && goingOverMinutes.length === 0) return [];
+  // the host's own moments: Going over it, and each class's start and end
+  const eventMinutes = [
+    ...goingOversOf(sessionId).map((event) => event.at),
+    ...classesOf(sessionId).flatMap((c) => (c.endedAt ? [c.startedAt, c.endedAt] : [c.startedAt])),
+  ].map((at) => Math.floor(at.getTime() / MINUTE)).sort((a, b) => a - b);
+  if (rows.length === 0 && eventMinutes.length === 0) return [];
   const nowMinute = Math.floor(now / MINUTE);
-  const end = hereNow > 0 ? nowMinute : Math.max(rows.at(-1)?.minute ?? 0, goingOverMinutes.at(-1) ?? 0);
+  const end = hereNow > 0 ? nowMinute : Math.max(rows.at(-1)?.minute ?? 0, eventMinutes.at(-1) ?? 0);
 
   // A missing row gets at most two minutes of grace. Longer gaps are quiet,
   // including after a restart that never got to write a final zero.
@@ -70,10 +75,11 @@ export function sittings(sessionId: number, hereNow: number, now = Date.now()): 
       for (let m = row.minute + 1; m <= carriedTo; m++) counted.push({ minute: m, here: row.last });
     }
   }
-  // A host can press Going over it without a student stream open. Keep that
-  // minute in the record too, without counting the host as someone here.
+  // A host can press Going over it, or start or end a class, without a student
+  // stream open. Keep that minute in the record too, without counting the host
+  // as someone here.
   const activity = new Map(counted.filter((c) => c.here > 0).map((c) => [c.minute, c]));
-  for (const minute of goingOverMinutes) {
+  for (const minute of eventMinutes) {
     if (!activity.has(minute)) activity.set(minute, { minute, here: 0 });
   }
   const occupied = [...activity.values()].sort((a, b) => a.minute - b.minute);
