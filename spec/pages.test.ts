@@ -43,6 +43,16 @@ describe("pages a real site has", () => {
     expect(links(await host.open(`${hall}/present`)), "the projector").toEqual([]);
   });
 
+  it("answers a wrong address with a 404 page that offers a code or the home page", async () => {
+    for (const path of ["/no-such-page", "/help/me", "/s"]) {
+      const page = await new Visitor({ signedOut: true }).open(path);
+      expect(page.status, path).toBe(404);
+      expect(text(page.doc.querySelector("h1")), path).toBe("Nothing here");
+      expect(page.doc.querySelector('form[action="/join"] input[name="code"]'), path).not.toBeNull();
+      expect(page.doc.querySelector('main a[href="/"]'), path).not.toBeNull();
+    }
+  });
+
   it("sets two cookies and no more, as Privacy and rules says", async () => {
     // a browser's whole first visit: the home page, signing up, a session's pages
     const origin = (await new Visitor({ signedOut: true }).open("/")).url.origin;

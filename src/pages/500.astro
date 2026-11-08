@@ -1,0 +1,15 @@
+---
+// Something broke on the server. This page reads nothing from the database,
+// which may be what broke, and doesn't show the error itself.
+import SlimHeader from "../components/SlimHeader.astro";
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Something went wrong · Hands Up" account={false}>
+  <SlimHeader />
+  <main id="main" class="wrap info">
+    <h1>Something went wrong</h1>
+    <p class="lead">It went wrong on our side, not yours. Try again in a moment.</p>
+    <a class="go" href="/">Go to the home page</a>
+  </main>
+</Layout>
