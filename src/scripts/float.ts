@@ -63,6 +63,8 @@ function tell(button: HTMLButtonElement, text: string): void {
 
 /** Copy the page's styles into the window, so it looks like the page. */
 function styled(win: Window): void {
+  // the window reads in the page's language, for a screen reader too
+  win.document.documentElement.lang = document.documentElement.lang;
   for (const sheet of document.styleSheets) {
     try {
       const style = win.document.createElement("style");
