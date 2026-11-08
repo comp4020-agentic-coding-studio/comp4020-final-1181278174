@@ -485,9 +485,11 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
 
   const status = document.querySelector<HTMLElement>("[data-live-status]");
   const say = (live: boolean): void => {
+    const current = live && !cardsStale;
+    // the floating windows say the same (src/scripts/float.ts)
+    document.dispatchEvent(new CustomEvent<boolean>("hands-up:live", { detail: current }));
     if (!status) return;
     status.hidden = false;
-    const current = live && !cardsStale;
     status.dataset.liveStatus = current ? "live" : "waiting";
     status.textContent = current ? "Live" : "Reconnecting";
   };

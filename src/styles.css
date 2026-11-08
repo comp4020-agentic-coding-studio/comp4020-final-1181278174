@@ -2357,3 +2357,23 @@ span.me-too:hover {
   font-size: 14px;
   font-weight: 600;
 }
+
+/* the floating windows say when their numbers may be old */
+
+.float-live {
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border: var(--line);
+  border-radius: 8px;
+  background: #ffe3dc;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.float-live[hidden] {
+  display: none;
+}
+
+.present-live {
+  align-self: flex-start;
+}

@@ -79,6 +79,27 @@ function styled(win: Window): void {
   win.document.body.classList.add("float");
 }
 
+// Whether the page's stream is connected, so a window opened later knows too.
+let live = true;
+document.addEventListener("hands-up:live", (event) => {
+  live = (event as CustomEvent<boolean>).detail;
+});
+
+/** A line that says when the window's numbers may be old: the page lost its connection. */
+function liveNote(win: Window, box: HTMLElement): void {
+  const note = win.document.createElement("p");
+  note.className = "float-live";
+  note.setAttribute("role", "status");
+  note.textContent = "Reconnecting: this may be out of date.";
+  note.hidden = live;
+  box.prepend(note);
+  const show = (event: Event): void => {
+    note.hidden = (event as CustomEvent<boolean>).detail;
+  };
+  document.addEventListener("hands-up:live", show);
+  win.addEventListener("pagehide", () => document.removeEventListener("hands-up:live", show), { once: true });
+}
+
 /** Keep the lifetime of the window and of a hand clear beside its controls. */
 function lifetimeNote(box: HTMLElement): void {
   const note = box.ownerDocument.createElement("p");
@@ -104,6 +125,7 @@ async function popHall(): Promise<void> {
     <p class="float-axis" aria-hidden="true"><span></span><span>now</span></p>
   `;
   doc.body.append(box);
+  liveNote(win, box);
   const count = box.querySelector<HTMLElement>(".float-count")!;
   const silence = box.querySelector<HTMLElement>(".float-silence")!;
   silence.textContent = SILENCE_SHORT;
@@ -247,11 +269,13 @@ async function popTimeline(): Promise<void> {
     if (copy) {
       for (const detail of copy.querySelectorAll("details")) detail.open = opened.has(detail.id);
     }
-    box.replaceChildren(...(copy ? [copy] : []));
+    const note = box.querySelector(".float-live");
+    box.replaceChildren(...(note ? [note] : []), ...(copy ? [copy] : []));
     lifetimeNote(box);
     if (focused) win.document.getElementById(focused)?.focus({ preventScroll: true });
   };
   win.document.body.append(box);
+  liveNote(win, box);
   draw();
   document.addEventListener("hands-up:timeline", draw);
   win.addEventListener("pagehide", () => document.removeEventListener("hands-up:timeline", draw), { once: true });

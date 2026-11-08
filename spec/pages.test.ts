@@ -39,7 +39,10 @@ describe("pages a real site has", () => {
     for (const path of [hall, `${hall}/questions`, `${hall}/timeline`]) {
       expect(links(await host.open(path)), path).toEqual(["/help", "/privacy", "/readme/"]);
     }
-    expect(links(await host.open(`${hall}/present`)), "the projector").toEqual([]);
+    const projector = await host.open(`${hall}/present`);
+    expect(links(projector), "the projector").toEqual([]);
+    // the projector says when it is live, and when its count may be old
+    expect(projector.doc.querySelector('[data-live-status][role="status"]'), "the projector's live status").not.toBeNull();
   });
 
   it("answers a wrong address with a 404 page that offers a code or the home page", async () => {

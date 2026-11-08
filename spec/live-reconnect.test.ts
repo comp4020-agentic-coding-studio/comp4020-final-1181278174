@@ -37,7 +37,8 @@ async function start(html = hall, script: "live" | "timeline" = "live"): Promise
   Source.opened = [];
   dom = new JSDOM(html, { url: "http://localhost/s/ABCD" });
   const window = dom.window;
-  for (const name of ["window", "document", "location", "HTMLElement", "DOMParser"] as const) {
+  // the page's own Event classes: a jsdom document only takes its own events
+  for (const name of ["window", "document", "location", "HTMLElement", "DOMParser", "Event", "CustomEvent"] as const) {
     vi.stubGlobal(name, name === "window" ? window : window[name]);
   }
   window.matchMedia = vi.fn().mockReturnValue({ matches: true });
@@ -78,6 +79,20 @@ it("after an error page waits 2 s, then twice as long each time up to a minute, 
   for (const ms of [2_000, 4_000, 8_000, 16_000, 32_000, 60_000, 60_000]) await failsThenReopensAfter(ms);
   Source.opened.at(-1)!.onopen!();
   await failsThenReopensAfter(2_000);
+});
+
+it("tells the page's other parts when the stream is down and when it is back", async () => {
+  // the floating windows listen for this, so a stale count never looks live
+  await start();
+  const heard: boolean[] = [];
+  dom!.window.document.addEventListener("hands-up:live", (event) => heard.push((event as CustomEvent<boolean>).detail));
+  const source = Source.opened[0];
+  source.onopen!();
+  expect(heard.at(-1), "once open").toBe(true);
+  source.readyState = Source.CONNECTING;
+  source.onerror!();
+  expect(heard.at(-1), "after an error").toBe(false);
+  // (opening again first fetches the page's cards, which needs a real browser: checked in Chrome)
 });
 
 it("waits the same way on the timeline", async () => {

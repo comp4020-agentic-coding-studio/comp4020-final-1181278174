@@ -46,6 +46,8 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
             </span>
             Hands Up
           </a>
+          {/* "Live", or "Reconnecting" when the count on this screen may be old (src/scripts/live.ts) */}
+          <p class="live present-live" role="status" data-live-status hidden />
           <div class="rail-step">
             <p>Scan, or go to</p>
             <p class="rail-where">{Astro.url.host}</p>

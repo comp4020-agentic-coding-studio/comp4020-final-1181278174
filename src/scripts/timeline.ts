@@ -99,6 +99,8 @@ function watch(main: HTMLElement, url: string, sittings: HTMLElement): void {
     status.hidden = false;
     status.dataset.liveStatus = live ? "live" : "waiting";
     status.textContent = live ? "Live" : "Reconnecting";
+    // the floating window says the same (src/scripts/float.ts)
+    document.dispatchEvent(new CustomEvent<boolean>("hands-up:live", { detail: live }));
   }
 
   let source: EventSource | undefined;
