@@ -98,7 +98,7 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
         <SessionTabs code={session.code} at="hall" count={listed} />
       </SessionBand>
 
-      <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
+      <main id="main" class="wrap hall-layout" data-live={`/s/${session.code}/events`}>
         <section class="card hall" id="hall" aria-labelledby="hall-count">
           {/* the hall is drawn here by src/scripts/hall.ts; the sentence under it says the same in words */}
           <div class="hall-view" data-hall data-view={hosting ? "front" : "seat"} aria-hidden="true" />

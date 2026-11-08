@@ -86,7 +86,7 @@ const busiest = (minutes: Minute[]): Minute[] =>
         <SessionTabs code={session.code} at="timeline" count={listed} />
       </SessionBand>
 
-      <main id="main" class="wrap timeline" data-live={`/s/${session.code}/events`}>
+      <main id="main" class:list={["wrap timeline", { "timeline-with-host": hosting }]} data-live={`/s/${session.code}/events`}>
         <section class="card timeline-head" aria-labelledby="timeline-title">
           <div class="timeline-title">
             <h2 id="timeline-title">When the room was lost</h2>
@@ -229,6 +229,7 @@ const busiest = (minutes: Minute[]): Minute[] =>
         })}
         </div>
 
+        <div class="timeline-tools">
         <p data-timeline-status role="status" hidden={!refused}>{refused}</p>
 
         {hosting && (
@@ -267,6 +268,8 @@ const busiest = (minutes: Minute[]): Minute[] =>
               </ul>
           </section>
         )}
+
+        </div>
 
         <p class="foot session-foot">
           <a href={`/s/${session.code}`}>Back to the hall</a> <span>Where anyone can raise a hand.</span>
