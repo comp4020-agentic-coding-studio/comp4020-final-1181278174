@@ -33,8 +33,32 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("button[data-p
       pip.window.focus();
       return;
     }
-    void (button.dataset.pop === "timeline" ? popTimeline() : popHall());
+    tell(button, "");
+    const opening = button.dataset.pop === "timeline" ? popTimeline() : popHall();
+    // A browser can refuse the window, for one already open in another tab or
+    // a press it doesn't trust: say so beside the button, rather than nothing.
+    opening.catch((error: unknown) => {
+      if (pip.window) throw error;
+      tell(button, "The floating window didn't open. Try again.");
+    });
   });
+}
+
+/** A line under the pop-out button saying the window didn't open, or none. */
+function tell(button: HTMLButtonElement, text: string): void {
+  const control = button.closest<HTMLElement>(".pop-control") ?? button.parentElement!;
+  let note = control.querySelector<HTMLElement>(".pop-problem");
+  if (!text) {
+    note?.remove();
+    return;
+  }
+  if (!note) {
+    note = document.createElement("p");
+    note.className = "alert pop-problem";
+    note.setAttribute("role", "alert");
+    control.append(note);
+  }
+  note.textContent = text;
 }
 
 /** Copy the page's styles into the window, so it looks like the page. */
