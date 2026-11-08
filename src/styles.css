@@ -2321,3 +2321,27 @@ span.me-too:hover {
   background: var(--sun);
   box-shadow: none;
 }
+
+/* the links at the foot of every page but the projector */
+
+.site-footer {
+  margin-top: 24px;
+  border-top: var(--line);
+}
+
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
+  padding-top: 4px;
+  padding-bottom: 12px;
+}
+
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}

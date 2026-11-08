@@ -37,7 +37,7 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
 
 {
   session ? (
-    <Layout title={`${session.title} · Hands Up`} account={false}>
+    <Layout title={`${session.title} · Hands Up`} account={false} footer={false}>
       <div class="present" data-live={`/s/${session.code}/events?screen`}>
         <aside class="rail" aria-label="How to join">
           <a class="brand" href="/">

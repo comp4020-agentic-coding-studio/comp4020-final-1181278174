@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Visitor } from "./visitor.ts";
+import { type Page, startSession, Visitor } from "./visitor.ts";
 
 // The pages a real site has: what it is for and how to use it, what it keeps,
 // where a wrong address lands, and the same links at the foot of every page.
@@ -26,6 +26,21 @@ describe("pages a real site has", () => {
     expect(main).toContain("Two cookies, both needed");
     expect(main).toContain("which lasts 30 days");
     expect(main).toContain("nothing on these pages is loaded from another site");
+  });
+
+  it("links How it works, Privacy and rules and About at the foot of every page but the projector", async () => {
+    const links = (page: Page): (string | null)[] =>
+      [...page.doc.querySelectorAll('footer nav[aria-label="About this app"] a')].map((a) => a.getAttribute("href"));
+    const visitor = new Visitor({ signedOut: true });
+    for (const path of ["/", "/signin", "/signup", "/readme/", "/help", "/privacy"]) {
+      expect(links(await visitor.open(path)), path).toEqual(["/help", "/privacy", "/readme/"]);
+    }
+    const host = new Visitor();
+    const hall = (await startSession(host, `Footer ${Date.now() % 100000}`)).url.pathname;
+    for (const path of [hall, `${hall}/questions`, `${hall}/timeline`]) {
+      expect(links(await host.open(path)), path).toEqual(["/help", "/privacy", "/readme/"]);
+    }
+    expect(links(await host.open(`${hall}/present`)), "the projector").toEqual([]);
   });
 
   it("sets two cookies and no more, as Privacy and rules says", async () => {
