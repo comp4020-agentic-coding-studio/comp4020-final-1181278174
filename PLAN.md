@@ -650,9 +650,13 @@ at the end of an explanation or when they ask for questions.
   most hands up, out of how many were here then, and the most wanted question.
   A hand that came down still counts in the minutes it was up.
 - The host's floating window shows the same card in place of the moving chart.
+- 05:55: once the class ends, until the next one starts, the host's hall shows
+  the class that ended: its minutes with the most hands up, each with its part
+  and how far into the recording it is, and how many questions are left open.
+  That is when a lecturer plans how to open the next lecture.
 - Not yet: a cue that comes once when many hands go up together and stay up,
-  a recap when the class ends, a view for a tutor helping in the room. Whether
-  the card helps is something to try with a lecturer and a few students.
+  a view for a tutor helping in the room. Whether these help is something to
+  try with a lecturer and a few students.
 
 ### A guide for a first visit, then less small text
 
