@@ -116,6 +116,17 @@ describe("the room's promises", () => {
     expect(timeline.doc.body.textContent).not.toContain(label);
   });
 
+  it("puts the timeline's floating window button in the page before anyone has joined, for its script to show later", async () => {
+    const host = new Visitor();
+    const path = (await startSession(host, `Early timeline ${tag()}`)).url.pathname;
+    const page = await host.open(`${path}/timeline`);
+    expect(page.status).toBe(200);
+    expect(page.doc.querySelectorAll(".sitting"), "someone is already in the record").toHaveLength(0);
+    const button = page.doc.querySelector("button[data-pop='timeline']");
+    expect(button, "no Pop out to show when the first sitting arrives").not.toBeNull();
+    expect(button!.hasAttribute("hidden")).toBe(true);
+  });
+
   it("keeps the floating window button and its wrapper hidden in the hall and timeline HTML", async () => {
     const host = new Visitor();
     const path = (await startSession(host, `Floating window ${tag()}`)).url.pathname;

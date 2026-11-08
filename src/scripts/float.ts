@@ -19,9 +19,15 @@ const pip = (window as unknown as { documentPictureInPicture?: Pip }).documentPi
 
 for (const button of document.querySelectorAll<HTMLButtonElement>("button[data-pop]")) {
   if (!pip) continue;
-  button.hidden = false;
   const control = button.closest<HTMLElement>(".pop-control");
-  if (control) control.hidden = false;
+  // the timeline's can pop out once there is a sitting, which can arrive while the page is open
+  const show = (): void => {
+    const ready = button.dataset.pop !== "timeline" || document.querySelector(".sitting") !== null;
+    button.hidden = !ready;
+    if (control) control.hidden = !ready;
+  };
+  show();
+  if (button.dataset.pop === "timeline") document.addEventListener("hands-up:timeline", show);
   button.addEventListener("click", () => {
     if (pip.window) {
       pip.window.focus();

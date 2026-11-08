@@ -91,14 +91,13 @@ const busiest = (minutes: Minute[]): Minute[] =>
           <div class="timeline-title">
             <h2 id="timeline-title">When the room was lost</h2>
             <span class="live" data-live-status hidden />
-            {shown.length > 0 && (
-              <div class="pop-control" hidden>
-                <button class="button pop" type="button" data-pop="timeline" aria-describedby="timeline-pop-note" hidden>
-                  <Icon name="pop" size={16} /> Pop out
-                </button>
-                <p class="hint pop-note" id="timeline-pop-note">Keep this tab open; you can switch to your slides.</p>
-              </div>
-            )}
+            {/* shown by src/scripts/float.ts once there is a sitting to pop out */}
+            <div class="pop-control" hidden>
+              <button class="button pop" type="button" data-pop="timeline" aria-describedby="timeline-pop-note" hidden>
+                <Icon name="pop" size={16} /> Pop out
+              </button>
+              <p class="hint pop-note" id="timeline-pop-note">Keep this tab open; you can switch to your slides.</p>
+            </div>
           </div>
           <p class="hint">
             <Icon name="lock" size={14} /> Hands up in each minute, out of everyone here then. No one is shown whose.
