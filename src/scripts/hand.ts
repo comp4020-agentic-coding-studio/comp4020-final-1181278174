@@ -266,10 +266,20 @@ function watch(line: HTMLElement): void {
       render();
       const since = heard;
       // The stream's hands are newer than a reply it overtook: take only this
-      // browser's own hand from that reply.
+      // browser's own hand from that reply, and keep the room's hands as the
+      // stream has them, without the optimistic one the server never had.
       const take = (room: OwnRoom): void => {
-        if (since === heard) takeRoom(room);
-        else mine = room.mine;
+        if (since === heard) {
+          takeRoom(room);
+          return;
+        }
+        const was = mine;
+        mine = room.mine;
+        if (was !== null && mine === null && !confirmedHands.includes(was)) {
+          const at = hands.indexOf(was);
+          if (at >= 0) hands.splice(at, 1);
+        }
+        if (mine !== null && !hands.some((h) => Math.abs(h - mine!) < 3000)) hands.push(mine);
       };
       try {
         const res = await fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } });
@@ -299,7 +309,8 @@ function watch(line: HTMLElement): void {
           hands = [...confirmedHands];
           mine = before === null ? null : hands.find((since) => Math.abs(since - before) < 3000) ?? null;
         } else {
-          takeRoom(real);
+          // the same rule as a reply: the stream may have overtaken this answer too
+          take(real);
         }
         // with no answer at all, the next press asks the server first
         if (real === undefined) doubt = true;
