@@ -64,8 +64,16 @@ async function send(form: HTMLFormElement): Promise<void> {
   render();
   try {
     const res = await fetch(form.action, { method: "POST", body, headers: { accept: "text/html" } });
-    if (!res.ok) throw new Error(String(res.status));
     const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+    if (!res.ok && res.status < 500) {
+      // a refusal the server explained: show its words
+      if (problem) {
+        problem.hidden = false;
+        problem.textContent = doc.querySelector('[role="alert"]')?.textContent?.trim() || "That didn't work. Reload the page and try again.";
+      }
+      return;
+    }
+    if (!res.ok) throw new Error(String(res.status));
     const age = doc.querySelector<HTMLElement>("[data-going-over]")?.dataset.goingOverAge;
     if (age === undefined) throw new Error("No acknowledgement in the response");
     // A newer stream state may already have arrived while this page was fetched.

@@ -79,6 +79,27 @@ function styled(win: Window): void {
   win.document.body.classList.add("float");
 }
 
+// Whether the page's stream is connected, so a window opened later knows too.
+let live = true;
+document.addEventListener("hands-up:live", (event) => {
+  live = (event as CustomEvent<boolean>).detail;
+});
+
+/** A line that says when the window's numbers may be old: the page lost its connection. */
+function liveNote(win: Window, box: HTMLElement): void {
+  const note = win.document.createElement("p");
+  note.className = "float-live";
+  note.setAttribute("role", "status");
+  note.textContent = "Reconnecting: this may be out of date.";
+  note.hidden = live;
+  box.prepend(note);
+  const show = (event: Event): void => {
+    note.hidden = (event as CustomEvent<boolean>).detail;
+  };
+  document.addEventListener("hands-up:live", show);
+  win.addEventListener("pagehide", () => document.removeEventListener("hands-up:live", show), { once: true });
+}
+
 /** Keep the lifetime of the window and of a hand clear beside its controls. */
 function lifetimeNote(box: HTMLElement): void {
   const note = box.ownerDocument.createElement("p");
@@ -104,6 +125,7 @@ async function popHall(): Promise<void> {
     <p class="float-axis" aria-hidden="true"><span></span><span>now</span></p>
   `;
   doc.body.append(box);
+  liveNote(win, box);
   const count = box.querySelector<HTMLElement>(".float-count")!;
   const silence = box.querySelector<HTMLElement>(".float-silence")!;
   silence.textContent = SILENCE_SHORT;
@@ -113,6 +135,7 @@ async function popHall(): Promise<void> {
   let press: HTMLButtonElement | undefined;
   let goingPress: HTMLButtonElement | undefined;
   let goingProblem: HTMLElement | undefined;
+  let pressProblem: HTMLElement | undefined;
   if (hosting) {
     goingPress = doc.createElement("button");
     goingPress.type = "button";
@@ -146,14 +169,22 @@ async function popHall(): Promise<void> {
       const label = input.value;
       const body = new URLSearchParams({ intent: "timeline_mark", label });
       fetch(location.pathname, { method: "POST", body, headers: { accept: "text/html" } })
-        .then((res) => {
+        .then(async (res) => {
+          if (!res.ok && res.status < 500) {
+            // a refusal the server explained: say why, and keep the words
+            const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+            const why = doc.querySelector("#mark-problem, [role='alert']")?.textContent?.trim();
+            said.textContent = why ? `Not marked. ${why}` : "Not marked.";
+            return;
+          }
           if (!res.ok) throw new Error(String(res.status));
           said.textContent = `Marked ${label.trim() || "a new part"} at ${new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
           // clear only the mark just sent, never a new draft typed meanwhile
           if (input.value === label) input.value = "";
         })
         .catch(() => {
-          said.textContent = "Not marked: no answer from the server.";
+          // no answer: the mark may still have been saved, so don't say it wasn't
+          said.textContent = "Couldn't confirm the mark. Check the timeline before marking again.";
         });
     });
   } else if (document.querySelector("form[data-hand]")) {
@@ -167,6 +198,12 @@ async function popHall(): Promise<void> {
     press.append(" I'm lost");
     press.addEventListener("click", () => document.querySelector<HTMLFormElement>("form[data-hand]")?.requestSubmit());
     box.append(press);
+    // why a press from here didn't go through, said here as on the page
+    pressProblem = doc.createElement("p");
+    pressProblem.className = "float-said";
+    pressProblem.setAttribute("role", "status");
+    pressProblem.hidden = true;
+    box.append(pressProblem);
   }
   lifetimeNote(box);
 
@@ -194,6 +231,10 @@ async function popHall(): Promise<void> {
       bar.classList.toggle("now", i === shown.length - 1);
     });
     press?.setAttribute("aria-pressed", String(hall.mine !== null));
+    if (pressProblem) {
+      pressProblem.hidden = !hall.problem;
+      pressProblem.textContent = hall.problem;
+    }
   };
   const listen = (event: Event): void => draw((event as CustomEvent<Hall>).detail);
   const goingLine = box.querySelector<HTMLElement>(".float-going-over")!;
@@ -239,11 +280,13 @@ async function popTimeline(): Promise<void> {
     if (copy) {
       for (const detail of copy.querySelectorAll("details")) detail.open = opened.has(detail.id);
     }
-    box.replaceChildren(...(copy ? [copy] : []));
+    const note = box.querySelector(".float-live");
+    box.replaceChildren(...(note ? [note] : []), ...(copy ? [copy] : []));
     lifetimeNote(box);
     if (focused) win.document.getElementById(focused)?.focus({ preventScroll: true });
   };
   win.document.body.append(box);
+  liveNote(win, box);
   draw();
   document.addEventListener("hands-up:timeline", draw);
   win.addEventListener("pagehide", () => document.removeEventListener("hands-up:timeline", draw), { once: true });

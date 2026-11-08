@@ -1,5 +1,5 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, ne } from "drizzle-orm";
 import { db } from "./db.ts";
 import { endStreamsOf } from "./live.ts";
 import { accounts, signIns } from "./schema.ts";
@@ -8,7 +8,8 @@ export const SIGNIN_COOKIE = "hands_up_signin";
 export const SIGNIN_SECONDS = 60 * 60 * 24 * 30;
 
 export type Account = { id: string; username: string };
-export type AccountResult = { ok: true; account: Account } | { ok: false; reason: string; message: string };
+// `verifiedHash`: the password a sign-in was checked against, so the token is only given while it is still the password
+export type AccountResult = { ok: true; account: Account; verifiedHash?: string } | { ok: false; reason: string; message: string };
 
 const USERNAME = /^[A-Za-z0-9._-]{3,30}$/;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
@@ -88,11 +89,8 @@ async function matches(password: string, stored?: string): Promise<boolean> {
   return Boolean(valid && equal);
 }
 
-/** Create a private account; the display spelling stays as its owner typed it. */
-export async function createAccount(username: string, password: string): Promise<AccountResult> {
-  if (!USERNAME.test(username)) {
-    return { ok: false, reason: "username-shape", message: "Use 3 to 30 letters, digits, dots, dashes or underscores." };
-  }
+/** What is wrong with a new password for this username, if anything: the same rules at sign-up and at a change. */
+function passwordProblem(username: string, password: string): { ok: false; reason: string; message: string } | undefined {
   if ([...password].length < 8) {
     return { ok: false, reason: "password-short", message: "Use at least 8 characters for your password." };
   }
@@ -102,6 +100,15 @@ export async function createAccount(username: string, password: string): Promise
   if (COMMON.has(password.toLowerCase()) || password.toLowerCase().includes(username.toLowerCase())) {
     return { ok: false, reason: "password-weak", message: "Choose a password that isn't a common one and doesn't contain your username." };
   }
+}
+
+/** Create a private account; the display spelling stays as its owner typed it. */
+export async function createAccount(username: string, password: string): Promise<AccountResult> {
+  if (!USERNAME.test(username)) {
+    return { ok: false, reason: "username-shape", message: "Use 3 to 30 letters, digits, dots, dashes or underscores." };
+  }
+  const problem = passwordProblem(username, password);
+  if (problem) return problem;
   const usernameKey = username.toLowerCase();
   const passwordHash = await hashPassword(password);
   const account = db.insert(accounts)
@@ -138,7 +145,7 @@ export async function verifyPassword(
     const account = db.select().from(accounts).where(eq(accounts.usernameKey, key)).get();
     // an over-long password is wrong without being hashed
     const valid = [...password].length <= MAX_PASSWORD && (await matches(password, account?.passwordHash));
-    if (valid && account) return { ok: true, account: { id: account.id, username: account.username } };
+    if (valid && account) return { ok: true, account: { id: account.id, username: account.username }, verifiedHash: account.passwordHash };
     for (const c of counted) c.entry.failed.push(Date.now());
     return { ok: false, reason: "wrong-credentials", message: "The username or password is wrong." };
   } finally {
@@ -151,17 +158,28 @@ export async function verifyPassword(
 
 export const tokenHash = (token: string): string => createHash("sha256").update(token).digest("hex");
 
-/** Only the browser receives this token. The database holds its digest. */
-export function startSignIn(accountId: string): string {
+/**
+ * Only the browser receives this token. The database holds its digest. A
+ * sign-in checked against `verifiedHash` gets no token if the password has
+ * changed since: a sign-in with the old password that was still being checked
+ * when the owner changed it doesn't get in.
+ */
+export function startSignIn(accountId: string, verifiedHash?: string): string | null {
   const token = randomBytes(32).toString("base64url");
   const now = new Date();
-  db.insert(signIns).values({
-    tokenHash: tokenHash(token),
-    accountId,
-    createdAt: now,
-    expiresAt: new Date(now.getTime() + SIGNIN_SECONDS * 1000),
-  }).run();
-  return token;
+  return db.transaction((tx) => {
+    if (verifiedHash !== undefined) {
+      const current = tx.select({ hash: accounts.passwordHash }).from(accounts).where(eq(accounts.id, accountId)).get()?.hash;
+      if (current !== verifiedHash) return null;
+    }
+    tx.insert(signIns).values({
+      tokenHash: tokenHash(token),
+      accountId,
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + SIGNIN_SECONDS * 1000),
+    }).run();
+    return token;
+  });
 }
 
 /** Expired and ended tokens confer no account, even when their cookie remains. */
@@ -172,6 +190,71 @@ export function findAccount(token?: string): Account | null {
     .innerJoin(accounts, eq(signIns.accountId, accounts.id))
     .where(and(eq(signIns.tokenHash, tokenHash(token)), isNull(signIns.endedAt), gt(signIns.expiresAt, new Date())))
     .get() ?? null;
+}
+
+/**
+ * End every sign-in of this account but the one with `keep` (this browser's
+ * token), and their open pages: someone who left a shared computer signed in,
+ * or whose password was seen, takes the account back. Returns how many ended.
+ */
+export function endOtherSignIns(accountId: string, keep?: string): number {
+  const ended = endOthersInDatabase(accountId, keep);
+  for (const hash of ended) endStreamsOf(hash);
+  return ended.length;
+}
+
+/** The database half of endOtherSignIns, to run inside a transaction; returns the digests it ended. */
+function endOthersInDatabase(accountId: string, keep?: string): string[] {
+  const others = db.select({ tokenHash: signIns.tokenHash }).from(signIns)
+    .where(and(eq(signIns.accountId, accountId), isNull(signIns.endedAt), ne(signIns.tokenHash, keep ? tokenHash(keep) : "")))
+    .all();
+  const now = new Date();
+  for (const { tokenHash: hash } of others) {
+    db.update(signIns).set({ endedAt: now }).where(and(eq(signIns.tokenHash, hash), isNull(signIns.endedAt))).run();
+  }
+  return others.map((row) => row.tokenHash);
+}
+
+/**
+ * Change the password, given the current one. The current one is checked like
+ * a sign-in, wrong-password limits included. Every other sign-in ends; this
+ * browser's (`keep`) stays.
+ */
+export async function changePassword(
+  account: Account,
+  current: string,
+  next: string,
+  from: { browser: string; network: string },
+  keep?: string,
+): Promise<{ ok: true; ended: number } | { ok: false; reason: string; message: string }> {
+  // the password as it was before checking: a change made meanwhile from
+  // another browser must not be overwritten, nor end this one's sign-in
+  const before = db.select({ hash: accounts.passwordHash }).from(accounts).where(eq(accounts.id, account.id)).get()?.hash;
+  const checked = await verifyPassword(account.username, current, from);
+  if (!checked.ok) {
+    return checked.reason === "sign-in-limit"
+      ? { ok: false, reason: "limit", message: checked.message }
+      : { ok: false, reason: "wrong-password", message: "Your current password is wrong." };
+  }
+  const problem = passwordProblem(account.username, next);
+  if (problem) return problem;
+  if (next === current) return { ok: false, reason: "password-same", message: "Choose a password that's different from your current one." };
+  const hash = await hashPassword(next);
+  // One step: the password is still the one checked, this browser is still
+  // signed in, and only then the new password and the other sign-ins' end.
+  const ended = db.transaction((tx) => {
+    const signedIn = keep ? tx.select({ ok: signIns.tokenHash }).from(signIns)
+      .where(and(eq(signIns.tokenHash, tokenHash(keep)), isNull(signIns.endedAt))).get() : undefined;
+    if (!before || (keep && !signedIn)) return undefined;
+    const { changes } = tx.update(accounts).set({ passwordHash: hash })
+      .where(and(eq(accounts.id, account.id), eq(accounts.passwordHash, before))).run();
+    return changes === 1 ? endOthersInDatabase(account.id, keep) : undefined;
+  });
+  if (!ended) {
+    return { ok: false, reason: "changed-meanwhile", message: "Your password was changed from another browser just now, so this change wasn't made." };
+  }
+  for (const digest of ended) endStreamsOf(digest);
+  return { ok: true, ended: ended.length };
 }
 
 /** End this browser's sign-in; other browsers stay signed in. */

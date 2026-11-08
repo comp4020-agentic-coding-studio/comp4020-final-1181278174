@@ -37,6 +37,18 @@ describe("another site", () => {
       expect(response.headers.get("content-security-policy"), path).toContain("frame-ancestors 'none'");
     }
   });
+
+  it("is told to come back over HTTPS only, and the pages may not use camera, microphone or location", async () => {
+    for (const path of ["/", "/s/HAND", "/s/HAND/questions", "/signin", "/no-such-page"]) {
+      const response = await fetch(new URL(path, baseUrl));
+      await response.text();
+      expect(response.headers.get("strict-transport-security"), path).toBe("max-age=31536000");
+      const policy = response.headers.get("permissions-policy") ?? "";
+      for (const feature of ["camera=()", "microphone=()", "geolocation=()", "payment=()", "usb=()"]) expect(policy, path).toContain(feature);
+      // the floating window is a picture-in-picture window of this site
+      expect(policy, path).not.toMatch(/picture-in-picture=\(\)/);
+    }
+  });
 });
 
 const tag = (): string => Math.random().toString(36).slice(2, 8);

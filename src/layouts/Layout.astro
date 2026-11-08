@@ -23,7 +23,8 @@ const { title, sunny = false, account = true, footer = true } = Astro.props;
   </head>
   <body class={sunny ? "sunny" : undefined}>
     <a class="skip" href="#main">Skip to content</a>
-    {account && <header class="account-header"><div class="wrap"><AccountMenu /></div></header>}
+    {/* not a header: the page's own header is its one banner; the menu is a labelled nav */}
+    {account && <div class="account-header"><div class="wrap"><AccountMenu /></div></div>}
     <slot />
     {
       footer && (

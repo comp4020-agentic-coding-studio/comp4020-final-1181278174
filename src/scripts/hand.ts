@@ -18,7 +18,8 @@ import { announceSessionChange, onSessionChange } from "./session-tabs.ts";
  * `recent` covers 16 calendar minutes, this one last, so the floating chart can
  * clip the outer bins to exactly 15 minutes. `startedAt` is epoch milliseconds.
  */
-export type Hall = { here: number; others: number[]; mine: number | null; recent: number[]; startedAt: number };
+// `problem`: why the last press didn't go through, if it didn't, for the floating window too
+export type Hall = { here: number; others: number[]; mine: number | null; recent: number[]; startedAt: number; problem: string };
 
 type Board = { here: number; hands: number[] };
 
@@ -96,7 +97,7 @@ function watch(line: HTMLElement): void {
     const m = minute();
     history.set(m, Math.max(history.get(m) ?? 0, lost));
     const recent = Array.from({ length: 16 }, (_, i) => history.get(m - 15 + i) ?? 0);
-    lastHall = { here: Math.max(here, lost), others: rest, mine, recent, startedAt };
+    lastHall = { here: Math.max(here, lost), others: rest, mine, recent, startedAt, problem };
     document.dispatchEvent(new CustomEvent<Hall>("hands-up:hall", { detail: lastHall }));
   }
 
@@ -243,8 +244,21 @@ function watch(line: HTMLElement): void {
       render();
       try {
         const res = await fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } });
+        const text = await res.text();
+        const real = readRoom(text);
+        if (!res.ok && res.status < 500) {
+          // A refusal the server explained (too many presses, signed out, the
+          // host's own hand): show its words, and the hand as the server has it.
+          const said = new DOMParser().parseFromString(text, "text/html").querySelector('[role="alert"]')?.textContent?.trim();
+          if (real) takeRoom(real);
+          else {
+            hands = [...confirmedHands];
+            mine = before;
+          }
+          problem = said || "That didn't work. Reload the page and try again.";
+          return;
+        }
         if (!res.ok) throw new Error(`the server answered ${res.status}`);
-        const real = readRoom(await res.text());
         if (!real) throw new Error("No hand state in the response");
         takeRoom(real);
         announceSessionChange();

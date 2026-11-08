@@ -85,6 +85,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     response.headers.set("content-security-policy", "frame-ancestors 'none'");
     response.headers.set("x-content-type-options", "nosniff");
     response.headers.set("referrer-policy", "same-origin");
+    // Fly sends plain HTTP on to HTTPS (fly.toml); this tells the browser to
+    // skip the plain request next time. Browsers ignore it on plain localhost.
+    response.headers.set("strict-transport-security", "max-age=31536000");
+    // nothing here uses the camera, microphone, location, payments or USB;
+    // the floating window is this site's own picture-in-picture window
+    response.headers.set("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
     line(response.status);
     return response;
   } catch (error) {

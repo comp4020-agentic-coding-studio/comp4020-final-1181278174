@@ -1,0 +1,86 @@
+---
+// Your account: change the password, or sign out everywhere but here. Drawn on
+// the design canvas first ("Your account · phone", 9 November). Signed out, it
+// sends you to sign in. Nothing typed into a password field comes back.
+import SlimHeader from "../components/SlimHeader.astro";
+import Layout from "../layouts/Layout.astro";
+import { changePassword, endOtherSignIns, SIGNIN_COOKIE } from "../lib/accounts.ts";
+import { authLink } from "../lib/auth.ts";
+
+const account = Astro.locals.account;
+if (!account) return Astro.redirect(authLink("signin", "/account"), 303);
+
+const log = Astro.locals.log;
+const token = Astro.cookies.get(SIGNIN_COOKIE)?.value;
+let problem = "";
+let elsewhereProblem = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const intent = form.get("intent");
+  if (intent === "password") {
+    // Fly's proxy gives the visitor's address in Fly-Client-IP; it counts wrong passwords, in memory only
+    let network = Astro.request.headers.get("fly-client-ip") ?? "";
+    if (!network) {
+      try {
+        network = Astro.clientAddress;
+      } catch {
+        network = "";
+      }
+    }
+    const done = await changePassword(account, String(form.get("current") ?? ""), String(form.get("password") ?? ""), { browser: Astro.locals.browser, network }, token);
+    if (done.ok) {
+      log("password_changed", { ended: done.ended });
+      return Astro.redirect(`/account?done=password&ended=${done.ended}`, 303);
+    }
+    Astro.response.status = 422;
+    problem = done.message;
+    log("refused", { action: "password", reason: done.reason });
+  } else if (intent === "elsewhere") {
+    const ended = endOtherSignIns(account.id, token);
+    log("signed_out_elsewhere", { ended });
+    return Astro.redirect(`/account?done=elsewhere&ended=${ended}`, 303);
+  } else {
+    Astro.response.status = 400;
+    elsewhereProblem = "That didn't work. Reload the page and try again.";
+    log("refused", { action: "account", reason: "no-such-intent" });
+  }
+}
+
+// what the last change did, said once, on the page it was sent to; never under a refusal
+const done = Astro.request.method === "GET" ? Astro.url.searchParams.get("done") : null;
+const ended = Number(Astro.url.searchParams.get("ended") ?? 0) || 0;
+const others = (n: number): string => (n === 1 ? "1 other browser" : `${n} other browsers`);
+const said =
+  done === "password" ? `Your password is changed. ${ended > 0 ? `${others(ended)} signed out.` : "No other browser was signed in."}`
+  : done === "elsewhere" ? (ended > 0 ? `Signed out of ${others(ended)}.` : "No other browser was signed in.")
+  : "";
+---
+
+<Layout title="Your account · Hands Up">
+  <SlimHeader />
+  <main id="main" class="wrap info">
+    <h1>Your account</h1>
+    <p class="lead">You're signed in as <strong>{account.username}</strong>. Only you see your username.</p>
+    {said && <p class="notice" role="status">{said}</p>}
+
+    <form method="post" action="/account" class="card panel" aria-labelledby="password-title">
+      <h2 id="password-title">Change your password</h2>
+      <input type="hidden" name="intent" value="password" />
+      <label for="current">Current password</label>
+      <input id="current" name="current" type="password" required autocomplete="current-password" />
+      <label for="password">New password</label>
+      <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" aria-describedby="password-help" />
+      <p class="hint" id="password-help">At least 8 characters. Every other browser where you're signed in is signed out; this one stays signed in.</p>
+      {problem && <p class="alert" role="alert">{problem}</p>}
+      <button class="button ink" type="submit">Change password</button>
+    </form>
+
+    <form method="post" action="/account" class="card panel" aria-labelledby="elsewhere-title">
+      <h2 id="elsewhere-title">Signed in somewhere else?</h2>
+      <input type="hidden" name="intent" value="elsewhere" />
+      <p>Left yourself signed in on a shared computer? Sign out everywhere but here. Their open pages stop counting you at once.</p>
+      {elsewhereProblem && <p class="alert" role="alert">{elsewhereProblem}</p>}
+      <button class="button" type="submit">Sign out everywhere else</button>
+    </form>
+  </main>
+</Layout>

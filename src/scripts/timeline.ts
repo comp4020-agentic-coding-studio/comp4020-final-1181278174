@@ -99,27 +99,40 @@ function watch(main: HTMLElement, url: string, sittings: HTMLElement): void {
     status.hidden = false;
     status.dataset.liveStatus = live ? "live" : "waiting";
     status.textContent = live ? "Live" : "Reconnecting";
+    // the floating window says the same (src/scripts/float.ts)
+    document.dispatchEvent(new CustomEvent<boolean>("hands-up:live", { detail: live }));
   }
 
   let source: EventSource | undefined;
   let minuteTimer: ReturnType<typeof setTimeout> | undefined;
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   let stopped = true;
+  // error pages in a row, for how long to wait before the next try
+  let failures = 0;
   function connect(): void {
-    source = new EventSource(url);
-    source.onopen = () => {
+    reconnectTimer = undefined;
+    const current = new EventSource(url);
+    source = current;
+    current.onopen = () => {
+      failures = 0;
       connected = true;
       say(true);
     };
-    source.onmessage = (event) => {
+    current.onmessage = (event) => {
       const board = JSON.parse(event.data) as { questions: unknown[] };
       for (const count of document.querySelectorAll<HTMLElement>("[data-questions-n]")) count.textContent = String(board.questions.length);
       void refresh();
     };
-    source.onerror = () => {
+    current.onerror = () => {
       connected = false;
       say(false);
-      if (source?.readyState === EventSource.CLOSED && !stopped) reconnectTimer = setTimeout(connect, 2000);
+      // As on the hall (src/scripts/live.ts): the browser retries a dropped
+      // connection itself; after an error page, wait 2 seconds, then twice as
+      // long after each failure, up to a minute.
+      if (current.readyState === EventSource.CLOSED && !stopped && reconnectTimer === undefined) {
+        reconnectTimer = setTimeout(connect, Math.min(2000 * 2 ** failures, 60_000));
+        failures += 1;
+      }
     };
   }
 
@@ -142,6 +155,7 @@ function watch(main: HTMLElement, url: string, sittings: HTMLElement): void {
     source?.close();
     clearTimeout(minuteTimer);
     clearTimeout(reconnectTimer);
+    reconnectTimer = undefined;
   });
   window.addEventListener("pageshow", start);
   document.addEventListener("visibilitychange", () => {
@@ -149,3 +163,6 @@ function watch(main: HTMLElement, url: string, sittings: HTMLElement): void {
   });
   start();
 }
+
+// a module, so a check can load this script on its own (spec/live-reconnect.test.ts)
+export {};

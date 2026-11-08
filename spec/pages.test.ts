@@ -11,9 +11,9 @@ describe("pages a real site has", () => {
     expect(page.status).toBe(200);
     expect(text(page.doc.querySelector("h1"))).toBe("How it works");
     const main = text(page.doc.querySelector("main"));
-    for (const part of ["In the room", "Teaching", "What no one is shown"]) expect(main).toContain(part);
+    for (const part of ["In the room", "Teaching", "What the app shows"]) expect(main).toContain(part);
     expect(main).toContain("Your hand comes down by itself after 3 minutes.");
-    expect(main).toContain("Who raised a hand, who asked, who pressed Me too, who reported.");
+    expect(main).toContain("The app shows no one else which account raised a hand, asked, pressed Me too or reported");
   });
 
   it("says what is kept, who sees what, and the rules", async () => {
@@ -21,10 +21,9 @@ describe("pages a real site has", () => {
     expect(page.status).toBe(200);
     expect(text(page.doc.querySelector("h1"))).toBe("Privacy and rules");
     const headings = [...page.doc.querySelectorAll("main h2")].map((h) => text(h));
-    expect(headings).toEqual(["What is kept", "Who sees what", "Cookies and other sites", "How long", "Rules"]);
+    expect(headings).toEqual(["What is kept", "Who sees what", "Cookies and other sites", "Where it is", "How long", "Rules"]);
     const main = text(page.doc.querySelector("main"));
-    expect(main).toContain("Two cookies, both needed");
-    expect(main).toContain("which lasts 30 days");
+    expect(main).toContain("One cookie tells browsers apart and lasts a year. Signing in adds one that lasts 30 days or until you sign out.");
     expect(main).toContain("nothing on these pages is loaded from another site");
   });
 
@@ -40,7 +39,10 @@ describe("pages a real site has", () => {
     for (const path of [hall, `${hall}/questions`, `${hall}/timeline`]) {
       expect(links(await host.open(path)), path).toEqual(["/help", "/privacy", "/readme/"]);
     }
-    expect(links(await host.open(`${hall}/present`)), "the projector").toEqual([]);
+    const projector = await host.open(`${hall}/present`);
+    expect(links(projector), "the projector").toEqual([]);
+    // the projector says when it is live, and when its count may be old
+    expect(projector.doc.querySelector('[data-live-status][role="status"]'), "the projector's live status").not.toBeNull();
   });
 
   it("answers a wrong address with a 404 page that offers a code or the home page", async () => {
@@ -58,6 +60,17 @@ describe("pages a real site has", () => {
     const described = page.doc.querySelector("#password")?.getAttribute("aria-describedby") ?? "";
     const notes = described.split(/\s+/).map((id) => text(page.doc.getElementById(id))).join(" ");
     expect(notes).toContain("a forgotten password can't be recovered");
+  });
+
+  it("has one banner at the top of a page, so a screen reader hears one", async () => {
+    const host = new Visitor();
+    const hall = (await startSession(host, `Banner ${Date.now() % 100000}`)).url.pathname;
+    for (const path of ["/", "/signin", "/help", "/privacy", "/account", "/no-such-page", hall, `${hall}/questions`, `${hall}/timeline`]) {
+      const page = await host.open(path);
+      // a header outside main, article, aside, nav and section is a banner
+      const banners = [...page.doc.querySelectorAll("header")].filter((h) => !h.parentElement?.closest("main, article, aside, nav, section"));
+      expect(banners.length, path).toBeLessThanOrEqual(1);
+    }
   });
 
   it("sets two cookies and no more, as Privacy and rules says", async () => {

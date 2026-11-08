@@ -20,9 +20,10 @@ const minutes = (ms: number): string => `${Math.round(ms / 60_000)} minutes`;
         <li>Join with the code or the QR code on the screen at the front.</li>
         <li>Anyone can look. To take part, <a href="/signup">create an account</a>: a username and a password, nothing else.</li>
         <li>Lost? Press <strong>I'm lost</strong>. No words. Your hand comes down by itself after {minutes(HAND_MS)}.</li>
-        <li>Every screen shows how many of the people here say they're lost, never whose hand it is.</li>
+        <li>The hall and the projector show how many of the people counted here say they're lost, never whose hand it is. Counted are those signed in with the session open or with a hand still up; the host and the projector aren't.</li>
         <li>Ask a question without your name, or press <strong>Me too</strong> on one you share.</li>
-        <li>A question that shouldn't be there? The small triangle tells the host.</li>
+        <li>A question that shouldn't be there? Open the small triangle and press <strong>Report</strong>. The host sees how many reported it.</li>
+        <li>Pages change by themselves as the room does. Without JavaScript, reload to see changes.</li>
       </ol>
     </section>
 
@@ -31,16 +32,16 @@ const minutes = (ms: number): string => `${Math.round(ms / 60_000)} minutes`;
       <ol>
         <li>Start a session and put its projector page up.</li>
         <li>You teach: you have no hand, and you aren't counted.</li>
-        <li><strong>Going over it</strong> tells every screen you're explaining again, for {minutes(GOING_OVER_MS)}.</li>
-        <li>Mark the parts of the lecture and when the recording started. The timeline keeps how many were lost in each minute, so you can find the moment in the recording.</li>
-        <li><strong>Pop out</strong> keeps the count in a small window over your slides, in browsers that can open one.</li>
+        <li><strong>Going over it</strong> shows a message on the hall, the questions, the projector and the floating window, for {minutes(GOING_OVER_MS)}.</li>
+        <li>Mark the parts of the lecture and when the recording started. The timeline keeps how many of those counted said they were lost, minute by minute, so you can find the moment in the recording.</li>
+        <li><strong>Pop out</strong> keeps the count in a small window over your slides, in browsers that can open one. Keep the hall tab open: closing it closes the window.</li>
         <li>Hide a question, or mark it answered. You see how many reported it, not who.</li>
       </ol>
     </section>
 
-    <section class="card panel info-sun" aria-labelledby="not-shown">
-      <h2 id="not-shown">What no one is shown</h2>
-      <p>Who raised a hand, who asked, who pressed Me too, who reported. Not the host, not other students.</p>
+    <section class="card panel info-sun" aria-labelledby="shown">
+      <h2 id="shown">What the app shows</h2>
+      <p>The app shows no one else which account raised a hand, asked, pressed Me too or reported: not the host, not other students. In a small room, a count can still show whose hand is up.</p>
       <a class="go" href="/privacy">What is kept, and who can see it</a>
     </section>
   </main>
