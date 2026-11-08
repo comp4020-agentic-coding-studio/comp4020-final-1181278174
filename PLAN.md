@@ -582,6 +582,38 @@ changed these. Each is in the code and, where HTTP can see it, in `spec/`.
   says "Live"; two tabs of one browser agree on its hand and votes.
 - 21:13: a hand sent with no page listening is kept in the record.
 
+### Sign-in, with who asked sealed for an auditor
+
+Decided 9 November, 00:00. Privacy and security go together. Without sign-in a
+lecturer's controls live in one browser, which makes the app hard for a
+lecturer to use, and nothing stops one person with several browsers raising
+several hands. The app keeps who did what from the lecturer and from other
+students, but a question that says something dangerous must be traceable to
+the account that asked it, by someone allowed to, for a reason.
+
+- Who can do what, as separate permissions rather than a ladder:
+  - a student, signed in: raise a hand (one per account), ask, Me too, report
+  - a host: the controls of the sessions they started, from any browser they
+    sign in on
+  - the auditor: holds the private key, off the server; opens the sealed author
+    of one reported question at a time, giving a reason, and every opening is
+    recorded (`scripts/reveal.ts`)
+  - whoever runs the server: can still work out the tags and read the logs, a
+    limit the README states
+- Sign-in is a username and a password: no email and no real name. Tonight a
+  report reaches an account, not a verified person; checking an ANU email is
+  the next step.
+- Write-only: a question keeps a tag for its asker (an HMAC with a server
+  secret), enough for "Yours", and its author sealed to the auditor's public key
+  (`src/lib/escrow.ts`). The app can write the sealed author and cannot read it.
+- Looking stays open: anyone can read the hall, the questions, the timeline and
+  the projector without signing in. "Here" counts signed-in people.
+- What it costs: a marker makes an account in each browser; a forgotten
+  password can't be recovered, only a new account made; the server's operator
+  is still a limit.
+- Not tonight: checking ANU emails, splitting the key between two people,
+  password recovery, a page for the auditor.
+
 ### Order of work
 
 1. this plan
