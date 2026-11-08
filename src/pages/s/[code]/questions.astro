@@ -21,7 +21,7 @@ import {
   normaliseCode,
   type Sort,
 } from "../../../lib/board.ts";
-import { howMany, lostLabel, SILENCE_SHORT } from "../../../lib/words.ts";
+import { howMany, lostLabel, refusal, SILENCE_SHORT } from "../../../lib/words.ts";
 import { goingOverAge } from "../../../lib/going-over.ts";
 import { people } from "../../../lib/live.ts";
 import { handsUp } from "../../../lib/room.ts";
@@ -46,6 +46,8 @@ const log = Astro.locals.log;
 // A refused question comes back with the text kept and the reason.
 let draft = "";
 let problem: string | undefined;
+// a refused press on a card comes back saying why
+let refused = "";
 const signedOutPost = session && Astro.request.method === "POST" && !signedIn;
 if (signedOutPost) {
   Astro.response.status = 401;
@@ -69,8 +71,10 @@ if (signedOutPost) {
     const done = action(session, person, form, log);
     if (done.ok) return Astro.redirect(`${here}#q-${done.question}`, 303);
     Astro.response.status = done.status;
+    refused = refusal(intent, done.status);
   } else {
     Astro.response.status = 400;
+    refused = refusal("", 400);
     log("refused", { session: session.code, reason: "no-such-intent" });
   }
 }
@@ -100,6 +104,11 @@ const room = {
       </SessionBand>
 
       <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
+        {refused && (
+          <p class="alert" role="alert">
+            {refused}
+          </p>
+        )}
         {signedIn ? (
           <form method="post" class="card ask" data-ask>
             <input type="hidden" name="intent" value="ask" />

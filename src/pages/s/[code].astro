@@ -15,7 +15,7 @@ import { goingOverAge } from "../../lib/going-over.ts";
 import { people } from "../../lib/live.ts";
 import { MAX_MARK, marksOf, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
-import { clock, GOING_OVER_NOTE, handNote, lostLabel, SILENCE, SILENCE_SHORT } from "../../lib/words.ts";
+import { clock, GOING_OVER_NOTE, handNote, lostLabel, refusal, SILENCE, SILENCE_SHORT } from "../../lib/words.ts";
 
 // The hall, the first part of a session: "I'm lost", and how many of the
 // people here have pressed it. Under it, the three open questions the room
@@ -32,6 +32,10 @@ const signedIn = Astro.locals.account !== null;
 const returnTo = Astro.url.pathname + Astro.url.search;
 const log = Astro.locals.log;
 let goingOverProblem = "";
+// a refused press comes back saying why; a refused mark keeps its words
+let problem = "";
+let markValue = "";
+let markProblem = "";
 const signedOutPost = session && Astro.request.method === "POST" && !signedIn;
 
 if (signedOutPost) {
@@ -43,6 +47,7 @@ if (signedOutPost) {
   if (intent === "hand" && isHost(session, person)) {
     // the host teaches and has no hand: a press sent by hand is refused, so no host hand reaches a count or the record
     Astro.response.status = 403;
+    problem = refusal("hand", 403);
     log("refused", { action: "hand", session: session.code, reason: "host" });
   } else if (intent === "hand") {
     // "I'm lost": one press, no words. Like a vote, it sends up (1) or down (0).
@@ -53,11 +58,13 @@ if (signedOutPost) {
       return Astro.redirect(`/s/${session.code}#hall`, 303);
     }
     Astro.response.status = 422;
+    problem = refusal("hand", 422);
     log("refused", { action: "hand", session: session.code, reason: "no-such-value" });
   } else if (intent === "vote" || intent === "report" || intent === "unreport") {
     const done = (intent === "vote" ? vote : intent === "report" ? report : unreport)(session, person, form, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
     Astro.response.status = done.status;
+    problem = refusal(intent, done.status);
   } else if (intent === "going-over") {
     const done = goingOver(session, person, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#host`, 303);
@@ -68,13 +75,18 @@ if (signedOutPost) {
     // back to the host's controls, saying which mark it was: the newest is last
     if (done.ok) return Astro.redirect(`/s/${session.code}?marked=${marksOf(session.id).length}#host`, 303);
     Astro.response.status = done.status;
+    markValue = String(form.get("label") ?? "");
+    markProblem = done.status === 422 ? `Use at most ${MAX_MARK} characters for a mark.` : refusal("timeline_mark", done.status);
+    if (done.status !== 422) problem = markProblem;
   } else if (intent === "state") {
     // the host's Answered and Hide, on the three most wanted
     const done = mark(session, person, form, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
     Astro.response.status = done.status;
+    problem = refusal("state", done.status);
   } else {
     Astro.response.status = 400;
+    problem = refusal("", 400);
     log("refused", { session: session.code, reason: "no-such-intent" });
   }
 }
@@ -117,6 +129,7 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           {signedOutPost && (
             <p class="alert" role="alert">Sign in to do that. <a href={authLink("signin", returnTo)}>Sign in</a></p>
           )}
+          {problem && <p class="alert" role="alert">{problem}</p>}
           {/* the hall is drawn here by src/scripts/hall.ts; the sentence under it says the same in words */}
           <div class="hall-view" data-hall data-view={hosting ? "front" : "seat"} aria-hidden="true" />
           <div class="hall-meta">
@@ -186,11 +199,16 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
               <input type="hidden" name="intent" value="timeline_mark" />
               <label for="mark-label">Starting a new part? Mark it on the timeline</label>
               <div class="host-row">
-                <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${parts.length + 1}`} />
+                <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${parts.length + 1}`} value={markValue} aria-describedby={markProblem ? "mark-problem" : undefined} />
                 <button class="button ink" type="submit">
                   Mark
                 </button>
               </div>
+              {markProblem && markValue && (
+                <p class="alert" role="alert" id="mark-problem">
+                  {markProblem}
+                </p>
+              )}
               {marked && (
                 <p class="hint host-marked" role="status">
                   Marked “{marked.label}” at {clock(marked.at)}.{" "}
