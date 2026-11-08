@@ -19,6 +19,13 @@ const SALT_BYTES = 16;
 const MAX_MEMORY = 32 * 1024 * 1024;
 const TEN_MINUTES = 10 * 60 * 1000;
 const MAX_PASSWORD = 200;
+// The passwords a guesser tries first, against every username in turn.
+const COMMON = new Set([
+  "12345678", "123456789", "1234567890", "12341234", "87654321", "11111111", "00000000",
+  "password", "password1", "password123", "passw0rd", "qwertyui", "qwerty123", "abcdefgh",
+  "abc12345", "iloveyou", "sunshine", "football", "baseball", "welcome1", "letmein1",
+  "admin123", "trustno1", "starwars", "whatever", "princess",
+]);
 // Wrong passwords for one username are counted three ways, so someone else's
 // guesses can't keep the owner out: from one browser, from one network address,
 // and from anywhere. The address is kept in memory only, never logged.
@@ -90,6 +97,9 @@ export async function createAccount(username: string, password: string): Promise
   }
   if ([...password].length > MAX_PASSWORD) {
     return { ok: false, reason: "password-long", message: `Use at most ${MAX_PASSWORD} characters for your password.` };
+  }
+  if (COMMON.has(password.toLowerCase()) || password.toLowerCase().includes(username.toLowerCase())) {
+    return { ok: false, reason: "password-weak", message: "Choose a password that isn't a common one and doesn't contain your username." };
   }
   const usernameKey = username.toLowerCase();
   const passwordHash = await hashPassword(password);

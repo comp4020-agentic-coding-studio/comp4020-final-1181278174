@@ -44,6 +44,18 @@ describe("accounts over plain HTTP", () => {
     expect(words(page)).toContain(`Signed in as ${owner.username}`);
   });
 
+  it("refuses a common password, and one that contains the username", async () => {
+    for (const password of ["password1", "12345678", "Qwerty123"]) {
+      const response = await new Visitor({ signedOut: true }).post("/signup", new URLSearchParams({ username: `t${tag()}`, password, return: "/" }));
+      expect(response.status, password).toBe(422);
+      await response.text();
+    }
+    const username = `t${tag()}`;
+    const response = await new Visitor({ signedOut: true }).post("/signup", new URLSearchParams({ username, password: `my-${username}-pass`, return: "/" }));
+    expect(response.status).toBe(422);
+    await response.text();
+  });
+
   it("refuses a password longer than 200 characters", async () => {
     const response = await new Visitor({ signedOut: true }).post("/signup", new URLSearchParams({ username: `t${tag()}`, password: "x".repeat(201), return: "/" }));
     expect(response.status).toBe(422);
