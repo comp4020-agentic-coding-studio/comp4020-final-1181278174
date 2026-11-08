@@ -100,6 +100,38 @@ describe("the host", () => {
     expect(question(await guest.open(path), voted)).toBeDefined();
   });
 
+  it("repeating the same Answered, Not answered, Hide, or Show again form keeps its chosen state", async () => {
+    const { host, path, voted, guest } = await hosted();
+    const actions = [
+      [/^answered/i, "answered"],
+      [/not answered/i, "open"],
+      [/^hide/i, "hidden"],
+      [/show again/i, "open"],
+    ] as const;
+    for (const [name, state] of actions) {
+      const before = await host.open(path);
+      const button = question(before, voted)!.button(name)!;
+      // Keep the original fields for the retry; a fresh form would ask for
+      // the opposite state after the first request succeeded.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const result = await host.submit(before, button.closest("form")!, button);
+        expect(result.status).toBe(200);
+        const kept = question(result, voted)!;
+        expect(kept.votes).toBe(1);
+        const shown = question(await guest.open(path), voted);
+        if (state === "hidden") {
+          expect(kept.text).toMatch(/\bHidden\b/);
+          expect(kept.button(/show again/i)).toBeDefined();
+          expect(shown).toBeUndefined();
+        } else {
+          expect(shown).toBeDefined();
+          expect(/\bAnswered\b/.test(shown!.text)).toBe(state === "answered");
+          expect(kept.button(state === "answered" ? /not answered/i : /^answered/i)).toBeDefined();
+        }
+      }
+    }
+  });
+
   it("the projector page lists only the questions still to answer", async () => {
     const { host, path, voted, plain, guest } = await hosted();
     const third = `Hidden later ${tag()}`;

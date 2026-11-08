@@ -294,42 +294,86 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     if (button instanceof HTMLButtonElement && button.name) fields.append(button.name, button.value);
     const asking = form.matches("[data-ask]");
     const text = form.querySelector("textarea");
+    const submitted = text?.value;
+    const action = form.action;
+    // Only explicit desired states are safe to send again after a lost reply.
+    const repeatable = !asking && (
+      (fields.get("intent") === "vote" && ["0", "1"].includes(fields.get("want") ?? "")) ||
+      (fields.get("intent") === "state" && ["open", "answered", "hidden"].includes(fields.get("to") ?? ""))
+    );
 
-    // a pressed "Me too" shows at once; the count waits for the server
-    const pressed = button?.getAttribute("aria-pressed");
-    if (button && pressed) button.setAttribute("aria-pressed", pressed === "true" ? "false" : "true");
-    form.setAttribute("aria-busy", "true");
-    try {
-      const res = await fetch(form.action, {
+    function problem(message: string): void {
+      const alert = document.createElement("p");
+      alert.className = "alert";
+      alert.setAttribute("role", "alert");
+      alert.textContent = message;
+      if (asking && text) {
+        form.querySelector("[role='alert']")?.remove();
+        text.after(alert);
+      } else {
+        // Cards can be replaced by the stream while a request is pending.
+        // Keep the problem beside the list so that refreshes cannot erase it.
+        main.querySelector("[data-send-problem]")?.remove();
+        alert.dataset.sendProblem = "";
+        holder.before(alert);
+      }
+    }
+
+    async function post(): Promise<{ doc: Document; ok: boolean }> {
+      const res = await fetch(action, {
         method: "POST",
         body: fields,
         headers: { accept: "text/html" },
       });
       const doc = new DOMParser().parseFromString(await res.text(), "text/html");
       if (!doc.querySelector("[data-board]")) throw new Error(`the server answered ${res.status}`);
+      return { doc, ok: res.ok };
+    }
+
+    // a pressed "Me too" shows at once; the count waits for the server
+    const pressed = button?.getAttribute("aria-pressed");
+    if (button && pressed) button.setAttribute("aria-pressed", pressed === "true" ? "false" : "true");
+    form.setAttribute("aria-busy", "true");
+    if (asking) form.querySelector("[role='alert']")?.remove();
+    else main.querySelector("[data-send-problem]")?.remove();
+    try {
+      let reply;
+      try {
+        reply = await post();
+      } catch (error) {
+        if (!repeatable) throw error;
+        // Retry the same want/to once, in the background. A plain submission
+        // could leave the page (and a question draft) on a browser error screen.
+        reply = await post();
+      }
+      const { doc, ok } = reply;
       adopt(doc);
       if (asking && text) {
         // a refused question comes back with the reason; an accepted one empties the box
         const reason = doc.querySelector("[data-ask] [role='alert']");
-        form.querySelector("[role='alert']")?.remove();
         if (reason) text.after(document.adoptNode(reason));
-        else text.value = "";
+        else if (!ok) problem("Could not send the question. Check the list before trying again.");
+        else if (text.value === submitted) text.value = "";
+      } else if (!ok) {
+        problem("Could not save that change. Check the list before trying again.");
       }
     } catch {
-      // no answer: put the button back and send the form the ordinary way
       if (button && pressed) button.setAttribute("aria-pressed", pressed);
-      plain.add(form);
-      form.requestSubmit(button);
+      problem(asking
+        ? "Your question may or may not have been sent. Check the list before sending again. Your draft is still here."
+        : "Could not confirm that change. Check the list before trying again.");
+      // An ask may already exist on the server. Keep its draft and look for it;
+      // only the person asking can decide whether to send it again.
+      void refresh();
     } finally {
       form.removeAttribute("aria-busy");
     }
   }
 
-  const plain = new WeakSet<HTMLFormElement>();
   main.addEventListener("submit", (event) => {
     const form = event.target;
     // a form marked data-plain posts the ordinary way, and the page reloads
-    if (!(form instanceof HTMLFormElement) || form.method !== "post" || plain.has(form) || form.hasAttribute("data-plain")) return;
+    if (!(form instanceof HTMLFormElement) || form.method !== "post" || form.hasAttribute("data-plain")) return;
     event.preventDefault();
     // a second press while the first is on its way would send the same thing again
     if (form.getAttribute("aria-busy") === "true") return;

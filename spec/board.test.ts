@@ -124,7 +124,7 @@ describe("asking", () => {
 });
 
 describe("voting", () => {
-  it("counts one vote per person, even sent twice at once, and can take it back", async () => {
+  it("counts one vote per person, even sent twice at once, and repeating its removal keeps it removed", async () => {
     const host = new Visitor();
     const path = questionsPath(await startSession(host, `Votes ${tag()}`));
     const body = `Can it run a whole lecture theatre? ${tag()}`;
@@ -146,9 +146,19 @@ describe("voting", () => {
     const second = new Visitor();
     expect(question(await meToo(second, path, body), body)!.votes).toBe(2);
 
-    const back = question(await meToo(first, path, body), body)!;
-    expect(back.votes).toBe(1);
-    expect(back.pressed).toBe(false);
+    const removing = await first.open(path);
+    const remove = question(removing, body)!.meToo;
+    // Retry exactly the same removal, as if its first response was lost.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await first.submit(removing, remove.closest("form")!, remove);
+      expect(result.status).toBe(200);
+      const back = question(result, body)!;
+      expect(back.votes).toBe(1);
+      expect(back.pressed).toBe(false);
+      const theirs = question(await second.open(path), body)!;
+      expect(theirs.votes).toBe(1);
+      expect(theirs.pressed).toBe(true);
+    }
   });
 
   it("Popular puts the most votes first; Recent puts the newest first", async () => {
