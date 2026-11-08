@@ -18,7 +18,8 @@ import { announceSessionChange, onSessionChange } from "./session-tabs.ts";
  * `recent` covers 16 calendar minutes, this one last, so the floating chart can
  * clip the outer bins to exactly 15 minutes. `startedAt` is epoch milliseconds.
  */
-export type Hall = { here: number; others: number[]; mine: number | null; recent: number[]; startedAt: number };
+// `problem`: why the last press didn't go through, if it didn't, for the floating window too
+export type Hall = { here: number; others: number[]; mine: number | null; recent: number[]; startedAt: number; problem: string };
 
 type Board = { here: number; hands: number[] };
 
@@ -96,7 +97,7 @@ function watch(line: HTMLElement): void {
     const m = minute();
     history.set(m, Math.max(history.get(m) ?? 0, lost));
     const recent = Array.from({ length: 16 }, (_, i) => history.get(m - 15 + i) ?? 0);
-    lastHall = { here: Math.max(here, lost), others: rest, mine, recent, startedAt };
+    lastHall = { here: Math.max(here, lost), others: rest, mine, recent, startedAt, problem };
     document.dispatchEvent(new CustomEvent<Hall>("hands-up:hall", { detail: lastHall }));
   }
 

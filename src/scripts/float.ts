@@ -135,6 +135,7 @@ async function popHall(): Promise<void> {
   let press: HTMLButtonElement | undefined;
   let goingPress: HTMLButtonElement | undefined;
   let goingProblem: HTMLElement | undefined;
+  let pressProblem: HTMLElement | undefined;
   if (hosting) {
     goingPress = doc.createElement("button");
     goingPress.type = "button";
@@ -197,6 +198,12 @@ async function popHall(): Promise<void> {
     press.append(" I'm lost");
     press.addEventListener("click", () => document.querySelector<HTMLFormElement>("form[data-hand]")?.requestSubmit());
     box.append(press);
+    // why a press from here didn't go through, said here as on the page
+    pressProblem = doc.createElement("p");
+    pressProblem.className = "float-said";
+    pressProblem.setAttribute("role", "status");
+    pressProblem.hidden = true;
+    box.append(pressProblem);
   }
   lifetimeNote(box);
 
@@ -224,6 +231,10 @@ async function popHall(): Promise<void> {
       bar.classList.toggle("now", i === shown.length - 1);
     });
     press?.setAttribute("aria-pressed", String(hall.mine !== null));
+    if (pressProblem) {
+      pressProblem.hidden = !hall.problem;
+      pressProblem.textContent = hall.problem;
+    }
   };
   const listen = (event: Event): void => draw((event as CustomEvent<Hall>).detail);
   const goingLine = box.querySelector<HTMLElement>(".float-going-over")!;
