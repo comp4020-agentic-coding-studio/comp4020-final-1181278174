@@ -79,6 +79,12 @@ function watch(line: HTMLElement): void {
   function render(): void {
     const now = performance.now();
     if (mine !== null && now - mine >= HAND_MS) mine = null;
+    // Outside a class no hand is up: End class took every hand down, and none
+    // can go up until the next one. A reply from before that can't put one back.
+    if (lesson !== "on") {
+      mine = null;
+      hands = [];
+    }
     const rest = others(now);
     const lost = rest.length + (mine === null ? 0 : 1);
     const waiting = hosting && here === 0;
@@ -252,6 +258,13 @@ function watch(line: HTMLElement): void {
         if (lowered !== null) hands = hands.filter((since) => since !== lowered);
       }
       render();
+      const since = heard;
+      // The stream's hands are newer than a reply it overtook: take only this
+      // browser's own hand from that reply.
+      const take = (room: OwnRoom): void => {
+        if (since === heard) takeRoom(room);
+        else mine = room.mine;
+      };
       try {
         const res = await fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } });
         const text = await res.text();
@@ -260,7 +273,7 @@ function watch(line: HTMLElement): void {
           // A refusal the server explained (too many presses, signed out, the
           // host's own hand): show its words, and the hand as the server has it.
           const said = new DOMParser().parseFromString(text, "text/html").querySelector('[role="alert"]')?.textContent?.trim();
-          if (real) takeRoom(real);
+          if (real) take(real);
           else {
             hands = [...confirmedHands];
             mine = before;
@@ -270,7 +283,7 @@ function watch(line: HTMLElement): void {
         }
         if (!res.ok) throw new Error(`the server answered ${res.status}`);
         if (!real) throw new Error("No hand state in the response");
-        takeRoom(real);
+        take(real);
         announceSessionChange();
       } catch {
         // No answer. The press may still have reached the server, so ask it
