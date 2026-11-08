@@ -623,6 +623,21 @@ the account that asked it, by someone allowed to, for a reason.
   someone and a question there can be hidden. A new database still starts HAND
   with no host.
 
+### A class: the host starts it and ends it
+
+Decided 9 November, 05:00. A session used to be open all the time, so a hand
+could go up at night, and the timeline had no start or end for a lecture.
+
+- A hand goes up only while the host's class is on. Before the host presses
+  **Start class** the button is off and says the class hasn't started.
+- **End class** takes every hand down, and none can go up until the class is
+  started again. Questions can be asked at any time.
+- The same code can hold a class every week: start it again and the timeline
+  shows each class's start and end, apart from the numbered parts.
+- Starting the class also sets when the recording started, to that moment; the
+  host can change it on the timeline.
+- HAND is always open, with no class to start.
+
 ### Order of work
 
 1. this plan
