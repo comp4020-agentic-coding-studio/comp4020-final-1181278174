@@ -295,7 +295,11 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         const want = [...freshList.children].map((li) => {
           const mine = old.get(li.id);
           if (!mine) return document.adoptNode(li);
+          // a "Report to the host?" left open stays open while the card is redrawn
+          const asking = mine.querySelector<HTMLDetailsElement>("details[data-report]")?.open ?? false;
           if (mine.innerHTML !== li.innerHTML) mine.replaceChildren(...li.childNodes);
+          const confirm = mine.querySelector<HTMLDetailsElement>("details[data-report]");
+          if (asking && confirm) confirm.open = true;
           mine.dataset.state = (li as HTMLElement).dataset.state;
           return mine;
         });

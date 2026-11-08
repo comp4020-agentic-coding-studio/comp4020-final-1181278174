@@ -10,6 +10,7 @@ type Props = { q: QuestionView; hosting: boolean };
 const { q, hosting } = Astro.props;
 const signedIn = Astro.locals.account !== null;
 
+
 // what the host can do to a question in each state
 const hostButtons: Record<State, [to: State, label: string][]> = {
   open: [
@@ -58,19 +59,27 @@ const hostButtons: Record<State, [to: State, label: string][]> = {
           </button>
         </form>
         {!hosting && !q.yours && (
-          <form method="post" class="report">
-            <input type="hidden" name="intent" value="report" />
-            <input type="hidden" name="question" value={q.id} />
-            <button
-              class="report-button"
-              type={q.reported ? "button" : "submit"}
-              aria-label="Report this question to the host"
-              aria-pressed={q.reported ? "true" : "false"}
-              aria-disabled={q.reported ? "true" : undefined}
-            >
-              {q.reported ? "Reported" : "Report"}
-            </button>
-          </form>
+          q.reportedAt === null ? (
+            // a small triangle; pressing it asks once more before anything is sent
+            <details class="report" data-report>
+              <summary class="report-flag" aria-label="Report this question to the host" title="Report this question to the host">
+                <Icon name="alert" size={16} />
+              </summary>
+              <form method="post" class="report-confirm">
+                <input type="hidden" name="intent" value="report" />
+                <input type="hidden" name="question" value={q.id} />
+                <span>Report to the host?</span>{" "}
+                <button class="report-yes" type="submit">Report</button>
+              </form>
+            </details>
+          ) : (
+            // reported: the triangle filled
+            <div class="report reported" data-report>
+              <span class="report-flag is-on" role="img" aria-label="You reported this question" title="You reported this question">
+                <Icon name="alert" size={16} />
+              </span>
+            </div>
+          )
         )}
       </div>
     ) : (
@@ -86,7 +95,11 @@ const hostButtons: Record<State, [to: State, label: string][]> = {
         <input type="hidden" name="intent" value="state" />
         <input type="hidden" name="question" value={q.id} />
         {q.state === "hidden" && <span class="host-note">Only you can see this.</span>}
-        {q.reports > 0 && <span class="report-count">Reported {q.reports}×</span>}
+        {q.reports > 0 && (
+          <span class="report-count" role="img" aria-label={`Reported ${q.reports} ${q.reports === 1 ? "time" : "times"}`} title={`Reported ${q.reports} ${q.reports === 1 ? "time" : "times"}`}>
+            <Icon name="alert" size={14} />{q.reports}
+          </span>
+        )}
         {hostButtons[q.state].map(([to, label]) => (
           <button class="host-button" type="submit" name="to" value={to}>
             {label}

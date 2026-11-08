@@ -185,7 +185,7 @@ const room = {
         {/* an empty card for the script to copy when a question arrives while the page is open */}
         <template data-card>
           <Card
-            q={{ id: 0, body: "", createdAt: new Date(0), votes: 0, yours: false, voted: false, reported: false, reports: 0, state: "open" }}
+            q={{ id: 0, body: "", createdAt: new Date(0), votes: 0, yours: false, voted: false, reported: false, reportedAt: null, reports: 0, state: "open" }}
             hosting={hosting}
           />
         </template>

@@ -28,6 +28,8 @@ export type QuestionView = {
   yours: boolean;
   voted: boolean;
   reported: boolean;
+  /** when this viewer reported it (ms since 1970), or null */
+  reportedAt: number | null;
   reports: number;
   state: State;
 };
@@ -181,6 +183,7 @@ export function listQuestions(session: Session, viewer: string, sort: Sort): Que
       yours: sql<number>`${questions.asker} IN (${tagFor("asker", viewer)}, ${viewer})`,
       voted: sql<number>`EXISTS (SELECT 1 FROM ${votes} WHERE ${votes.questionId} = ${questions.id} AND ${votes.person} = ${viewer})`,
       reported: sql<number>`EXISTS (SELECT 1 FROM ${reports} WHERE ${reports.questionId} = ${questions.id} AND ${reports.reporter} = ${tagFor("reporter", viewer)})`,
+      reportedAt: sql<number | null>`(SELECT ${reports.createdAt} FROM ${reports} WHERE ${reports.questionId} = ${questions.id} AND ${reports.reporter} = ${tagFor("reporter", viewer)})`,
       reports: hosting ? sql<number>`(SELECT count(*) FROM ${reports} WHERE ${reports.questionId} = ${questions.id})` : sql<number>`0`,
       state: questions.state,
     })
@@ -188,7 +191,7 @@ export function listQuestions(session: Session, viewer: string, sort: Sort): Que
     .where(seen)
     .orderBy(...order)
     .all()
-    .map((q) => ({ ...q, votes: Number(q.votes), yours: Boolean(q.yours), voted: Boolean(q.voted), reported: Boolean(q.reported), reports: Number(q.reports) }));
+    .map((q) => ({ ...q, votes: Number(q.votes), yours: Boolean(q.yours), voted: Boolean(q.voted), reported: Boolean(q.reported), reportedAt: q.reportedAt === null ? null : Number(q.reportedAt), reports: Number(q.reports) }));
 }
 
 /**

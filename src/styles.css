@@ -2134,38 +2134,82 @@ span.me-too:hover {
 
 .report {
   margin: 0;
+  position: relative;
 }
 
-.report-button {
+/* the triangle: small to look at, a full 44 px to press */
+.report-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 44px;
   min-height: 44px;
-  padding: 0 10px;
-  border: 0;
   border-radius: 999px;
-  background: transparent;
   color: var(--muted);
-  font: 600 13px var(--text);
   cursor: pointer;
+  list-style: none;
 }
 
-.report-button:hover {
+.report-flag::-webkit-details-marker {
+  display: none;
+}
+
+.report-flag:hover,
+.report[open] > .report-flag {
   background: var(--field);
   color: var(--ink);
 }
 
-.report-button[aria-pressed="true"],
-.report-button[aria-pressed="true"]:hover {
-  background: transparent;
-  color: var(--muted);
+.report-flag.is-on {
+  color: var(--tomato);
   cursor: default;
 }
 
-.report-count {
-  padding: 2px 8px;
-  border: 1px solid #cfc8b4;
-  border-radius: 999px;
-  color: var(--muted);
+.report-flag.is-on svg {
+  fill: color-mix(in srgb, var(--tomato) 18%, transparent);
+}
+
+/* "Report to the host?" opens below the triangle, on top of the card */
+.report-confirm {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  border: var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 600;
+}
+
+.report-yes {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tomato);
+  color: var(--ink);
+  font: 700 13px var(--text);
+  cursor: pointer;
+}
+
+.reported {
+  display: inline-flex;
+  align-items: center;
+}
+
+.report-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: auto;
+  color: var(--tomato);
+  font-size: 13px;
+  font-weight: 700;
 }
 

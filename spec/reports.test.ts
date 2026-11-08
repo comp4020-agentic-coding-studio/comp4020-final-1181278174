@@ -14,8 +14,19 @@ function card(page: Page, id: number): Element {
   return found!;
 }
 
+/** The small triangle that opens "Report to the host?", if this card offers it. */
+function reportFlag(page: Page, id: number): Element | undefined {
+  return card(page, id).querySelector('details[data-report] > summary[aria-label="Report this question to the host"]') ?? undefined;
+}
+
+/** The confirming "Report" button inside the triangle's question. */
 function reportButton(page: Page, id: number): HTMLButtonElement | undefined {
-  return [...card(page, id).querySelectorAll("button")].find((button) => /^Report(?:ed)?$/.test(button.textContent?.trim() ?? ""));
+  return [...card(page, id).querySelectorAll("details[data-report] form button")].find((button) => button.textContent?.trim() === "Report") as HTMLButtonElement | undefined;
+}
+
+/** The host's count on a card, as its label says it, or undefined. */
+function hostCount(page: Page, id: number): string | undefined {
+  return card(page, id).querySelector('[role="img"][aria-label^="Reported "]')?.getAttribute("aria-label") ?? undefined;
 }
 
 function reportData(id: number | string): URLSearchParams {
@@ -24,9 +35,10 @@ function reportData(id: number | string): URLSearchParams {
 
 /** Send the actual Report form, checking the plain POST redirect before following it. */
 async function report(who: Visitor, page: Page, id: number): Promise<Page> {
+  // a second step: the triangle opens "Report to the host?", whose button sends it
+  expect(reportFlag(page, id), "no triangle to report with").toBeDefined();
   const button = reportButton(page, id);
-  expect(button?.textContent?.trim()).toBe("Report");
-  expect(button?.getAttribute("aria-label")).toBe("Report this question to the host");
+  expect(button, "no confirming Report button").toBeDefined();
   const form = button!.closest("form")!;
   expect(form.getAttribute("method")?.toLowerCase()).toBe("post");
   const data = new URLSearchParams();
@@ -44,15 +56,13 @@ async function report(who: Visitor, page: Page, id: number): Promise<Page> {
 }
 
 function isReported(page: Page, id: number): void {
-  const button = reportButton(page, id);
-  expect(button?.textContent?.trim()).toBe("Reported");
-  expect(button?.getAttribute("aria-pressed")).toBe("true");
-  // A plain browser cannot submit another action from the confirmation button.
-  expect(button?.disabled || button?.type === "button").toBe(true);
+  expect(card(page, id).querySelector('[aria-label="You reported this question"]'), "the card doesn't say it was reported").not.toBeNull();
+  // nothing left to report with
+  expect(reportButton(page, id)).toBeUndefined();
 }
 
 function noCount(page: Page): void {
-  expect(page.html).not.toMatch(/Reported\s+\d+×/);
+  expect(page.html).not.toMatch(/aria-label="Reported \d+ times?"/);
 }
 
 async function watch(who: Visitor, path: string): Promise<Stream> {
@@ -75,14 +85,14 @@ describe("reports over plain HTTP", () => {
     const second = new Visitor();
     const anonymous = new Visitor({ signedOut: true });
 
-    expect(reportButton(await asker.open(route), id)).toBeUndefined();
-    expect(reportButton(await host.open(route), id)).toBeUndefined();
-    expect(reportButton(await anonymous.open(route), id)).toBeUndefined();
+    expect(reportFlag(await asker.open(route), id)).toBeUndefined();
+    expect(reportFlag(await host.open(route), id)).toBeUndefined();
+    expect(reportFlag(await anonymous.open(route), id)).toBeUndefined();
 
     const reported = await report(first, await first.open(route), id);
     isReported(reported, id);
     noCount(reported);
-    expect(question(await host.open(path), body)!.text).toContain("Reported 1×");
+    expect(hostCount(await host.open(path), id)).toBe("Reported 1 time");
 
     // Retrying the original form, even in another browser for this account,
     // cannot create a second report or take the first one back.
@@ -92,19 +102,19 @@ describe("reports over plain HTTP", () => {
     expect(repeated.status).toBe(303);
     await repeated.text();
     isReported(await again.open(route), id);
-    expect(question(await host.open(path), body)!.text).toContain("Reported 1×");
+    expect(hostCount(await host.open(path), id)).toBe("Reported 1 time");
 
     const secondReported = await report(second, await second.open(route), id);
     isReported(secondReported, id);
     noCount(secondReported);
     for (const hostPath of [hall.url.pathname, path]) {
-      expect(card(await host.open(hostPath), id).textContent).toContain("Reported 2×");
+      expect(hostCount(await host.open(hostPath), id)).toBe("Reported 2 times");
     }
 
     const refused = await anonymous.post(route, reportData(id));
     expect(refused.status).toBe(401);
     expect(await refused.text()).toContain("Sign in to do that.");
-    expect(question(await host.open(path), body)!.text).toContain("Reported 2×");
+    expect(hostCount(await host.open(path), id)).toBe("Reported 2 times");
 
     for (const who of [asker, first, second, anonymous, new Visitor()]) {
       for (const studentPath of [hall.url.pathname, path]) noCount(await who.open(studentPath));
@@ -135,7 +145,7 @@ describe("reports over plain HTTP", () => {
       }
     }
     const kept = question(await host.open(path), body)!;
-    expect(kept.text).toContain("Reported 1×");
+    expect(hostCount(await host.open(path), id)).toBe("Reported 1 time");
     expect(kept.text).toContain("Hidden");
     expect(question(await stale.open(path), body)).toBeUndefined();
   });
@@ -157,7 +167,7 @@ describe("reports over plain HTTP", () => {
       }
     }
     noCount(await host.open(otherPath));
-    expect(reportButton(await student.open(otherPath), id)?.textContent?.trim()).toBe("Report");
+    expect(reportButton(await student.open(otherPath), id)).toBeDefined();
   });
 
   it("never sends the asker's or reporters' identities to the host or another student", async () => {
@@ -199,6 +209,6 @@ describe("reports over plain HTTP", () => {
         if (who === watcher) noCount(page);
       }
     }
-    expect(question(await host.open(path), body)!.text).toContain("Reported 2×");
+    expect(hostCount(await host.open(path), id)).toBe("Reported 2 times");
   });
 });
