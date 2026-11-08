@@ -428,30 +428,40 @@ h4 {
 .band .parts {
   margin-top: var(--space-5);
 }
+/* The session's two parts as a capsule: a quiet track, the open part raised in it. */
 .parts {
-  display: flex;
-  gap: var(--space-6);
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: var(--line);
+  border-radius: 14px;
+  background: var(--color-surface-subtle);
 }
 .parts a {
-  position: relative;
-  border-radius: 0;
-  padding: var(--space-3) var(--space-1);
-  min-height: 3.5rem;
-  font-size: var(--text-md);
-  border-bottom: 3px solid transparent;
+  min-height: var(--target-min);
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: var(--text-sm);
 }
 .parts a:hover {
-  background: transparent;
+  background: var(--color-surface-hover);
   color: var(--ink);
 }
 .parts a[aria-current="page"] {
   color: var(--ink);
-  background: transparent;
-  border-bottom-color: var(--ink);
-  box-shadow: none;
+  background: var(--card);
+  border-color: var(--color-border);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+.parts a:focus-visible {
+  outline-offset: -3px;
+}
+@media (prefers-color-scheme: dark) {
+  /* in the dark the open part is lighter than its track, not darker */
+  .parts a[aria-current="page"] {
+    background: var(--color-surface-hover);
+  }
 }
 .parts-n {
   min-width: 1.5rem;
@@ -2836,11 +2846,13 @@ button:disabled,
     padding-inline: var(--space-3);
     font-size: var(--text-lg);
   }
+  /* on a phone the capsule takes the width, each part an equal half */
   .parts {
-    gap: var(--space-6);
+    display: flex;
   }
   .parts a {
-    min-height: var(--control-height);
+    flex: 1;
+    padding-inline: var(--space-3);
   }
   .home-layout {
     display: flex;
