@@ -20,6 +20,8 @@ const pip = (window as unknown as { documentPictureInPicture?: Pip }).documentPi
 for (const button of document.querySelectorAll<HTMLButtonElement>("button[data-pop]")) {
   if (!pip) continue;
   button.hidden = false;
+  const control = button.closest<HTMLElement>(".pop-control");
+  if (control) control.hidden = false;
   button.addEventListener("click", () => {
     if (pip.window) {
       pip.window.focus();
@@ -47,10 +49,18 @@ function styled(win: Window): void {
   win.document.body.classList.add("float");
 }
 
+/** Keep the lifetime of the window and of a hand clear beside its controls. */
+function lifetimeNote(box: HTMLElement): void {
+  const note = box.ownerDocument.createElement("p");
+  note.className = "float-lifetime";
+  note.textContent = "Closes if the hall tab closes. A raised hand still comes down by itself.";
+  box.append(note);
+}
+
 /** The hall in a small window: the count, the last 15 minutes, and the button or the host's mark. */
 async function popHall(): Promise<void> {
   const hosting = document.querySelector("form.hall-mark") !== null;
-  const win = await pip!.requestWindow({ width: 320, height: hosting ? 400 : 285 });
+  const win = await pip!.requestWindow({ width: 320, height: hosting ? 435 : 320 });
   styled(win);
   const doc = win.document;
   doc.title = "Hands Up";
@@ -126,6 +136,7 @@ async function popHall(): Promise<void> {
     press.addEventListener("click", () => document.querySelector<HTMLFormElement>("form[data-hand]")?.requestSubmit());
     box.append(press);
   }
+  lifetimeNote(box);
 
   const draw = (hall: Hall): void => {
     const lost = hall.others.length + (hall.mine === null ? 0 : 1);
@@ -190,5 +201,6 @@ async function popTimeline(): Promise<void> {
   const box = win.document.createElement("main");
   box.className = "float-box float-timeline";
   box.append(win.document.adoptNode(sitting.cloneNode(true)));
+  lifetimeNote(box);
   win.document.body.append(box);
 }

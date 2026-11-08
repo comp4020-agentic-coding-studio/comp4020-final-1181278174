@@ -159,9 +159,12 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           <div class="hall-links">
             <a href={`/s/${session.code}/timeline`}>When the room was lost</a>
             {/* shown by src/scripts/float.ts where the browser can keep a small window above the others */}
-            <button class="button pop" type="button" data-pop="hall" hidden>
-              <Icon name="pop" size={16} /> Pop out
-            </button>
+            <div class="pop-control" hidden>
+              <button class="button pop" type="button" data-pop="hall" aria-describedby="hall-pop-note" hidden>
+                <Icon name="pop" size={16} /> Pop out
+              </button>
+              <p class="hint pop-note" id="hall-pop-note">Keep this tab open; you can switch to your slides.</p>
+            </div>
           </div>
         </section>
 

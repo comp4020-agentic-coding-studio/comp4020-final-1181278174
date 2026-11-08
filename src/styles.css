@@ -1894,6 +1894,35 @@ body.float {
   }
 }
 
+/* The pop-out hint stays beside its button and appears with browser support. */
+.pop-control {
+  display: flex;
+  flex: 0 1 16rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 0;
+  max-width: 16rem;
+  text-align: right;
+}
+
+.pop-control[hidden] {
+  display: none;
+}
+
+.pop-control .pop-note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.float-lifetime {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 /* "Question posted", after asking */
 .question-posted {
   display: flex;
