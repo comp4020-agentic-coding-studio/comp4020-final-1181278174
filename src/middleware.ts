@@ -39,6 +39,24 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const took = Math.round(performance.now() - started);
     write(id, `${context.request.method} ${context.url.pathname} ${status} ${took}ms`, { person: who, error });
   };
+  // Every page reads a POST as a form. A body sent any other way, or a form that
+  // can't be read, is refused here with a 400 instead of failing in the page.
+  if (context.request.method === "POST") {
+    const type = context.request.headers.get("content-type") ?? "";
+    let readable = /^(application\/x-www-form-urlencoded|multipart\/form-data)\b/i.test(type);
+    if (readable) {
+      try {
+        await context.request.clone().formData();
+      } catch {
+        readable = false;
+      }
+    }
+    if (!readable) {
+      context.locals.log("refused", { reason: "not-a-form" });
+      line(400);
+      return new Response("Send this as a form.\n", { status: 400, headers: { "content-type": "text/plain; charset=utf-8" } });
+    }
+  }
   try {
     const response = await next();
     // Pages include private account controls and the owner's username. Keep
