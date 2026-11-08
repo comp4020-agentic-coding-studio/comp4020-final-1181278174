@@ -59,6 +59,17 @@ describe("pages a real site has", () => {
     expect(notes).toContain("a forgotten password can't be recovered");
   });
 
+  it("has one banner at the top of a page, so a screen reader hears one", async () => {
+    const host = new Visitor();
+    const hall = (await startSession(host, `Banner ${Date.now() % 100000}`)).url.pathname;
+    for (const path of ["/", "/signin", "/help", "/privacy", "/account", "/no-such-page", hall, `${hall}/questions`, `${hall}/timeline`]) {
+      const page = await host.open(path);
+      // a header outside main, article, aside, nav and section is a banner
+      const banners = [...page.doc.querySelectorAll("header")].filter((h) => !h.parentElement?.closest("main, article, aside, nav, section"));
+      expect(banners.length, path).toBeLessThanOrEqual(1);
+    }
+  });
+
   it("sets two cookies and no more, as Privacy and rules says", async () => {
     // a browser's whole first visit: the home page, signing up, a session's pages
     const origin = (await new Visitor({ signedOut: true }).open("/")).url.origin;
