@@ -29,10 +29,12 @@ class Source {
   }
 }
 
-async function start(): Promise<void> {
+const hall = '<main data-live="/s/ABCD/events"><p data-live-status></p><div data-board><ol></ol></div></main>';
+const timeline = '<main class="timeline" data-live="/s/ABCD/events"><p data-live-status></p><div data-sittings></div></main>';
+
+async function start(html = hall, script: "live" | "timeline" = "live"): Promise<void> {
   vi.useFakeTimers();
   Source.opened = [];
-  const html = '<main data-live="/s/ABCD/events"><p data-live-status></p><div data-board><ol></ol></div></main>';
   dom = new JSDOM(html, { url: "http://localhost/s/ABCD" });
   const window = dom.window;
   for (const name of ["window", "document", "location", "HTMLElement", "DOMParser"] as const) {
@@ -42,7 +44,7 @@ async function start(): Promise<void> {
   vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(html)));
   Object.assign(window, { EventSource: Source });
   vi.stubGlobal("EventSource", Source);
-  await import("../src/scripts/live.ts");
+  await (script === "live" ? import("../src/scripts/live.ts") : import("../src/scripts/timeline.ts"));
   expect(Source.opened).toHaveLength(1);
 }
 
@@ -73,6 +75,13 @@ it("leaves a dropped connection to the browser, which tries again by itself", as
 it("after an error page waits 2 s, then twice as long each time up to a minute, and starts over once open", async () => {
   await start();
   // a redeploy is over in seconds; a refused page knocks about once a minute
+  for (const ms of [2_000, 4_000, 8_000, 16_000, 32_000, 60_000, 60_000]) await failsThenReopensAfter(ms);
+  Source.opened.at(-1)!.onopen!();
+  await failsThenReopensAfter(2_000);
+});
+
+it("waits the same way on the timeline", async () => {
+  await start(timeline, "timeline");
   for (const ms of [2_000, 4_000, 8_000, 16_000, 32_000, 60_000, 60_000]) await failsThenReopensAfter(ms);
   Source.opened.at(-1)!.onopen!();
   await failsThenReopensAfter(2_000);
