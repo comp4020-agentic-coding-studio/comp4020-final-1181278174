@@ -9,14 +9,31 @@
 # private and out of this repo. The default directory is ~/hands-up-backups.
 # Never run the app on a backup itself; copy it first (docs/operations.md).
 set -euo pipefail
+umask 077
 cd "$(dirname "$0")/.."
 app=comp4020-final-1181278174
-dir=${1:-"$HOME/hands-up-backups"}
-name="hands-up-$(date -u +%Y%m%dT%H%M%SZ).db"
+repo=$(pwd -P)
+dir=$(realpath -m "${1:-"$HOME/hands-up-backups"}")
+case "$dir/" in
+  "$repo"/*) echo "refusing to write a backup inside the repo: $dir" >&2; exit 1 ;;
+esac
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+name="hands-up-$stamp.db"
+remote_db="/tmp/hands-up-$stamp.db"
+remote_js="/tmp/hands-up-backup-$stamp.cjs"
 work=$(mktemp -d)
-trap 'rm -r "$work"' EXIT
 mkdir -p "$dir"
-chmod 700 "$dir"
+partial="$dir/.partial-$name"
+
+# Whatever happens, nothing is left behind: not on the machine, not half a copy here.
+cleanup() {
+  rm -f "$partial"
+  rm -r "$work"
+  if ! flyctl ssh console -a "$app" -C "rm -f $remote_db $remote_js" > /dev/null 2>&1; then
+    echo "could not remove $remote_db or $remote_js on the machine; remove them by hand" >&2
+  fi
+}
+trap cleanup EXIT
 
 cat > "$work/backup.cjs" <<'JS'
 // on the machine: a consistent copy of the live database
@@ -27,14 +44,20 @@ db.backup(process.argv[2]).then(
   (error) => { console.error(error.message); process.exit(1); },
 );
 JS
-flyctl ssh sftp put "$work/backup.cjs" /tmp/hands-up-backup.cjs -a "$app" > /dev/null
-flyctl ssh console -a "$app" -C "node /tmp/hands-up-backup.cjs /tmp/$name"
-flyctl ssh sftp get "/tmp/$name" "$dir/$name" -a "$app" > /dev/null
-flyctl ssh console -a "$app" -C "rm /tmp/$name /tmp/hands-up-backup.cjs" > /dev/null
-chmod 600 "$dir/$name"
+
+# SSH doesn't start a stopped machine, but a page request does; the first
+# connection after that can still be refused, so try three times.
+curl -s -o /dev/null --max-time 30 "https://$app.fly.dev/" || true
+for try in 1 2 3; do
+  if flyctl ssh sftp put "$work/backup.cjs" "$remote_js" -a "$app" > /dev/null; then break; fi
+  [ "$try" = 3 ] && exit 1
+  sleep 5
+done
+flyctl ssh console -a "$app" -C "node $remote_js $remote_db"
+flyctl ssh sftp get "$remote_db" "$partial" -a "$app" > /dev/null
 
 # The copy becomes one self-contained file (no -wal or -shm beside it), then
-# SQLite's own check of it, then how much it holds.
+# SQLite's own check of it, then how much it holds; only then does it get its name.
 node -e '
 const Database = require("better-sqlite3");
 const db = new Database(process.argv[1]);
@@ -44,5 +67,6 @@ if (check !== "ok") { console.error("integrity check failed:", check); process.e
 const n = (table) => db.prepare(`select count(*) n from ${table}`).get().n;
 console.log(`checked: ${n("sessions")} sessions, ${n("questions")} questions, ${n("accounts")} accounts`);
 db.close();
-' "$dir/$name"
+' "$partial"
+mv "$partial" "$dir/$name"
 echo "$dir/$name"
