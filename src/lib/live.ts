@@ -76,8 +76,8 @@ export function board(sessionId: number): Board {
 }
 
 // Who started each session: the host teaches, so they are not one of the
-// people "here" and have no hand. Signing in can transfer an old browser's
-// sessions to an account, so read the current host each time.
+// people "here" and have no hand. A host can be changed on the server (HAND's
+// was), so read the current host each time.
 function hostOf(sessionId: number): string | null {
   const row = db.select({ host: sessions.host }).from(sessions).where(eq(sessions.id, sessionId)).get();
   return row?.host ?? null;
