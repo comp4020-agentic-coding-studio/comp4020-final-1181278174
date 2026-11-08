@@ -1039,7 +1039,7 @@ textarea {
 }
 
 .present .stage-hall {
-  flex: 2.6;
+  flex: 1.25;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -1521,6 +1521,32 @@ body.float {
 .float-timeline .sitting {
   margin: 0;
   box-shadow: none;
+}
+
+/* the projector: the three questions must fit, in type the back row reads */
+
+.present .stage-list {
+  flex: 1.35;
+}
+
+.present .top {
+  gap: 0.7em;
+}
+
+.top > li:first-child {
+  padding: 1em 1.4em;
+}
+
+.top > li:first-child .body {
+  font-size: 1.9em;
+}
+
+/* a long question shows its first two lines; the whole of it is on the questions page */
+.top .body {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .stage-silence {
