@@ -89,9 +89,13 @@ export function open(envelope: string, question: number, privateKeyPem: string, 
   const recipientDer = createPublicKey(privateKey).export({ format: "der", type: "spki" });
   const epk = Buffer.from(sealed.epk, "base64");
   const shared = diffieHellman({ privateKey, publicKey: createPublicKey({ key: epk, format: "der", type: "spki" }) });
-  const decipher = createDecipheriv("aes-256-gcm", keyFor(shared, epk, recipientDer), Buffer.from(sealed.iv, "base64"));
+  const iv = Buffer.from(sealed.iv, "base64");
+  const tag = Buffer.from(sealed.tag, "base64");
+  // a shortened tag would make a changed envelope easier to pass off
+  if (iv.length !== 12 || tag.length !== 16) throw new Error("this envelope's lengths are wrong");
+  const decipher = createDecipheriv("aes-256-gcm", keyFor(shared, epk, recipientDer), iv, { authTagLength: 16 });
   decipher.setAAD(aad(question));
-  decipher.setAuthTag(Buffer.from(sealed.tag, "base64"));
+  decipher.setAuthTag(tag);
   const author = JSON.parse(
     Buffer.concat([decipher.update(Buffer.from(sealed.ct, "base64")), decipher.final()]).toString("utf8"),
   ) as Author;

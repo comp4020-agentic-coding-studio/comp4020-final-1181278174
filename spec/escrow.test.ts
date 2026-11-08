@@ -33,6 +33,10 @@ describe("a sealed author", () => {
     const changed = Buffer.from(sealed.ct, "base64");
     changed[0] ^= 1;
     expect(() => open(JSON.stringify({ ...sealed, ct: changed.toString("base64") }), asked.question, keys.privateKeyPem)).toThrow();
+    // a shortened tag is refused, not checked against fewer bytes
+    const short = JSON.parse(envelope) as { tag: string };
+    const four = Buffer.from(short.tag, "base64").subarray(0, 4).toString("base64");
+    expect(() => open(JSON.stringify({ ...short, tag: four }), asked.question, keys.privateKeyPem)).toThrow();
   });
 
   it("is sealed to the auditor's real public key, whose private key is in no file the repo tracks", () => {
