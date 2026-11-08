@@ -13,7 +13,7 @@ describe("loading from this app alone", () => {
     const path = questionsPath(hall);
     await ask(new Visitor(), path, `Anything from elsewhere? ${tag()}`);
     const base = hall.url.origin;
-    const pages = ["/", "/signin", "/signup", "/readme/", hall.url.pathname, path, `${hall.url.pathname}/timeline`, `${hall.url.pathname}/present`];
+    const pages = ["/", "/signin", "/signup", "/readme/", "/help", "/privacy", hall.url.pathname, path, `${hall.url.pathname}/timeline`, `${hall.url.pathname}/present`];
     const sheets = new Set<string>();
     for (const who of [host, new Visitor({ signedOut: true })]) {
       for (const pagePath of pages) {

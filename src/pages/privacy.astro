@@ -1,0 +1,52 @@
+---
+// Privacy and rules: what is kept, who can see it, the cookies, and the rules.
+// Drawn on the design canvas first ("Privacy and rules · phone", 9 November).
+// Every sentence here says what the app does now; spec/pages.test.ts and
+// spec/own-assets.test.ts check the ones a page can show.
+import SlimHeader from "../components/SlimHeader.astro";
+import Layout from "../layouts/Layout.astro";
+import { SIGNIN_SECONDS } from "../lib/accounts.ts";
+
+const signInDays = Math.round(SIGNIN_SECONDS / 86_400);
+---
+
+<Layout title="Privacy and rules · Hands Up">
+  <SlimHeader />
+  <main id="main" class="wrap info">
+    <h1>Privacy and rules</h1>
+
+    <section class="card panel" aria-labelledby="kept">
+      <h2 id="kept">What is kept</h2>
+      <p>Your account: a username, and your password scrambled so it can't be read back.</p>
+      <p>What you do: hands, Me too, questions and reports. A question keeps a tag in place of your account, and your account sealed so that only the auditor can open it.</p>
+      <p>How many were lost in each minute, for the timeline. One log line per request, naming a tag: never your username, never your address.</p>
+    </section>
+
+    <section class="card panel" aria-labelledby="who-sees">
+      <h2 id="who-sees">Who sees what</h2>
+      <p><strong>The room</strong> sees how many hands are up, the questions and the counts.</p>
+      <p><strong>The host</strong> also sees hidden questions and how many reported one.</p>
+      <p><strong>Nobody in the app</strong> is shown who did what.</p>
+      <p><strong>Whoever runs the server</strong> could work it out from the database and the logs.</p>
+      <p><strong>The auditor</strong>, who holds a key kept off the server, can open who asked a question: one at a time, with the reason written down first. It is meant only for reports of something dangerous.</p>
+      <p>In a very small room a count can show whose hand it is, and anyone who sees your screen sees your own hand.</p>
+    </section>
+
+    <section class="card panel" aria-labelledby="cookies">
+      <h2 id="cookies">Cookies and other sites</h2>
+      <p>Two cookies, both needed: one that tells this browser apart, and one for your sign-in, which lasts {signInDays} days. No ads, no analytics, and nothing on these pages is loaded from another site.</p>
+    </section>
+
+    <section class="card panel" aria-labelledby="how-long">
+      <h2 id="how-long">How long</h2>
+      <p>Nothing is deleted on a schedule yet: sessions, questions, hands and votes stay until the maker deletes them.</p>
+    </section>
+
+    <section class="card panel info-sun" aria-labelledby="rules">
+      <h2 id="rules">Rules</h2>
+      <p>Ask about the lecture. No threats, no harassment, no one's personal details.</p>
+      <p>A report goes to the host, who can hide the question. A report of something dangerous can lead the auditor to open who asked it.</p>
+      <a class="go" href="/s/HAND">Questions about this page? Ask in HAND, the open hall.</a>
+    </section>
+  </main>
+</Layout>
