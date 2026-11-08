@@ -257,6 +257,8 @@ function watch(line: HTMLElement): void {
         } else {
           takeRoom(real);
         }
+        // with no answer at all, the next press asks the server first
+        if (real === undefined) doubt = true;
         if (real === undefined || (mine !== null) !== want) problem = "Couldn't confirm the press. Try again when connected.";
         else announceSessionChange();
       }
