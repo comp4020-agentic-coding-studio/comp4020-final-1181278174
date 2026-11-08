@@ -25,6 +25,12 @@ describe("the home page", () => {
     expect(hosted(await new Visitor().open("/"))).toEqual([]);
   });
 
+  it("says what the app shows about a hand, never that nobody could know it", async () => {
+    const words = (await new Visitor().open("/")).doc.body.textContent?.replace(/\s+/g, " ") ?? "";
+    expect(words).not.toMatch(/without anyone knowing|nobody can tell|no one can tell/i);
+    expect(words).toContain("is shown whose hand is up");
+  });
+
   it("links each listed session to its hall and its timeline", async () => {
     const lecturer = new Visitor();
     const title = `Linked ${tag()}`;
