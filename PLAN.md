@@ -672,6 +672,20 @@ Decided 9 November, 05:15: the hall had too much small explanatory text.
   follows, counts with how many are here, when your hand comes down, and why
   the button is off.
 
+### The look, from four proposals
+
+Four looks were made overnight, each on its own branch: A from popular design
+skills, B from products like this one, C from big companies' design systems,
+D from Apple's way of designing.
+
+- 9 November, 04:05: B's colours with C's interface. The main action is a deep
+  ink green and the places people take part (the brand mark, the code, a hand)
+  are sunflower; the components, shapes, icons and states, light and dark, are C's.
+- 9 November, 09:00: that look goes live, with D's capsule for the session's two
+  tabs: a quiet track with the open part raised in it.
+- What it costs: the earlier bold look, thick black outlines and a sunflower
+  band, is gone, and the design canvas still shows it.
+
 ### Order of work
 
 1. this plan
