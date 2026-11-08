@@ -24,7 +24,7 @@ export const GET: APIRoute = ({ params, request, url, locals }) => {
         }
       };
       // the projector page asks with ?screen: it is not a person in the room
-      const person = url.searchParams.has("screen") ? null : locals.person;
+      const person = locals.account && !url.searchParams.has("screen") ? locals.person : null;
       const stop = listen(session.id, { person, send });
       // who opened the session and when they left, with how many people are
       // here after; the projector page is a screen, not a person

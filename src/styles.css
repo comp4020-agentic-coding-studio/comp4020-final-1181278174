@@ -2021,3 +2021,102 @@ body.float {
   align-items: flex-start;
   text-align: left;
 }
+
+/* Account controls are shared by every page, including public views. */
+.account-header {
+  background: var(--sun);
+  border-bottom: var(--line);
+  padding: 6px 0;
+}
+
+.account-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 18px;
+  font-size: 14px;
+}
+
+.account-menu > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-menu form {
+  margin: 0;
+}
+
+.account-menu a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+}
+
+.account-menu .button {
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.account-page {
+  padding-top: 28px;
+  padding-bottom: 40px;
+}
+
+.account-panel h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 28px;
+}
+
+.account-panel input:not([type="hidden"]) {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--field);
+  border: var(--line);
+  border-radius: 12px;
+}
+
+.auth-prompt a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+span.me-too,
+span.me-too:hover {
+  cursor: default;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* signed out: the hand's place holds the way to sign in */
+.auth-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.auth-prompt .button {
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.auth-prompt .hint {
+  display: block;
+  margin: 0;
+}
+
+/* a link inside a sentence is as tall as its text */
+.auth-prompt .hint a {
+  display: inline;
+  min-height: 0;
+}
+

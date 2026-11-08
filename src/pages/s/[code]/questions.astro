@@ -8,6 +8,7 @@ import SessionTabs from "../../../components/SessionTabs.astro";
 import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { mark, vote } from "../../../lib/actions.ts";
+import { authLink } from "../../../lib/auth.ts";
 import {
   askQuestion,
   checkQuestion,
@@ -37,13 +38,19 @@ const sort: Sort = Astro.url.searchParams.get("sort") === "recent" ? "recent" : 
 const base = `/s/${code}/questions`;
 const here = sort === "recent" ? `${base}?sort=recent` : base;
 const person = Astro.locals.person;
+const signedIn = Astro.locals.account !== null;
+const returnTo = Astro.url.pathname + Astro.url.search;
 const log = Astro.locals.log;
 
 // Asking and voting post back to this page: plain forms, no script needed.
 // A refused question comes back with the text kept and the reason.
 let draft = "";
 let problem: string | undefined;
-if (session && Astro.request.method === "POST") {
+const signedOutPost = session && Astro.request.method === "POST" && !signedIn;
+if (signedOutPost) {
+  Astro.response.status = 401;
+  log("refused", { session: session.code, reason: "signed-out" });
+} else if (session && Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   const intent = form.get("intent");
   if (intent === "ask") {
@@ -65,8 +72,8 @@ if (session && Astro.request.method === "POST") {
 }
 if (!session) Astro.response.status = 404;
 
-const list = session ? listQuestions(session, person, sort) : [];
-const hosting = session !== undefined && isHost(session, person);
+const list = session ? listQuestions(session, signedIn ? person : "", sort) : [];
+const hosting = signedIn && session !== undefined && isHost(session, person);
 const listed = list.filter((q) => q.state !== "hidden").length;
 // Only confirm a question this person can still find in this session's list.
 const posted = Astro.request.method === "GET"
@@ -89,24 +96,36 @@ const room = {
       </SessionBand>
 
       <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
-        <form method="post" class="card ask" data-ask>
-          <input type="hidden" name="intent" value="ask" />
-          <label for="body">Your question</label>
-          <textarea id="body" name="body" rows="2" maxlength={MAX_QUESTION} required placeholder="What do you want to ask?" aria-describedby="body-help">{draft}</textarea>
-          {problem && (
-            <p class="alert" role="alert">
-              {problem}
+        {signedIn ? (
+          <form method="post" class="card ask" data-ask>
+            <input type="hidden" name="intent" value="ask" />
+            <label for="body">Your question</label>
+            <textarea id="body" name="body" rows="2" maxlength={MAX_QUESTION} required placeholder="What do you want to ask?" aria-describedby="body-help">{draft}</textarea>
+            {problem && (
+              <p class="alert" role="alert">
+                {problem}
+              </p>
+            )}
+            <div class="ask-row">
+              <p class="hint" id="body-help">
+                <Icon name="lock" size={14} /> Anonymous, even to the host
+              </p>
+              <button class="button tomato" type="submit">
+                Ask
+              </button>
+            </div>
+          </form>
+        ) : (
+          <section class="card ask auth-prompt">
+            {signedOutPost && (
+              <p class="alert" role="alert">Sign in to do that. <a href={authLink("signin", returnTo)}>Sign in</a></p>
+            )}
+            <a class="button tomato" href={authLink("signin", returnTo)}>Sign in to ask a question</a>
+            <p class="hint">
+              No account yet? <a href={authLink("signup", returnTo)}>Create one</a>: a username and a password, nothing else.
             </p>
-          )}
-          <div class="ask-row">
-            <p class="hint" id="body-help">
-              <Icon name="lock" size={14} /> Anonymous, even to the host
-            </p>
-            <button class="button tomato" type="submit">
-              Ask
-            </button>
-          </div>
-        </form>
+          </section>
+        )}
 
         <p class="question-posted" role="status" data-question-posted hidden={!posted}>
           {posted && (

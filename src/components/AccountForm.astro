@@ -1,0 +1,24 @@
+---
+import { authLink } from "../lib/auth.ts";
+
+type Props = { signup?: boolean; username: string; returnTo: string; problem?: string };
+const { signup = false, username, returnTo, problem } = Astro.props;
+const title = signup ? "Create account" : "Sign in";
+---
+
+<section class="card panel account-panel" aria-labelledby="account-title">
+  <h1 id="account-title">{title}</h1>
+  <p>Your username is shown only to you.</p>
+  <form method="post" class="panel" action={signup ? "/signup" : "/signin"}>
+    <input type="hidden" name="return" value={returnTo} />
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" value={username} required minlength="3" maxlength="30" pattern="[A-Za-z0-9._\-]{3,30}" autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby={signup ? "username-help" : undefined} />
+    {signup && <p class="hint" id="username-help">3 to 30 letters, digits, dots, dashes or underscores.</p>}
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required minlength={signup ? 8 : undefined} autocomplete={signup ? "new-password" : "current-password"} aria-describedby={signup ? "password-help" : undefined} />
+    {signup && <p class="hint" id="password-help">At least 8 characters.</p>}
+    {problem && <p class="alert" role="alert">{problem}</p>}
+    <button class="button ink" type="submit">{title}</button>
+  </form>
+  <p>{signup ? "Already have an account?" : "New here?"}{" "}<a href={authLink(signup ? "signin" : "signup", returnTo)}>{signup ? "Sign in" : "Create account"}</a></p>
+</section>

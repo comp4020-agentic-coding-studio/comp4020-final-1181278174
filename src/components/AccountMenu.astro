@@ -1,0 +1,22 @@
+---
+import { authLink } from "../lib/auth.ts";
+
+const account = Astro.locals.account;
+const path = Astro.url.pathname + Astro.url.search;
+---
+
+<nav class="account-menu" aria-label="Account">
+  {account ? (
+    <>
+      <span>Signed in as <strong>{account.username}</strong></span>
+      <form method="post" action="/signout">
+        <button class="button" type="submit">Sign out</button>
+      </form>
+    </>
+  ) : (
+    <>
+      <a href={authLink("signin", path)}>Sign in</a>
+      <a href={authLink("signup", path)}>Create account</a>
+    </>
+  )}
+</nav>

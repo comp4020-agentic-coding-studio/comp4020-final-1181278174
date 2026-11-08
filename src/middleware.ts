@@ -1,19 +1,19 @@
 import { randomBytes } from "node:crypto";
 import { defineMiddleware } from "astro:middleware";
+import { findAccount, SIGNIN_COOKIE } from "./lib/accounts.ts";
 import { requestId, tag, write } from "./lib/log.ts";
 
-// A person is a browser: a random id in an httpOnly cookie, set on the first
-// visit and kept for a year. It is how the app tells people apart (one vote
-// each, "Yours"), and it never leaves the server in a page.
+// Keep the original browser id so sessions hosted before sign-in can be
+// claimed. Signed-in activity belongs to the account, across browsers.
 const COOKIE = "hands_up_person";
 const SHAPE = /^[A-Za-z0-9_-]{22}$/;
 const YEAR = 60 * 60 * 24 * 365;
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  let person = context.cookies.get(COOKIE)?.value;
-  if (!person || !SHAPE.test(person)) {
-    person = randomBytes(16).toString("base64url");
-    context.cookies.set(COOKIE, person, {
+  let browser = context.cookies.get(COOKIE)?.value;
+  if (!browser || !SHAPE.test(browser)) {
+    browser = randomBytes(16).toString("base64url");
+    context.cookies.set(COOKIE, browser, {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
@@ -21,6 +21,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
       secure: context.url.protocol === "https:",
     });
   }
+  context.locals.browser = browser;
+  context.locals.account = findAccount(context.cookies.get(SIGNIN_COOKIE)?.value);
+  const person = context.locals.account?.id ?? browser;
   context.locals.person = person;
 
   // Every line from this request starts with the same id and names the same
@@ -38,6 +41,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   };
   try {
     const response = await next();
+    // Pages include private account controls and the owner's username. Keep
+    // them out of shared caches; streams retain their own no-transform rule.
+    if (!response.headers.get("content-type")?.includes("text/event-stream")) {
+      response.headers.set("cache-control", "private, no-store");
+    }
     line(response.status);
     return response;
   } catch (error) {

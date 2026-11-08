@@ -12,7 +12,7 @@ async function projector(who: Visitor, session: Page): Promise<Page> {
 }
 
 describe("the projector page", () => {
-  it("shows the code and the questions with the most votes first, and has nothing to press", async () => {
+  it("shows the code and the questions with the most votes first, with no session controls", async () => {
     const session = await startSession(new Visitor(), `Lecture ${tag()}`);
     const path = session.url.pathname;
     const code = path.split("/").filter(Boolean).pop()!;
@@ -35,7 +35,10 @@ describe("the projector page", () => {
     expect(shown[1]).toContain(first);
     expect(shown[1]).toMatch(/0\s*votes\b/);
 
-    expect(page.doc.querySelectorAll("form, button, input, textarea")).toHaveLength(0);
+    expect(page.doc.querySelectorAll(".present form, .present button, .present input, .present textarea")).toHaveLength(0);
+    const signout = page.doc.querySelector<HTMLFormElement>('header form[action="/signout"]');
+    expect(signout?.method).toBe("post");
+    expect(signout?.querySelector("button")?.textContent).toContain("Sign out");
   });
 
   it("has a QR code that opens the session", async () => {

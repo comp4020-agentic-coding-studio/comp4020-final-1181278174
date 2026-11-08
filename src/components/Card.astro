@@ -8,6 +8,7 @@ import Icon from "./Icon.astro";
 // script copies to draw a question that arrives while the page is open.
 type Props = { q: QuestionView; hosting: boolean };
 const { q, hosting } = Astro.props;
+const signedIn = Astro.locals.account !== null;
 
 // what the host can do to a question in each state
 const hostButtons: Record<State, [to: State, label: string][]> = {
@@ -37,26 +38,33 @@ const hostButtons: Record<State, [to: State, label: string][]> = {
       {/* the page's script keeps this up to date from the datetime */}
       <time datetime={q.createdAt.toISOString()}>{ago(q.createdAt)}</time>
     </p>
-    <form method="post" class="vote">
-      <input type="hidden" name="intent" value="vote" />
-      <input type="hidden" name="question" value={q.id} />
-      <button
-        class="me-too"
-        type="submit"
-        name="want"
-        value={q.voted ? "0" : "1"}
-        aria-pressed={q.voted ? "true" : "false"}
-        aria-label={votesLabel(q.votes)}
-      >
+    {signedIn ? (
+      <form method="post" class="vote">
+        <input type="hidden" name="intent" value="vote" />
+        <input type="hidden" name="question" value={q.id} />
+        <button
+          class="me-too"
+          type="submit"
+          name="want"
+          value={q.voted ? "0" : "1"}
+          aria-pressed={q.voted ? "true" : "false"}
+          aria-label={votesLabel(q.votes)}
+        >
+          <Icon name="hand" size={18} />
+          <span>Me too</span>
+          {" "}
+          <span class="n">{q.votes}</span>
+        </button>
+      </form>
+    ) : (
+      <span class="me-too" aria-label={votesLabel(q.votes)}>
         <Icon name="hand" size={18} />
-        <span>Me too</span>
-        {" "}
-        <span class="n">{q.votes}</span>
-      </button>
-    </form>
+        <span>Me too</span>{" "}<span class="n">{q.votes}</span>
+      </span>
+    )}
   </div>
   {
-    hosting && (
+    signedIn && hosting && (
       <form method="post" class="host">
         <input type="hidden" name="intent" value="state" />
         <input type="hidden" name="question" value={q.id} />

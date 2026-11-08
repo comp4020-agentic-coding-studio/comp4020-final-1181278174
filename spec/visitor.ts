@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom";
+import { randomBytes } from "node:crypto";
 import { inject } from "vitest";
 
 // One person with a browser: a cookie jar, and pages read the way a person
@@ -128,9 +129,18 @@ export class Stream {
 
 export class Visitor {
   private cookies: Map<string, string>;
+  private needsAccount: boolean;
+  private signingUp?: Promise<void>;
+  username = `t${randomBytes(12).toString("hex")}`;
+  password = randomBytes(24).toString("base64url");
 
-  constructor(cookies: Record<string, string> = {}) {
+  constructor(options?: { signedOut?: boolean; cookies?: Record<string, string> });
+  constructor(cookies?: Record<string, string>);
+  constructor(options: { signedOut?: boolean; cookies?: Record<string, string> } | Record<string, string> = {}) {
+    const configured = "signedOut" in options || "cookies" in options;
+    const cookies = configured ? (options as { cookies?: Record<string, string> }).cookies ?? {} : options as Record<string, string>;
     this.cookies = new Map(Object.entries(cookies));
+    this.needsAccount = !configured || !(options as { signedOut?: boolean }).signedOut;
   }
 
   /** The value this browser keeps for a named cookie. */
@@ -143,7 +153,35 @@ export class Visitor {
     return [...this.cookies.values()].filter((value) => value.length >= 8);
   }
 
-  private async send(url: URL, init: RequestInit = {}): Promise<Response> {
+  /** Sign up once, including when several first requests arrive together. */
+  private async prepareAccount(): Promise<void> {
+    if (this.needsAccount) {
+      this.needsAccount = false;
+      this.signingUp = (async () => {
+        const response = await this.send(new URL("/signup", baseUrl), this.postData(new URLSearchParams({
+          username: this.username,
+          password: this.password,
+          return: "/",
+        })), false);
+        await response.text();
+        if (response.status !== 303 || !this.cookie("hands_up_signin")) {
+          throw new Error(`could not sign up a test visitor: HTTP ${response.status}`);
+        }
+      })();
+    }
+    await this.signingUp;
+  }
+
+  private postData(data: URLSearchParams): RequestInit {
+    return {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", origin: new URL(baseUrl).origin },
+      body: data,
+    };
+  }
+
+  private async send(url: URL, init: RequestInit = {}, prepare = true): Promise<Response> {
+    if (prepare) await this.prepareAccount();
     const headers = new Headers(init.headers);
     if (this.cookies.size > 0) {
       headers.set("cookie", [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; "));
@@ -152,7 +190,14 @@ export class Visitor {
     for (const line of res.headers.getSetCookie()) {
       const pair = line.split(";")[0];
       const at = pair.indexOf("=");
-      if (at > 0) this.cookies.set(pair.slice(0, at).trim(), pair.slice(at + 1).trim());
+      if (at <= 0) continue;
+      const name = pair.slice(0, at).trim();
+      const value = pair.slice(at + 1).trim();
+      const maxAge = line.match(/;\s*max-age=(-?\d+)/i);
+      const expires = line.match(/;\s*expires=([^;]+)/i);
+      const expired = maxAge ? Number(maxAge[1]) <= 0 : Boolean(expires && Date.parse(expires[1]) <= Date.now());
+      if (expired) this.cookies.delete(name);
+      else this.cookies.set(name, value);
     }
     return res;
   }
@@ -191,14 +236,37 @@ export class Visitor {
 
   /** Send a plain POST without following its redirect, keeping this visitor's cookies. */
   async post(path: string | URL, data: URLSearchParams): Promise<Response> {
-    return this.send(new URL(path, baseUrl), {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        origin: new URL(baseUrl).origin,
-      },
-      body: data,
-    });
+    return this.send(new URL(path, baseUrl), this.postData(data));
+  }
+
+  /** Use an existing account in this browser, without first creating another. */
+  async signIn(username: string, password: string): Promise<Page> {
+    this.needsAccount = false;
+    await this.signingUp;
+    const url = new URL("/signin", baseUrl);
+    const response = await this.send(url, this.postData(new URLSearchParams({ username, password, return: "/" })), false);
+    const location = response.headers.get("location");
+    if (response.status === 303 && location) {
+      await response.text();
+      this.username = username;
+      this.password = password;
+      return this.open(new URL(location, url));
+    }
+    return page(response.status, url, await response.text());
+  }
+
+  /** End this browser's sign-in; later requests stay signed out. */
+  async signOut(): Promise<Page> {
+    this.needsAccount = false;
+    await this.signingUp;
+    const url = new URL("/signout", baseUrl);
+    const response = await this.send(url, this.postData(new URLSearchParams()), false);
+    const location = response.headers.get("location");
+    if (response.status === 303 && location) {
+      await response.text();
+      return this.open(new URL(location, url));
+    }
+    return page(response.status, url, await response.text());
   }
 
   /** Submit a form as pressing `button` (else its first submit button) would. */

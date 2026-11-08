@@ -132,7 +132,7 @@ async function popHall(): Promise<void> {
           said.textContent = "Not marked: no answer from the server.";
         });
     });
-  } else {
+  } else if (document.querySelector("form[data-hand]")) {
     // "I'm lost": presses the hall's own button, so the page and the window agree
     press = doc.createElement("button");
     press.type = "button";

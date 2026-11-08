@@ -1,0 +1,32 @@
+---
+import AccountForm from "../components/AccountForm.astro";
+import SlimHeader from "../components/SlimHeader.astro";
+import Layout from "../layouts/Layout.astro";
+import { verifyPassword } from "../lib/accounts.ts";
+import { completeSignIn, returnPath } from "../lib/auth.ts";
+
+let username = "";
+let problem: string | undefined;
+let returnTo = returnPath(Astro.url.searchParams.get("return"));
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  username = String(form.get("username") ?? "");
+  returnTo = returnPath(form.get("return") ?? returnTo);
+  const result = await verifyPassword(username, String(form.get("password") ?? ""));
+  if (result.ok) {
+    completeSignIn(result.account.id, Astro.locals.browser, Astro.cookies, Astro.url);
+    Astro.locals.log("signed_in");
+    return Astro.redirect(returnTo, 303);
+  }
+  Astro.response.status = 422;
+  problem = result.message;
+  Astro.locals.log("refused", { action: "signin", reason: result.reason });
+}
+---
+
+<Layout title="Sign in · Hands Up">
+  <SlimHeader />
+  <main id="main" class="wrap account-page">
+    <AccountForm username={username} returnTo={returnTo} problem={problem} />
+  </main>
+</Layout>

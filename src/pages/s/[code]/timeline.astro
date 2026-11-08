@@ -9,6 +9,7 @@ import { findSession, isCode, isHost, listQuestions, normaliseCode } from "../..
 import { goingOversOf } from "../../../lib/going-over.ts";
 import { people } from "../../../lib/live.ts";
 import { recordingStart, timelineMark } from "../../../lib/actions.ts";
+import { authLink } from "../../../lib/auth.ts";
 import { intoRecording, type Minute, marksOf, MAX_MARK, partAt, sittings } from "../../../lib/record.ts";
 import { clock, day } from "../../../lib/words.ts";
 
@@ -23,6 +24,8 @@ if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
 
 let session = isCode(code) ? findSession(code) : undefined;
 const person = Astro.locals.person;
+const signedIn = Astro.locals.account !== null;
+const returnTo = Astro.url.pathname + Astro.url.search;
 const log = Astro.locals.log;
 if (!session) Astro.response.status = 404;
 
@@ -32,7 +35,11 @@ let markValue = "";
 let recordingValue: string | undefined;
 
 // The host's two forms: a mark now, and when the recording started. Anyone else is refused.
-if (session && Astro.request.method === "POST") {
+const signedOutPost = session && Astro.request.method === "POST" && !signedIn;
+if (session && signedOutPost) {
+  Astro.response.status = 401;
+  log("refused", { session: session.code, reason: "signed-out" });
+} else if (session && Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   const intent = form.get("intent");
   if (intent === "timeline_mark") markValue = String(form.get("label") ?? "");
@@ -54,8 +61,8 @@ if (session && Astro.request.method === "POST") {
   shown = session ? sittings(session.id, people(session.id).size) : [];
 }
 
-const hosting = session !== undefined && isHost(session, person);
-const listed = session ? listQuestions(session, person, "popular").filter((q) => q.state !== "hidden").length : 0;
+const hosting = signedIn && session !== undefined && isHost(session, person);
+const listed = session ? listQuestions(session, signedIn ? person : "", "popular").filter((q) => q.state !== "hidden").length : 0;
 const all = session ? marksOf(session.id) : [];
 const goingOvers = session ? goingOversOf(session.id) : [];
 const recordingAt = session?.recordingAt ?? null;
@@ -88,6 +95,9 @@ const busiest = (minutes: Minute[]): Minute[] =>
 
       <main id="main" class:list={["wrap timeline", { "timeline-with-host": hosting }]} data-live={`/s/${session.code}/events`}>
         <section class="card timeline-head" aria-labelledby="timeline-title">
+          {signedOutPost && (
+            <p class="alert" role="alert">Sign in to do that. <a href={authLink("signin", returnTo)}>Sign in</a></p>
+          )}
           <div class="timeline-title">
             <h2 id="timeline-title">When the room was lost</h2>
             <span class="live" data-live-status hidden />
@@ -274,7 +284,7 @@ const busiest = (minutes: Minute[]): Minute[] =>
         </div>
 
         <p class="foot session-foot">
-          <a href={`/s/${session.code}`}>Back to the hall</a> <span>Where anyone can raise a hand.</span>
+          <a href={`/s/${session.code}`}>Back to the hall</a> <span>Sign in to raise a hand.</span>
         </p>
       </main>
       <script>

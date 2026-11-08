@@ -27,7 +27,7 @@ export type Board = {
   goingOver: number | null;
 };
 
-/** One open stream. `person` is null for a screen nobody is asking from (the projector page). */
+/** One open stream. `person` is null for a signed-out viewer or projector. */
 type Listener = { person: string | null; send: (event: string) => void };
 
 const listeners = new Map<number, Set<Listener>>();
@@ -70,14 +70,11 @@ export function board(sessionId: number): Board {
 }
 
 // Who started each session: the host teaches, so they are not one of the
-// people "here" and have no hand. Read once per session; a host never changes.
-const hosts = new Map<number, string | null>();
+// people "here" and have no hand. Signing in can transfer an old browser's
+// sessions to an account, so read the current host each time.
 function hostOf(sessionId: number): string | null {
-  if (!hosts.has(sessionId)) {
-    const row = db.select({ host: sessions.host }).from(sessions).where(eq(sessions.id, sessionId)).get();
-    hosts.set(sessionId, row?.host ?? null);
-  }
-  return hosts.get(sessionId) ?? null;
+  const row = db.select({ host: sessions.host }).from(sessions).where(eq(sessions.id, sessionId)).get();
+  return row?.host ?? null;
 }
 
 /**

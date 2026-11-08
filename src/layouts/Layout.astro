@@ -1,5 +1,6 @@
 ---
 import "../styles.css";
+import AccountMenu from "../components/AccountMenu.astro";
 
 type Props = { title: string; sunny?: boolean };
 const { title, sunny = false } = Astro.props;
@@ -23,6 +24,7 @@ const { title, sunny = false } = Astro.props;
   </head>
   <body class={sunny ? "sunny" : undefined}>
     <a class="skip" href="#main">Skip to content</a>
+    <header class="account-header"><div class="wrap"><AccountMenu /></div></header>
     <slot />
   </body>
 </html>

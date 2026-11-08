@@ -8,6 +8,7 @@ import SessionTabs from "../../components/SessionTabs.astro";
 import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
 import { goingOver, mark, timelineMark, vote } from "../../lib/actions.ts";
+import { authLink } from "../../lib/auth.ts";
 import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
 import { HAND_MS } from "../../lib/hall.ts";
 import { goingOverAge } from "../../lib/going-over.ts";
@@ -27,10 +28,16 @@ if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
 }
 const session = isCode(code) ? findSession(code) : undefined;
 const person = Astro.locals.person;
+const signedIn = Astro.locals.account !== null;
+const returnTo = Astro.url.pathname + Astro.url.search;
 const log = Astro.locals.log;
 let goingOverProblem = "";
+const signedOutPost = session && Astro.request.method === "POST" && !signedIn;
 
-if (session && Astro.request.method === "POST") {
+if (signedOutPost) {
+  Astro.response.status = 401;
+  log("refused", { session: session.code, reason: "signed-out" });
+} else if (session && Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   const intent = form.get("intent");
   if (intent === "hand" && isHost(session, person)) {
@@ -70,8 +77,8 @@ if (session && Astro.request.method === "POST") {
 }
 if (!session) Astro.response.status = 404;
 
-const hosting = session !== undefined && isHost(session, person);
-const all = session ? listQuestions(session, person, "popular") : [];
+const hosting = signedIn && session !== undefined && isHost(session, person);
+const all = session ? listQuestions(session, signedIn ? person : "", "popular") : [];
 const listed = all.filter((q) => q.state !== "hidden").length;
 const wanted = all.filter((q) => q.state === "open").slice(0, 3);
 const parts = session && hosting ? marksOf(session.id) : [];
@@ -79,11 +86,11 @@ const parts = session && hosting ? marksOf(session.id) : [];
 const marked = Astro.request.method === "GET" ? parts[Number(Astro.url.searchParams.get("marked")) - 1] : undefined;
 
 // The hall as this person is about to see it: everyone with the session open,
-// and this person, who will be once the page's stream opens, unless they are
-// the host, who teaches and is not counted. How long their own hand has been
+// and this signed-in person, who will be once the page's stream opens, unless
+// they are the host, who teaches and is not counted. How long their own hand has been
 // up is put in their page, never in what the stream sends.
-const inRoom = session ? [...new Set([...people(session.id), ...(hosting ? [] : [person])])] : [];
-const mine = session ? handOf(session.id, person) : undefined;
+const inRoom = session ? [...new Set([...people(session.id), ...(signedIn && !hosting ? [person] : [])])] : [];
+const mine = session && signedIn ? handOf(session.id, person) : undefined;
 // and when the session started and its last 16 minutes, for the small window's chart
 const room = {
   here: inRoom.length,
@@ -104,6 +111,9 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
 
       <main id="main" class="wrap hall-layout" data-live={`/s/${session.code}/events`}>
         <section class="card hall" id="hall" aria-labelledby="hall-count">
+          {signedOutPost && (
+            <p class="alert" role="alert">Sign in to do that. <a href={authLink("signin", returnTo)}>Sign in</a></p>
+          )}
           {/* the hall is drawn here by src/scripts/hall.ts; the sentence under it says the same in words */}
           <div class="hall-view" data-hall data-view={hosting ? "front" : "seat"} aria-hidden="true" />
           <div class="hall-meta">
@@ -124,7 +134,7 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           <p class="hint">
             <Icon name="lock" size={14} /> No one, the host included, is shown whose hand is up.
           </p>
-          {!hosting && (
+          {signedIn && !hosting && (
             <form method="post" class="hall-hand" data-hand>
               <input type="hidden" name="intent" value="hand" />
               <input type="hidden" name="up" value={mine === undefined ? "1" : "0"} />
@@ -135,6 +145,16 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
                 {handNote(until)}
               </p>
             </form>
+          )}
+          {!signedIn && (
+            <div class="hall-hand auth-prompt">
+              <a class="button tomato" href={authLink("signin", returnTo)}>
+                <Icon name="hand" size={22} /> Sign in to raise your hand
+              </a>
+              <p class="hint">
+                No account yet? <a href={authLink("signup", returnTo)}>Create one</a>: a username and a password, nothing else.
+              </p>
+            </div>
           )}
           <div class="hall-links">
             <a href={`/s/${session.code}/timeline`}>When the room was lost</a>

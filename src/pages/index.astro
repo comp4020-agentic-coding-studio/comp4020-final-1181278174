@@ -4,12 +4,20 @@ import JoinForm from "../components/JoinForm.astro";
 import Layout from "../layouts/Layout.astro";
 import { checkTitle, length, MAX_TITLE, sessionsHostedBy, startSession } from "../lib/board.ts";
 import { clock, day } from "../lib/words.ts";
+import { authLink } from "../lib/auth.ts";
 
 // Starting a session posts back here: on success it goes to the new
 // session, otherwise this page comes back with the name kept and the reason.
 let title = "";
 let problem: string | undefined;
-if (Astro.request.method === "POST") {
+const signedOut = !Astro.locals.account;
+const signin = authLink("signin", Astro.url.pathname + Astro.url.search);
+const signup = authLink("signup", Astro.url.pathname + Astro.url.search);
+if (Astro.request.method === "POST" && signedOut) {
+  Astro.response.status = 401;
+  problem = "Sign in to do that.";
+  Astro.locals.log("refused", { action: "start", reason: "signed-out" });
+} else if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   title = String(form.get("title") ?? "").trim();
   problem = checkTitle(title);
@@ -23,8 +31,8 @@ if (Astro.request.method === "POST") {
   Astro.locals.log("refused", { action: "start", reason, length: length(title) });
 }
 
-// the sessions this browser started, for coming back to a lecture's timeline
-const hosted = sessionsHostedBy(Astro.locals.person);
+// The account's sessions are available in every signed-in browser.
+const hosted = Astro.locals.account ? sessionsHostedBy(Astro.locals.person) : [];
 ---
 
 <Layout title="Hands Up" sunny>
@@ -45,26 +53,30 @@ const hosted = sessionsHostedBy(Astro.locals.person);
 
       <section class="card quiet panel" aria-labelledby="start-heading">
         <h2 id="start-heading">Start a session</h2>
-        <form method="post" class="panel">
-          <label for="title">Name it</label>
-          <input
-            class="title-input"
-            id="title"
-            name="title"
-            type="text"
-            maxlength={MAX_TITLE}
-            required
-            placeholder="COMP4020 week 9 lecture"
-            value={title}
-          />
-          {problem && <p class="alert" role="alert">{problem}</p>}
-          <button class="button ink" type="submit">Start a session</button>
-        </form>
+        {problem && <p class="alert" role="alert">{problem}{signedOut && <> <a href={signin}>Sign in</a></>}</p>}
+        {signedOut ? (
+          <p>Sign in to start a session. <a href={signin}>Sign in</a>{" or "}<a href={signup}>Create account</a>.</p>
+        ) : (
+          <form method="post" class="panel">
+            <label for="title">Name it</label>
+            <input
+              class="title-input"
+              id="title"
+              name="title"
+              type="text"
+              maxlength={MAX_TITLE}
+              required
+              placeholder="COMP4020 week 9 lecture"
+              value={title}
+            />
+            <button class="button ink" type="submit">Start a session</button>
+          </form>
+        )}
       </section>
 
       {hosted.length > 0 && (
         <section class="card quiet panel hosted" aria-labelledby="hosted-heading">
-          <h2 id="hosted-heading">Sessions you started in this browser</h2>
+          <h2 id="hosted-heading">Sessions you started</h2>
           <ul class="hosted-list" aria-label="Sessions you started">
             {hosted.map((h) => (
               <li>
@@ -79,11 +91,11 @@ const hosted = sessionsHostedBy(Astro.locals.person);
               </li>
             ))}
           </ul>
-          <p class="hint">Kept with this browser: on another device, or after clearing cookies, they won't be here.</p>
+          <p class="hint">Sign in on any device to find your sessions here.</p>
         </section>
       )}
 
-      <p class="foot"><a href="/readme/">About Hands Up</a> <span>No accounts. No names.</span></p>
+      <p class="foot"><a href="/readme/">About Hands Up</a> <span>Your username stays private.</span></p>
     </div>
   </main>
 </Layout>
