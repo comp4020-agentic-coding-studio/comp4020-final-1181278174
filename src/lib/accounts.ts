@@ -186,15 +186,21 @@ export function findAccount(token?: string): Account | null {
  * or whose password was seen, takes the account back. Returns how many ended.
  */
 export function endOtherSignIns(accountId: string, keep?: string): number {
+  const ended = endOthersInDatabase(accountId, keep);
+  for (const hash of ended) endStreamsOf(hash);
+  return ended.length;
+}
+
+/** The database half of endOtherSignIns, to run inside a transaction; returns the digests it ended. */
+function endOthersInDatabase(accountId: string, keep?: string): string[] {
   const others = db.select({ tokenHash: signIns.tokenHash }).from(signIns)
     .where(and(eq(signIns.accountId, accountId), isNull(signIns.endedAt), ne(signIns.tokenHash, keep ? tokenHash(keep) : "")))
     .all();
   const now = new Date();
   for (const { tokenHash: hash } of others) {
     db.update(signIns).set({ endedAt: now }).where(and(eq(signIns.tokenHash, hash), isNull(signIns.endedAt))).run();
-    endStreamsOf(hash);
   }
-  return others.length;
+  return others.map((row) => row.tokenHash);
 }
 
 /**
@@ -209,6 +215,9 @@ export async function changePassword(
   from: { browser: string; network: string },
   keep?: string,
 ): Promise<{ ok: true; ended: number } | { ok: false; reason: string; message: string }> {
+  // the password as it was before checking: a change made meanwhile from
+  // another browser must not be overwritten, nor end this one's sign-in
+  const before = db.select({ hash: accounts.passwordHash }).from(accounts).where(eq(accounts.id, account.id)).get()?.hash;
   const checked = await verifyPassword(account.username, current, from);
   if (!checked.ok) {
     return checked.reason === "sign-in-limit"
@@ -218,8 +227,22 @@ export async function changePassword(
   const problem = passwordProblem(account.username, next);
   if (problem) return problem;
   if (next === current) return { ok: false, reason: "password-same", message: "Choose a password that's different from your current one." };
-  db.update(accounts).set({ passwordHash: await hashPassword(next) }).where(eq(accounts.id, account.id)).run();
-  return { ok: true, ended: endOtherSignIns(account.id, keep) };
+  const hash = await hashPassword(next);
+  // One step: the password is still the one checked, this browser is still
+  // signed in, and only then the new password and the other sign-ins' end.
+  const ended = db.transaction((tx) => {
+    const signedIn = keep ? tx.select({ ok: signIns.tokenHash }).from(signIns)
+      .where(and(eq(signIns.tokenHash, tokenHash(keep)), isNull(signIns.endedAt))).get() : undefined;
+    if (!before || (keep && !signedIn)) return undefined;
+    const { changes } = tx.update(accounts).set({ passwordHash: hash })
+      .where(and(eq(accounts.id, account.id), eq(accounts.passwordHash, before))).run();
+    return changes === 1 ? endOthersInDatabase(account.id, keep) : undefined;
+  });
+  if (!ended) {
+    return { ok: false, reason: "changed-meanwhile", message: "Your password was changed from another browser just now, so this change wasn't made." };
+  }
+  for (const digest of ended) endStreamsOf(digest);
+  return { ok: true, ended: ended.length };
 }
 
 /** End this browser's sign-in; other browsers stay signed in. */

@@ -68,6 +68,26 @@ describe("your account", () => {
     expect(said(page.html)).toContain("Signed out of 1 other browser.");
   });
 
+  it("lets one of two changes made at once win, and keeps that browser signed in", async () => {
+    const owner = new Visitor();
+    await owner.open("/");
+    const other = new Visitor({ signedOut: true });
+    expect((await other.signIn(owner.username, owner.password)).status).toBe(200);
+    const [mine, theirs] = [`mine is long enough ${Date.now()}`, `theirs is long enough ${Date.now()}`];
+    const answers = await Promise.all([
+      post(owner, { intent: "password", current: owner.password, password: mine }),
+      post(other, { intent: "password", current: owner.password, password: theirs }),
+    ]);
+    for (const answer of answers) await answer.text();
+    const statuses = answers.map((a) => a.status).sort();
+    expect(statuses, "one change wins, the other is refused").toEqual([303, 422]);
+    const [winner, winning] = answers[0].status === 303 ? [owner, mine] : [other, theirs];
+    const losing = winning === mine ? theirs : mine;
+    expect((await winner.open("/account")).url.pathname, "the winner stays signed in").toBe("/account");
+    expect((await new Visitor({ signedOut: true }).signIn(owner.username, winning)).status).toBe(200);
+    expect((await new Visitor({ signedOut: true }).signIn(owner.username, losing)).status).toBe(422);
+  });
+
   it("refuses a wrong current password or a weak new one, and sends no password back", async () => {
     const owner = new Visitor();
     await owner.open("/");
