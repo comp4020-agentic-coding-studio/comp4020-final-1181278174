@@ -418,7 +418,7 @@ What is live after crit 10 is a question board: anonymous questions, "Me too",
 Popular and Recent, a projector page, live updates and logs. On 8 November I
 looked at what students here already have and at the other final projects. Ed
 has anonymous posts. Echo360 takes questions during a live stream, and has a
-"confused" flag whose count only the lecturer sees. Another final project in
+"confused" flag whose count only teaching staff see. Another final project in
 the class works almost the same way as mine. A board that carries questions to
 the person at the front is the answer anyone would build.
 
@@ -468,7 +468,7 @@ The hall's record is at `/s/CODE/timeline`, the projector at `/s/CODE/present`.
 - The host teaches: they have no hand and are not counted, live or in the
   timeline. A hand sent from the host's browser is refused.
 - A hand counts as here until it comes down, page open or not: a hand that left
-  with a locked phone and came back would show whose it was.
+  with a locked phone and came back could show whose it was.
 - The figures are all the same and have no faces. The steps are the app's
   yellow, a raised hand is tomato, and your own figure is blue, on your screen
   only.
@@ -511,7 +511,7 @@ hall tab closes.
 
 ### Not building
 
-Showing Echo360 inside the app: its pages need an ANU login the marker does not
+Showing Echo360 inside the app: its pages need an ANU login a marker may not
 have, Wattle refuses to be shown inside another site, and Safari blocks a login
 inside one. Also not now: a line of words on a hand, an export, an "End
 lecture" button. Figures modelled in Blender were tried on 8 November and left
@@ -564,7 +564,7 @@ changed these. Each is in the code and, where HTTP can see it, in `spec/`.
   20:19 a hand sent from the host's browser is refused: before that, the host
   could put a hand up and make the timeline show a student lost.
 - 20:19: a raised hand counts as here until it comes down, because a hand that
-  left with a locked phone and came back would show whose it was.
+  left with a locked phone and came back could show whose it was.
 - 20:19: the pages say who is shown ("No one, the host included, is shown whose
   hand is up"), not that nobody could work it out: whoever runs the server, a
   very small room and someone looking at your screen are limits.
