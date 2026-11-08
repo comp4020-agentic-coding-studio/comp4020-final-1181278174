@@ -416,11 +416,10 @@ full of people using it at once.
 
 What is live after crit 10 is a question board: anonymous questions, "Me too",
 Popular and Recent, a projector page, live updates and logs. On 8 November I
-looked at what students here already have and at the other final projects. Ed
-has anonymous posts. Echo360 takes questions during a live stream, and has a
-"confused" flag whose count only teaching staff see. Another final project in
-the class works almost the same way as mine. A board that carries questions to
-the person at the front is the answer anyone would build.
+looked at what students here already have. Ed has anonymous posts. Echo360
+takes questions during a live stream, and has a "confused" flag whose count
+only teaching staff see. A board that carries questions to the person at the
+front is the answer anyone would build.
 
 ### The decision
 
