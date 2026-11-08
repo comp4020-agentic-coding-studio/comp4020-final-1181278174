@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { fill, formWithButton, type Page, startSession, type Stream, Visitor } from "./visitor.ts";
+import { ask, fill, formWithButton, hostPress, type Page, questionsPath, startSession, type Stream, Visitor } from "./visitor.ts";
 
 // The hall's record: how many hands were up in each minute, out of how many
 // people. These read the timeline page over HTTP. That it is still there after
@@ -48,6 +48,35 @@ const text = (el: Element): string => el.textContent?.replace(/\s+/g, " ").trim(
 const everyMinute = (p: Page): Element[] => [...p.doc.querySelectorAll('details ol[aria-label="Every minute"] > li')];
 
 describe("the timeline", () => {
+  it("counts the same visible questions in its tab and stream as questions arrive, are hidden, and return", async () => {
+    const host = new Visitor();
+    const hall = await startSession(host, `Questions ${tag()}`);
+    const path = hall.url.pathname;
+    const reader = new Visitor();
+    const page = await timeline(reader, path);
+    const tab = (p: Page): string => text(p.doc.querySelector('nav[aria-label="Parts of the session"] a[href$="/questions"]')!);
+    expect(tab(page)).toBe("Questions 0");
+    const stream = await reader.listen(page);
+    open.push(stream);
+    await stream.until((board) => board.questions.length === 0);
+
+    const body = `A question while reading ${tag()}`;
+    await ask(new Visitor(), questionsPath(hall), body);
+    await stream.until((board) => board.questions.length === 1);
+    expect(tab(await timeline(reader, path))).toBe("Questions 1");
+
+    stream.forget();
+    await hostPress(host, questionsPath(hall), body, /^hide/i);
+    await stream.until((board) => board.questions.length === 0);
+    expect(tab(await timeline(reader, path))).toBe("Questions 0");
+    expect(tab(await timeline(host, path))).toBe("Questions 0");
+
+    stream.forget();
+    await hostPress(host, questionsPath(hall), body, /show again/i);
+    await stream.until((board) => board.questions.length === 1);
+    expect(tab(await timeline(reader, path))).toBe("Questions 1");
+  });
+
   it("keeps a hand that came down, as how many were lost that minute, out of how many were here", async () => {
     const path = (await startSession(new Visitor(), `Record ${tag()}`)).url.pathname;
     await here(path);

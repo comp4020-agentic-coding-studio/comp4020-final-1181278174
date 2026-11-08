@@ -105,7 +105,11 @@ function watch(main: HTMLElement, url: string, sittings: HTMLElement): void {
   function connect(): void {
     source = new EventSource(url);
     source.onopen = () => say(true);
-    source.onmessage = () => void refresh();
+    source.onmessage = (event) => {
+      const board = JSON.parse(event.data) as { questions: unknown[] };
+      for (const count of document.querySelectorAll<HTMLElement>("[data-questions-n]")) count.textContent = String(board.questions.length);
+      void refresh();
+    };
     source.onerror = () => {
       say(false);
       if (source?.readyState === EventSource.CLOSED && !stopped) reconnectTimer = setTimeout(connect, 2000);
