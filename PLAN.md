@@ -1,4 +1,23 @@
-# Plan: Hands Up, an anonymous question board for one room
+# Plan: Hands Up
+
+## Where it stands, 9 November
+
+Hands Up began as an anonymous question board (crit 8) and became a hand the
+whole room sees (8 November). This file keeps every decision in the order it
+was made; a later section replaces an earlier one where they disagree. What the
+app is now:
+
+- the hall, a hand without words that the room sees, with the question board as
+  the second part: "Final: the hall"
+- sign-in with a username and a password, who asked sealed for an auditor:
+  "Sign-in, with who asked sealed for an auditor" (replaces "A person, a
+  session" and the first "Not building")
+- classes the host starts and ends, the card for the next pause, the recap: "A
+  class", "At your next pause"
+- the first-use guide, the look, tutorials, the lecturer's end and the
+  student's end: the last five sections
+
+## Crit 8: the first version
 
 Crit 8 brief: it's alive! Ship the first working version of the final project,
 and a first go at saying what good means for it. Cutoff Wednesday 7 October
@@ -19,6 +38,9 @@ questions it wants answered.
 
 ## What good looks like here (first version)
 
+(Replaced: asking now needs an account, since 9 November, and the README argues
+what good means for the hall.)
+
 - Asking costs nothing: no account, no name, no app to install. A four-letter
   code or a QR scan opens the session with the ask box first.
 - Nobody can find out who asked, the host included. The app still tells people
@@ -36,6 +58,8 @@ the checks enforce and which are judged.
 
 ## Not building
 
+(Accounts were added on 9 November, still with no names, profiles or email.)
+
 Replies or threads (they turn it into a chat room); downvotes; accounts,
 profiles, names or avatars on questions; polls, quizzes and word clouds;
 leaderboards; email; a dashboard of every session.
@@ -45,6 +69,9 @@ Not this week: live updates (crit 9), "answering now", answered and hidden
 server-side logging (crit 10).
 
 ## The look
+
+(Replaced on 9 November by "The look, from four proposals". The design canvas
+still shows this first look.)
 
 Drawn on the design canvas before it is built, from a study of how Slido,
 Mentimeter, Pigeonhole Live and the others lay out a live Q&A. Three screens:
@@ -67,6 +94,9 @@ Decided 7 October, 04:18: bold and playful, so asking feels low-stakes.
   names, no downvotes, no replies.
 
 ## A person, a session
+
+(Replaced on 9 November: a person is an account. See "Sign-in, with who asked
+sealed for an auditor".)
 
 - A person is a browser: a random id in an httpOnly cookie, set on the first
   visit and kept for a year. It is how the app tells people apart (one vote
@@ -508,12 +538,18 @@ Where the browser cannot do it, the button is not shown. Next to it: "Keep this
 tab open; you can switch to your slides." Each window says it closes if the
 hall tab closes.
 
+9 November, 05:26: the windows were redone. A student's has the count in large
+type, when their hand comes down, why the button is off outside a class, and a
+box to ask without a name. The host's has no moving chart: the card for the
+next pause, Going over it and the mark. Made small, a window keeps only the
+count and the button.
+
 ### Not building
 
 Showing Echo360 inside the app: its pages need an ANU login a marker may not
 have, Wattle refuses to be shown inside another site, and Safari blocks a login
 inside one. Also not now: a line of words on a hand, an export, an "End
-lecture" button. Figures modelled in Blender were tried on 8 November and left
+lecture" button (built on 9 November as End class). Figures modelled in Blender were tried on 8 November and left
 out: at the size a phone draws them their detail can't be seen, and their style
 did not match the rest.
 
@@ -716,7 +752,10 @@ morning and brought onto main as it stood.
 - The host can look at the student's room ("Student view"); a student can't
   reach the lecturer's page. A tutorial's `/teach` leads to its tutorial room.
 
-### Order of work
+### Order of work, 8 November
+
+(Steps 1 to 7 were done that evening; step 8 is the last thing before the
+deadline.)
 
 1. this plan
 2. the design canvas: the hall, the timeline, the floating windows, the projector
