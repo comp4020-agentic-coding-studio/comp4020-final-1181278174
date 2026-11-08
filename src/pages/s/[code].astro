@@ -16,7 +16,7 @@ import { classState, latestClass } from "../../lib/classes.ts";
 import { HAND_MS } from "../../lib/hall.ts";
 import { goingOverAge } from "../../lib/going-over.ts";
 import { people } from "../../lib/live.ts";
-import { MAX_MARK, marksOf, recentLost } from "../../lib/record.ts";
+import { MAX_MARK, marksOf, partSoFar, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
 import { classNote, clock, GOING_OVER_NOTE, handNote, lostLabel, moment, refusal, SILENCE, SILENCE_SHORT, tooFast } from "../../lib/words.ts";
 
@@ -125,6 +125,8 @@ const all = session ? listQuestions(session, signedIn ? person : "", "popular") 
 const listed = all.filter((q) => q.state !== "hidden").length;
 const wanted = all.filter((q) => q.state === "open").slice(0, 3);
 const parts = session && hosting ? marksOf(session.id) : [];
+// for the host's next pause: the part so far, while a class is on
+const checkpoint = session && hosting ? partSoFar(session.id, people(session.id).size) : null;
 // the mark the host has just made, said back to them under the form
 const marked = Astro.request.method === "GET" ? parts[Number(Astro.url.searchParams.get("marked")) - 1] : undefined;
 
@@ -234,6 +236,29 @@ const lastClass = session ? latestClass(session.id) : undefined;
           <section class="card host-panel hall-host" id="host" aria-labelledby="host-title">
             <h2 id="host-title">For the host</h2>
             <p class="hint host-note">You teach: you have no hand here, and you aren't counted.</p>
+            {/* refreshed by src/scripts/checkpoint.ts as the room changes; copied into the host's floating window */}
+            <section class="checkpoint" aria-labelledby="checkpoint-title" data-checkpoint hidden={!checkpoint}>
+              <h3 id="checkpoint-title">At your next pause</h3>
+              {checkpoint && (
+                <>
+                  <p class="hint checkpoint-part">
+                    {checkpoint.label ? `${checkpoint.label}, since ${clock(checkpoint.from)}.` : `Since the class started at ${clock(checkpoint.from)}.`}
+                  </p>
+                  <p class="checkpoint-most">
+                    {checkpoint.most
+                      ? `At ${clock(checkpoint.most.at)}, ${checkpoint.most.lost} of ${checkpoint.most.here} here said they were lost: the most in this part.`
+                      : `No one has said they were lost in this part. ${SILENCE_SHORT}`}
+                  </p>
+                  {wanted[0] && (
+                    <p class="checkpoint-question">
+                      Most wanted:{" "}
+                      <a href={`/s/${session.code}/questions#q-${wanted[0].id}`}>“{wanted[0].body}”</a>{" "}
+                      · {wanted[0].votes} Me too
+                    </p>
+                  )}
+                </>
+              )}
+            </section>
             {goingOverProblem && <p class="alert" role="alert">{goingOverProblem}</p>}
             <form method="post" class="hall-going-over" data-going-over-form data-plain>
               <input type="hidden" name="intent" value="going-over" />
@@ -299,6 +324,7 @@ const lastClass = session ? latestClass(session.id) : undefined;
         import "../../scripts/live.ts";
         import "../../scripts/hand.ts";
         import "../../scripts/float.ts";
+        import "../../scripts/checkpoint.ts";
         // three.js is big: the button works before it arrives
         void import("../../scripts/hall.ts");
       </script>

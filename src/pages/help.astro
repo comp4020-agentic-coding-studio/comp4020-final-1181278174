@@ -33,6 +33,7 @@ const minutes = (ms: number): string => `${Math.round(ms / 60_000)} minutes`;
         <li>Start a session and put its projector page up.</li>
         <li>Press <strong>Start class</strong> when you begin: hands can go up until you press <strong>End class</strong>, which takes every hand down. Next week, start the same code again; the timeline shows when each class started and ended.</li>
         <li>You teach: you have no hand, and you aren't counted.</li>
+        <li><strong>At your next pause</strong> keeps the part so far: its minute with the most hands up, and the most wanted question. Look at it when you pause; you don't need to watch the count.</li>
         <li><strong>Going over it</strong> shows a message on the hall, the questions, the projector and the floating window, for {minutes(GOING_OVER_MS)}.</li>
         <li>Mark the parts of the lecture and when the recording started. The timeline keeps how many of those counted said they were lost, minute by minute, so you can find the moment in the recording.</li>
         <li><strong>Pop out</strong> keeps the count in a small window over your slides, in browsers that can open one. Keep the hall tab open: closing it closes the window.</li>

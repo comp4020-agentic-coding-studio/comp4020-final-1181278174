@@ -1698,7 +1698,7 @@ body.float {
   resize: vertical;
 }
 
-/* the host's: what the room most wants answered, for the next pause */
+/* the host's: the hall's "At your next pause" card */
 .float-top {
   margin: 0;
   padding: 8px 10px;
@@ -1709,18 +1709,45 @@ body.float {
   line-height: 1.3;
 }
 
-.float-top-label {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
+.float-checkpoint h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
 }
 
-.float-top-body {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.float-checkpoint p {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.float-checkpoint[hidden] {
+  display: none;
+}
+
+/* the host's card on the hall: the part so far, for the next pause */
+.checkpoint {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: var(--line);
+  border-radius: 14px;
+  background: var(--field);
+}
+
+.checkpoint[hidden] {
+  display: none;
+}
+
+.checkpoint h3,
+.checkpoint p {
+  margin: 0;
+}
+
+.checkpoint h3 {
+  font-size: 17px;
+}
+
+.checkpoint-question a {
   overflow-wrap: anywhere;
 }
 

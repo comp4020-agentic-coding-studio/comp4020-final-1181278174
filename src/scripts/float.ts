@@ -9,8 +9,8 @@ import { type Hall, lastHall } from "./hand.ts";
 //
 // - On the hall, a student's window: how many are lost in large type, the
 //   last 15 minutes, "I'm lost" with when the hand comes down, and a question
-//   asked without a name. The host's: the count, Going over it, the question
-//   the room most wants answered, and a mark for a new part. A small window
+//   asked without a name. The host's: the count, Going over it, the hall's
+//   "At your next pause" card, and a mark for a new part. A small window
 //   keeps only the count and the button (src/styles.css).
 // - On the timeline: the newest sitting's chart, to keep beside the recording.
 //
@@ -170,8 +170,10 @@ async function popHall(): Promise<void> {
     goingProblem.setAttribute("role", "status");
     goingProblem.hidden = true;
     box.append(goingPress, note, goingProblem);
-    stop.push(topQuestion(box));
+    stop.push(checkpointCopy(box));
     box.append(markForm(doc));
+    // the lecturer looks at pauses, not at a moving chart: the card says what the part was like
+    box.querySelector(".float-trend")?.remove();
   } else if (handForm) {
     // "I'm lost": presses the hall's own button, so the page and the window agree
     press = doc.createElement("button");
@@ -302,6 +304,8 @@ function markForm(doc: Document): HTMLFormElement {
       .then((ok) => {
         // clear only the mark just sent, never a new draft typed meanwhile
         if (ok && input.value === label) input.value = "";
+        // a new part starts: the hall's "At your next pause" card follows it
+        if (ok) document.dispatchEvent(new CustomEvent("hands-up:marked"));
       });
   });
   return form;
@@ -355,27 +359,28 @@ function askForm(win: Window): HTMLElement {
 }
 
 /**
- * For the host: the question the room most wants answered, taken from the
- * hall's own list as it changes, to answer at the next pause without leaving
- * the slides. Returns a way to stop following the list.
+ * For the host: the hall's "At your next pause" card, copied as it changes
+ * (src/scripts/checkpoint.ts keeps it current). Its link stays on the page:
+ * following it from here would take the hall tab, and this window, away.
+ * Returns a way to stop following the card.
  */
-function topQuestion(box: HTMLElement): () => void {
-  const line = box.ownerDocument.createElement("p");
-  line.className = "float-top";
-  line.innerHTML = `<span class="float-top-label"></span> <span class="float-top-body"></span>`;
-  box.append(line);
+function checkpointCopy(box: HTMLElement): () => void {
+  const doc = box.ownerDocument;
+  const copy = doc.createElement("section");
+  copy.className = "float-top float-checkpoint";
+  box.append(copy);
+  const card = document.querySelector<HTMLElement>("[data-checkpoint]");
   const draw = (): void => {
-    const first = document.querySelector('ol[aria-label="Most wanted"] > li');
-    const body = first?.querySelector(".body")?.textContent?.trim() ?? "";
-    const votes = first?.querySelector(".me-too .n")?.textContent?.trim() ?? "0";
-    line.hidden = !body;
-    line.querySelector(".float-top-label")!.textContent = `Most wanted · ${votes} Me too`;
-    line.querySelector(".float-top-body")!.textContent = body;
+    copy.hidden = !card || card.hidden;
+    if (!card) return;
+    const fresh = doc.importNode(card, true);
+    for (const el of fresh.querySelectorAll("[id]")) el.removeAttribute("id");
+    for (const link of fresh.querySelectorAll("a")) link.replaceWith(...link.childNodes);
+    copy.replaceChildren(...fresh.childNodes);
   };
   draw();
-  const list = document.querySelector("[data-board]");
   const watching = new MutationObserver(draw);
-  if (list) watching.observe(list, { childList: true, subtree: true, characterData: true });
+  if (card) watching.observe(card, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
   return () => watching.disconnect();
 }
 

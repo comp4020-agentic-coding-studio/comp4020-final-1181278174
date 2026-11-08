@@ -1,6 +1,6 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "./db.ts";
-import { classesOf } from "./classes.ts";
+import { classesOf, latestClass } from "./classes.ts";
 import { goingOversOf } from "./going-over.ts";
 import { HAND_MS } from "./hall.ts";
 import { hands, marks, presence, sessions } from "./schema.ts";
@@ -214,4 +214,24 @@ export function recentLost(sessionId: number, minutes = 15, now = Date.now()): n
     const from = (start + i) * MINUTE;
     return new Set(raised.filter((h) => h.up < from + MINUTE && h.down > from).map((h) => h.person)).size;
   });
+}
+
+/** The part of the class the host is teaching: where it starts, its mark, and its minute with the most hands up. */
+export type PartSoFar = { from: Date; label: string | null; most: Minute | null };
+
+/**
+ * For the host's next pause: the part so far, since the last mark in this class
+ * or since the class started, and its minute with the most hands up (the later
+ * one when two tie). Hands that have come down since still count in the minutes
+ * they were up. Null while no class is on.
+ */
+export function partSoFar(sessionId: number, hereNow: number, now = Date.now()): PartSoFar | null {
+  const lesson = latestClass(sessionId);
+  if (!lesson || lesson.endedAt) return null;
+  const mark = marksOf(sessionId).filter((m) => m.at >= lesson.startedAt).at(-1);
+  const from = mark?.at ?? lesson.startedAt;
+  const start = Math.floor(from.getTime() / MINUTE) * MINUTE;
+  const minutes = (sittings(sessionId, hereNow, now)[0]?.minutes ?? []).filter((m) => m.at.getTime() >= start && m.lost > 0);
+  const most = minutes.reduce<Minute | null>((best, m) => (!best || m.lost >= best.lost ? m : best), null);
+  return { from, label: mark?.label ?? null, most };
 }
