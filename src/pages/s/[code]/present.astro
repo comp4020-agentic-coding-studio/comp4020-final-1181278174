@@ -54,7 +54,7 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
           </div>
           <div class="qr" role="img" aria-label={`QR code for ${address}`} set:html={qr} />
           {/* for someone who opened this page on their own device and wants to ask */}
-          <a class="rail-ask" href={`/s/${session.code}`}>
+          <a class="rail-ask" href={`/s/${session.code}/questions`}>
             Ask from this device <Icon name="arrow" size={18} />
           </a>
           <div class="rail-step rail-code">
