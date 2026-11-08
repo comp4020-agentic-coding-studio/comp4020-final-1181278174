@@ -193,14 +193,26 @@ async function popHall(): Promise<void> {
 
 /** The newest sitting's chart in a small window, to keep beside the recording. */
 async function popTimeline(): Promise<void> {
-  const sitting = document.querySelector<HTMLElement>(".sitting");
-  if (!sitting) return;
+  if (!document.querySelector(".sitting")) return;
   const win = await pip!.requestWindow({ width: 480, height: 360 });
   styled(win);
   win.document.title = "When the room was lost";
   const box = win.document.createElement("main");
   box.className = "float-box float-timeline";
-  box.append(win.document.adoptNode(sitting.cloneNode(true)));
-  lifetimeNote(box);
+  const draw = (): void => {
+    const sitting = document.querySelector<HTMLElement>(".sitting");
+    const opened = new Set([...box.querySelectorAll("details[open]")].map((detail) => detail.id));
+    const focused = box.contains(win.document.activeElement) ? win.document.activeElement?.id : undefined;
+    const copy = sitting ? win.document.importNode(sitting, true) : null;
+    if (copy) {
+      for (const detail of copy.querySelectorAll("details")) detail.open = opened.has(detail.id);
+    }
+    box.replaceChildren(...(copy ? [copy] : []));
+    lifetimeNote(box);
+    if (focused) win.document.getElementById(focused)?.focus({ preventScroll: true });
+  };
   win.document.body.append(box);
+  draw();
+  document.addEventListener("hands-up:timeline", draw);
+  win.addEventListener("pagehide", () => document.removeEventListener("hands-up:timeline", draw), { once: true });
 }
