@@ -53,12 +53,12 @@ if (session && Astro.request.method === "POST") {
     Astro.response.status = done.status;
   } else if (intent === "going-over") {
     const done = goingOver(session, person, log);
-    if (done.ok) return Astro.redirect(`/s/${session.code}#hall`, 303);
+    if (done.ok) return Astro.redirect(`/s/${session.code}#host`, 303);
     Astro.response.status = done.status;
     goingOverProblem = "Only the host can say they are going over it.";
   } else if (intent === "timeline_mark") {
     const done = timelineMark(session, person, form, log);
-    if (done.ok) return Astro.redirect(`/s/${session.code}#hall`, 303);
+    if (done.ok) return Astro.redirect(`/s/${session.code}#host`, 303);
     Astro.response.status = done.status;
   } else if (intent === "state") {
     // the host's Answered and Hide, on the three most wanted
@@ -115,16 +115,13 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
             <a class="button ink hall-projector" href={`/s/${session.code}/present`}>Open projector page</a>
           )}
           <GoingOver age={goingOverAge(session.id)} />
-          {goingOverProblem && <p class="alert" role="alert">{goingOverProblem}</p>}
           <p class="hint hall-silence" data-silence hidden={room.hands.length > 0 || (hosting && room.here === 0)}>
             {hosting ? SILENCE_SHORT : SILENCE}
           </p>
           <p class="hint">
             <Icon name="lock" size={14} /> No one, the host included, is shown whose hand is up.
           </p>
-          {hosting ? (
-            <p class="hint host-note">You started this session, so you teach: you have no hand here, and you are not counted.</p>
-          ) : (
+          {!hosting && (
             <form method="post" class="hall-hand" data-hand>
               <input type="hidden" name="intent" value="hand" />
               <input type="hidden" name="up" value={mine === undefined ? "1" : "0"} />
@@ -134,26 +131,6 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
               <p class="hint hand-note" id="hand-note" data-hand-note aria-live="polite">
                 {handNote(until)}
               </p>
-            </form>
-          )}
-          {hosting && (
-            <form method="post" class="hall-going-over" data-going-over-form data-plain>
-              <input type="hidden" name="intent" value="going-over" />
-              <button class="button ink" type="submit" aria-describedby="going-over-note">Going over it</button>
-              <p class="hint" id="going-over-note">{GOING_OVER_NOTE}</p>
-              <p class="alert" role="status" data-going-over-problem hidden />
-            </form>
-          )}
-          {hosting && (
-            <form method="post" class="hall-mark" data-plain>
-              <input type="hidden" name="intent" value="timeline_mark" />
-              <label for="mark-label">Starting a new part? Mark it on the timeline</label>
-              <div class="host-row">
-                <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${parts.length + 1}`} />
-                <button class="button ink" type="submit">
-                  Mark
-                </button>
-              </div>
             </form>
           )}
           <div class="hall-links">
@@ -167,6 +144,30 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
             </div>
           </div>
         </section>
+
+        {hosting && (
+          <section class="card host-panel hall-host" id="host" aria-labelledby="host-title">
+            <h2 id="host-title">For the host</h2>
+            <p class="hint host-note">You teach: you have no hand here, and you aren't counted.</p>
+            {goingOverProblem && <p class="alert" role="alert">{goingOverProblem}</p>}
+            <form method="post" class="hall-going-over" data-going-over-form data-plain>
+              <input type="hidden" name="intent" value="going-over" />
+              <button class="button ink" type="submit" aria-describedby="going-over-note">Going over it</button>
+              <p class="hint" id="going-over-note">{GOING_OVER_NOTE}</p>
+              <p class="alert" role="status" data-going-over-problem hidden />
+            </form>
+            <form method="post" class="hall-mark" data-plain>
+              <input type="hidden" name="intent" value="timeline_mark" />
+              <label for="mark-label">Starting a new part? Mark it on the timeline</label>
+              <div class="host-row">
+                <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${parts.length + 1}`} />
+                <button class="button ink" type="submit">
+                  Mark
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
 
         <section class="wanted" aria-labelledby="wanted-title">
           <div class="bar">

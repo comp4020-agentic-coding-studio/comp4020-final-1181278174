@@ -1433,6 +1433,18 @@ textarea {
   gap: 14px;
 }
 
+/* on the hall, the host's controls in a card of their own */
+.hall-host h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.hall-host .host-note {
+  margin: 0;
+}
+
 .host-form {
   display: flex;
   flex-direction: column;
@@ -1857,6 +1869,30 @@ body.float {
 
   .hall-layout .wanted > .bar {
     padding-top: 0;
+  }
+
+  /* the hall on the left; the host's controls, then the most wanted, on the right */
+  .hall-layout {
+    grid-template-rows: auto 1fr;
+  }
+
+  .hall-layout > .hall {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .hall-layout > .wanted {
+    grid-column: 2;
+  }
+
+  .hall-layout > .hall-host {
+    grid-column: 2;
+    grid-row: 1;
+    margin-top: 0;
+  }
+
+  .hall-layout > .hall-host ~ .wanted {
+    grid-row: 2;
   }
 
   .hall-layout .questions {
