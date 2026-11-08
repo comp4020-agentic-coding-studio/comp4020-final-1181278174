@@ -1499,6 +1499,15 @@ textarea {
   gap: 10px;
 }
 
+/* links that stand alone, not inside a sentence, get a full tap height */
+.hall-links > a,
+.wanted .count-label,
+.skip:focus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
 .timeline-title {
   display: flex;
   flex-wrap: wrap;
