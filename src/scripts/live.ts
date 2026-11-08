@@ -388,7 +388,10 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
    * see. A half-written question is kept for this tab, to copy after the load.
    */
   function accountChanged(): void {
-    const draft = document.querySelector<HTMLTextAreaElement>("form[data-ask] textarea")?.value.trim();
+    // the question box on the page, or the one in the floating window (src/scripts/float.ts)
+    const floating = (window as unknown as { documentPictureInPicture?: { window: Window | null } }).documentPictureInPicture?.window;
+    const draft = document.querySelector<HTMLTextAreaElement>("form[data-ask] textarea")?.value.trim()
+      || floating?.document.querySelector<HTMLTextAreaElement>(".float-ask textarea")?.value.trim();
     if (draft) {
       try {
         sessionStorage.setItem(KEPT, draft);
