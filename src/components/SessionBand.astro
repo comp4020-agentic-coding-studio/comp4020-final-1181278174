@@ -23,8 +23,8 @@ const { code, title, hosting } = Astro.props;
     {
       hosting && (
         <p class="note">
-          You started this session. Put the code on the screen so the room can join: open the{" "}
-          <a href={`/s/${code}/present`}>projector page</a> there.
+          You're hosting. So the room can join, open the{" "}
+          <a href={`/s/${code}/present`}>projector page</a> on the screen at the front.
         </p>
       )
     }
