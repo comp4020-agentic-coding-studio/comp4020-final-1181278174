@@ -2,7 +2,8 @@ import { randomInt } from "node:crypto";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "./db.ts";
 import { HAND_MS } from "./hall.ts";
-import { announce, publish, publishAfter } from "./live.ts";
+import { announce, here, publish, publishAfter } from "./live.ts";
+import { notePresence } from "./record.ts";
 import { type Hand, setHand } from "./room.ts";
 import { popularOrder, voteCount } from "./order.ts";
 import { questions, sessions, votes } from "./schema.ts";
@@ -170,6 +171,9 @@ export function listQuestions(session: Session, viewer: string, sort: Sort): Que
  */
 export function raiseHand(session: Session, person: string, want: boolean): Hand {
   const done = setHand(session.id, person, want);
+  // A hand counts its person as here, page open or not: note it in this
+  // minute's row, so a hand sent without script reaches the timeline too.
+  notePresence(session.id, here(session.id));
   if (done === "raised") publishAfter(session.id, HAND_MS + 100);
   publish(session.id);
   return done;

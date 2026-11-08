@@ -91,6 +91,16 @@ describe("the timeline", () => {
     expect(busiest(page).some((line) => minutes.some((m) => line === `${m} 1 of 2 said they were lost`)), `busiest: ${busiest(page).join(" | ")}`).toBe(true);
   });
 
+  it("keeps a hand sent with no page listening, as a page without script sends it", async () => {
+    const path = (await startSession(new Visitor(), `No stream ${tag()}`)).url.pathname;
+    const pressed = Date.now();
+    await press(new Visitor(), path);
+
+    const page = await timeline(new Visitor(), path);
+    const minutes = [clock(pressed), clock(pressed + 2000)];
+    expect(busiest(page).some((line) => minutes.some((m) => line === `${m} 1 of 1 said they were lost`)), `busiest: ${busiest(page).join(" | ")}`).toBe(true);
+  });
+
   it("names a live stream that keeps its reader and their raised hand here after the hall closes", async () => {
     const path = (await startSession(new Visitor(), `Reading ${tag()}`)).url.pathname;
     const reader = new Visitor();
