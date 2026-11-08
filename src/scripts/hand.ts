@@ -64,6 +64,8 @@ function watch(line: HTMLElement): void {
     for (const el of document.querySelectorAll<HTMLElement>("[data-lost]")) {
       if (el.textContent?.trim() !== text) el.textContent = text;
     }
+    // what silence does not show, while no hand is up
+    for (const el of document.querySelectorAll<HTMLElement>("[data-silence]")) el.hidden = lost > 0;
     const until = mine === null ? undefined : new Date(Date.now() + HAND_MS - (now - mine));
     for (const form of forms()) {
       const field = form.querySelector<HTMLInputElement>("input[name='up']");

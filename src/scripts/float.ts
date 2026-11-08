@@ -1,3 +1,4 @@
+import { lostLabel, SILENCE_SHORT } from "../lib/words.ts";
 import { type Hall, lastHall } from "./hand.ts";
 
 // A small window that stays above every other window (Chrome and Edge on a
@@ -57,11 +58,14 @@ async function popHall(): Promise<void> {
   box.className = "float-box";
   box.innerHTML = `
     <p class="float-count" aria-live="polite"></p>
+    <p class="float-silence" hidden></p>
     <div class="float-chart" aria-hidden="true"></div>
     <p class="float-axis" aria-hidden="true"><span>15 min ago</span><span>now</span></p>
   `;
   doc.body.append(box);
   const count = box.querySelector<HTMLElement>(".float-count")!;
+  const silence = box.querySelector<HTMLElement>(".float-silence")!;
+  silence.textContent = SILENCE_SHORT;
   const chart = box.querySelector<HTMLElement>(".float-chart")!;
   for (let i = 0; i < 15; i++) chart.append(doc.createElement("span"));
 
@@ -107,7 +111,8 @@ async function popHall(): Promise<void> {
 
   const draw = (hall: Hall): void => {
     const lost = hall.others.length + (hall.mine === null ? 0 : 1);
-    count.textContent = `${lost} of ${hall.here} here ${lost === 1 ? "is" : "are"} lost`;
+    count.textContent = lostLabel(lost, hall.here);
+    silence.hidden = lost > 0;
     const top = Math.max(1, hall.here, ...hall.recent);
     hall.recent.forEach((n, i) => {
       const bar = chart.children[i] as HTMLElement;

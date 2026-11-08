@@ -1522,3 +1522,39 @@ body.float {
   margin: 0;
   box-shadow: none;
 }
+
+.stage-silence {
+  margin: 0;
+  font-size: 1.3em;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.hall-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hall-meta .hall-caption {
+  margin: 0;
+}
+
+.hall-silence,
+.host-note {
+  margin: 0;
+}
+
+.float-silence {
+  margin: -4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* a line shown only while no hand is up: its display must not beat the hidden attribute */
+.hall-silence[hidden],
+.stage-silence[hidden],
+.float-silence[hidden] {
+  display: none;
+}

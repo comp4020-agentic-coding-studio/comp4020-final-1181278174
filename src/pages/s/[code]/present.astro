@@ -6,7 +6,7 @@ import Layout from "../../../layouts/Layout.astro";
 import { findSession, isCode, listQuestions, normaliseCode } from "../../../lib/board.ts";
 import { people } from "../../../lib/live.ts";
 import { handsUp } from "../../../lib/room.ts";
-import { howMany, lostLabel } from "../../../lib/words.ts";
+import { howMany, lostLabel, SILENCE_SHORT } from "../../../lib/words.ts";
 import { renderSVG } from "uqr";
 
 // The session for the screen at the front of the room: where to join, the
@@ -73,6 +73,9 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
             <div class="hall-view" data-hall data-view="front" aria-hidden="true" />
             <p class="stage-lost" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
               {lostLabel(room.hands.length, room.here)}
+            </p>
+            <p class="stage-silence" data-silence hidden={room.hands.length > 0}>
+              {SILENCE_SHORT}
             </p>
           </div>
 

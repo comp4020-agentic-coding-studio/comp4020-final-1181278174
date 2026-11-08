@@ -12,7 +12,7 @@ import { HAND_MS } from "../../lib/hall.ts";
 import { people } from "../../lib/live.ts";
 import { MAX_MARK, marksOf, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
-import { handNote, lostLabel } from "../../lib/words.ts";
+import { handNote, lostLabel, SILENCE } from "../../lib/words.ts";
 
 // The hall, the first part of a session: "I'm lost", and how many of the
 // people here have pressed it. Under it, the three open questions the room
@@ -98,6 +98,9 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
             {lostLabel(room.hands.length, room.here)}
           </p>
+          <p class="hint hall-silence" data-silence hidden={room.hands.length > 0}>
+            {SILENCE}
+          </p>
           <p class="hint">
             <Icon name="lock" size={14} /> Nobody, the host included, can see whose hands they are.
           </p>
@@ -148,8 +151,8 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           {/* the three most wanted, fetched again from the server when the questions change */}
           <div data-board data-refresh data-sort="popular">
             <p class="card empty" data-empty hidden={wanted.length > 0}>
-              <Icon name="hand" size={22} /> No questions yet.{" "}
-              <a href={`/s/${session.code}/questions`}>Ask the first one.</a>
+              <Icon name="hand" size={22} /> {listed > 0 ? "No open questions." : "No questions yet."}{" "}
+              <a href={`/s/${session.code}/questions`}>{listed > 0 ? "Ask the next one." : "Ask the first one."}</a>
             </p>
             <ol aria-label="Most wanted" class="questions">
               {wanted.map((q) => (

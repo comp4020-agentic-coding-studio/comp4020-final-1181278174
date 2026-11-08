@@ -53,7 +53,7 @@ describe("the hall", () => {
     const after = await press(watcher, path);
     expect(after.status).toBe(200);
     expect(handButton(after).getAttribute("aria-pressed")).toBe("true");
-    expect(after.doc.body.textContent).toContain("1 of 1 here is lost");
+    expect(after.doc.body.textContent).toContain("1 of 1 here says they're lost");
   });
 
   it("shows a raised hand on another open page within a second", async () => {
@@ -162,7 +162,7 @@ describe("the two parts of a session", () => {
   });
 });
 
-describe("the host", () => {
+describe("the host and the empty hall", () => {
   it("the host teaches: no hand on their hall, and not counted among those here", async () => {
     const host = new Visitor();
     const hallPage = await startSession(host, `Host ${tag()}`);
@@ -176,6 +176,13 @@ describe("the host", () => {
     await hostStream.until((board) => board.here === 1);
     await settle();
     expect(hostStream.last?.here, "the host was counted").toBe(1);
+  });
+
+  it("with no hand up, says so and that silence is not understanding", async () => {
+    const { path, watcher } = await hall();
+    const text = (await watcher.open(path)).doc.body.textContent ?? "";
+    expect(text).toContain("No hands up right now");
+    expect(text).toContain("doesn't mean everyone follows");
   });
 
   it("the host can mark one of the most wanted answered from the hall", async () => {

@@ -17,9 +17,21 @@ export function ago(when: Date, now = new Date()): string {
   return when.toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Sydney" });
 }
 
-/** How many of the people here have a hand up: "3 of 12 here are lost". */
+/**
+ * How many of the people here have a hand up, as what they said: "3 of 12 here
+ * say they're lost". A hand is a report, so with none up the line says only
+ * that no hand is up: silence is not understanding.
+ */
 export const lostLabel = (lost: number, here: number): string =>
-  `${lost} of ${here} here ${lost === 1 ? "is" : "are"} lost`;
+  lost === 0
+    ? `${here} here. No hands up right now.`
+    : `${lost} of ${here} here ${lost === 1 ? "says they're" : "say they're"} lost`;
+
+/** Said under the count while no hand is up: what silence does not show. */
+export const SILENCE = "That doesn't mean everyone follows. Lost? Raise yours, no words needed.";
+
+/** The same, short enough for the projector and the small window. */
+export const SILENCE_SHORT = "That doesn't mean everyone follows.";
 
 /** The time a raised hand comes down by itself, as the clock in the room shows it: "14:08". */
 export const clock = (when: Date): string =>
@@ -28,8 +40,8 @@ export const clock = (when: Date): string =>
 /** What the hand button's note says: with the hand up, when it comes down by itself. */
 export const handNote = (until: Date | undefined): string =>
   until
-    ? `Your hand is up. It comes down by itself at ${clock(until)}, or press again once you've caught up.`
-    : "One press, no words.";
+    ? `Your hand is up. It comes down by itself at ${clock(until)}. Press again to put it down sooner; if you're still lost then, raise it again.`
+    : "One press, no words. A hand comes down by itself after 3 minutes.";
 
 /** A day as the room says it: "Monday 9 November". */
 export const day = (when: Date): string =>
