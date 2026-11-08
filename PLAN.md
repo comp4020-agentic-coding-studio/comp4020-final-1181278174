@@ -613,6 +613,9 @@ the account that asked it, by someone allowed to, for a reason.
   is still a limit.
 - Not tonight: checking ANU emails, splitting the key between two people,
   password recovery, a page for the auditor.
+- 01:30: reporting is a small triangle beside Me too. Pressing it asks "Report
+  to the host?" before anything is sent, and a report can be taken back for a
+  minute (Undo). The host sees the triangle with how many reported it.
 
 ### Order of work
 
