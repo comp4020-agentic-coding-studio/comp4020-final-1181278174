@@ -288,7 +288,8 @@ const busiest = (minutes: Minute[]): Minute[] =>
         </div>
 
         <p class="foot session-foot">
-          <a href={`/s/${session.code}`}>Back to the hall</a> <span>Sign in to raise a hand.</span>
+          <a href={`/s/${session.code}`}>Back to the hall</a>{" "}
+          <span>{hosting ? "You teach: you have no hand here." : signedIn ? "Raise your hand there, no words needed." : "Sign in to raise a hand."}</span>
         </p>
       </main>
       <script>
