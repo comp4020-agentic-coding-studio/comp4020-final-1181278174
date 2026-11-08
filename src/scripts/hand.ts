@@ -100,7 +100,10 @@ function watch(line: HTMLElement): void {
     document.dispatchEvent(new CustomEvent<Hall>("hands-up:hall", { detail: lastHall }));
   }
 
+  // how many states the stream has sent: a refresh it overtakes asks again
+  let heard = 0;
   document.addEventListener("hands-up:board", (event) => {
+    heard++;
     const board = (event as CustomEvent<Board>).detail;
     const now = performance.now();
     here = board.here;
@@ -161,18 +164,21 @@ function watch(line: HTMLElement): void {
 
   let refreshing = false;
   let refreshAgain = false;
+  let tries = 0;
   async function refreshOwn(): Promise<void> {
     if (refreshing || pressing) {
       refreshAgain = true;
       return;
     }
     refreshing = true;
+    tries = 0;
     try {
       do {
         refreshAgain = false;
         const began = revision;
+        const since = heard;
         const room = await askServer();
-        if (pressing || began !== revision) {
+        if (pressing || began !== revision || (since !== heard && ++tries < 3)) {
           refreshAgain = true;
           if (pressing) return;
           continue;
