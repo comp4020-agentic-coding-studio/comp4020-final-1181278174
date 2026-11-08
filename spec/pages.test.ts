@@ -11,9 +11,9 @@ describe("pages a real site has", () => {
     expect(page.status).toBe(200);
     expect(text(page.doc.querySelector("h1"))).toBe("How it works");
     const main = text(page.doc.querySelector("main"));
-    for (const part of ["In the room", "Teaching", "What no one is shown"]) expect(main).toContain(part);
+    for (const part of ["In the room", "Teaching", "What the app shows"]) expect(main).toContain(part);
     expect(main).toContain("Your hand comes down by itself after 3 minutes.");
-    expect(main).toContain("Who raised a hand, who asked, who pressed Me too, who reported.");
+    expect(main).toContain("The app shows no one else which account raised a hand, asked, pressed Me too or reported");
   });
 
   it("says what is kept, who sees what, and the rules", async () => {
@@ -21,10 +21,9 @@ describe("pages a real site has", () => {
     expect(page.status).toBe(200);
     expect(text(page.doc.querySelector("h1"))).toBe("Privacy and rules");
     const headings = [...page.doc.querySelectorAll("main h2")].map((h) => text(h));
-    expect(headings).toEqual(["What is kept", "Who sees what", "Cookies and other sites", "How long", "Rules"]);
+    expect(headings).toEqual(["What is kept", "Who sees what", "Cookies and other sites", "Where it is", "How long", "Rules"]);
     const main = text(page.doc.querySelector("main"));
-    expect(main).toContain("Two cookies, both needed");
-    expect(main).toContain("which lasts 30 days");
+    expect(main).toContain("One cookie tells browsers apart and lasts a year. Signing in adds one that lasts 30 days or until you sign out.");
     expect(main).toContain("nothing on these pages is loaded from another site");
   });
 

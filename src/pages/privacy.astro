@@ -17,36 +17,44 @@ const signInDays = Math.round(SIGNIN_SECONDS / 86_400);
 
     <section class="card panel" aria-labelledby="kept">
       <h2 id="kept">What is kept</h2>
-      <p>Your account: a username, and your password scrambled so it can't be read back.</p>
-      <p>What you do: hands, Me too, questions and reports. A question keeps a tag in place of your account, and your account sealed so that only the auditor can open it.</p>
-      <p>How many were lost in each minute, for the timeline. One log line per request, naming a tag: never your username, never your address.</p>
+      <p>Your account: a username, and your password scrambled so it can't be read back. Each sign-in is kept too, with when it started and ended.</p>
+      <p>What you do: hands, Me too, questions and reports. A question asked since 9 November keeps a tag in place of your account, and your account sealed so that only the auditor can open it. Older questions have no sealed author.</p>
+      <p>For a host: the session's name, its marks, when the recording started, and each Going over it.</p>
+      <p>For the timeline: how many of those counted here said they were lost, minute by minute.</p>
+      <p>The app logs requests, actions and refusals under a tag for your account or browser, never your username. A request's line has its path, status and time taken. Your IP address is used in memory to limit sign-in attempts, sign-ups and open pages, and is not logged.</p>
     </section>
 
     <section class="card panel" aria-labelledby="who-sees">
       <h2 id="who-sees">Who sees what</h2>
-      <p><strong>The room</strong> sees how many hands are up, the questions and the counts.</p>
-      <p><strong>The host</strong> also sees hidden questions and how many reported one.</p>
-      <p><strong>Nobody in the app</strong> is shown who did what.</p>
-      <p><strong>Whoever runs the server</strong> could work it out from the database and the logs.</p>
-      <p><strong>The auditor</strong>, who holds a key kept off the server, can open who asked a question: one at a time, with the reason written down first. It is meant only for reports of something dangerous.</p>
-      <p>In a very small room a count can show whose hand it is, and anyone who sees your screen sees your own hand.</p>
+      <p><strong>Anyone with a session's code</strong> can read its counts, its timeline and the questions the host hasn't hidden, without signing in. The pages also get how long each hand has been up.</p>
+      <p><strong>The host</strong> also sees hidden questions and how many reported each one.</p>
+      <p>The app shows no one else which account raised a hand, asked, pressed Me too or reported.</p>
+      <p><strong>Whoever runs the server</strong> can link these to your account through the database and the logs.</p>
+      <p><strong>The auditor</strong> keeps a key off the server, and with it can open who asked any question asked since 9 November. The tool for it writes the reason down first; it doesn't check that there was a report. It is meant only for reports of something dangerous. What it opens is an account, not a person.</p>
+      <p>In a small room, a count can show whose hand is up. Anyone who sees your screen sees your username, your hand, your questions marked Yours, your Me too and your reports.</p>
     </section>
 
     <section class="card panel" aria-labelledby="cookies">
       <h2 id="cookies">Cookies and other sites</h2>
-      <p>Two cookies, both needed: one that tells this browser apart, and one for your sign-in, which lasts {signInDays} days. No ads, no analytics, and nothing on these pages is loaded from another site.</p>
+      <p>One cookie tells browsers apart and lasts a year. Signing in adds one that lasts {signInDays} days or until you sign out. No ads, no analytics, and nothing on these pages is loaded from another site.</p>
+    </section>
+
+    <section class="card panel" aria-labelledby="where">
+      <h2 id="where">Where it is</h2>
+      <p>The app, its database and its logs are on Fly.io, in Sydney. Backups of the database hold the same records.</p>
     </section>
 
     <section class="card panel" aria-labelledby="how-long">
       <h2 id="how-long">How long</h2>
-      <p>Nothing is deleted on a schedule yet: sessions, questions, hands and votes stay until the maker deletes them.</p>
+      <p>Nothing is deleted on a schedule yet. Lowering a hand or hiding a question keeps its record. Taking back a Me too deletes the vote, and Undo deletes a report within a minute. There is no way yet to delete an account or a question.</p>
     </section>
 
     <section class="card panel info-sun" aria-labelledby="rules">
       <h2 id="rules">Rules</h2>
       <p>Ask about the lecture. No threats, no harassment, no one's personal details.</p>
-      <p>A report goes to the host, who can hide the question. A report of something dangerous can lead the auditor to open who asked it.</p>
+      <p>A report adds to the count the host sees, and the host can hide the question. A report doesn't reach the auditor by itself; a report of something dangerous can lead to the auditor being asked to open who asked it.</p>
       <a class="go" href="/s/HAND">Questions about this page? Ask in HAND, the open hall.</a>
+      <p>Everyone can read HAND, so don't put your username there.</p>
     </section>
   </main>
 </Layout>
