@@ -66,3 +66,13 @@ export function handsUp(sessionId: number, people: readonly string[]): number[] 
     .map((row) => now - row.raisedAt.getTime())
     .sort((a, b) => a - b);
 }
+
+/** Everyone in this session whose hand is up now. Only for counting who is here; never sent anywhere. */
+export function handHolders(sessionId: number): string[] {
+  return db
+    .select({ person: hands.person })
+    .from(hands)
+    .where(upNow(sessionId, Date.now()))
+    .all()
+    .map((row) => row.person);
+}

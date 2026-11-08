@@ -4,7 +4,7 @@ import { goingOverAge } from "./going-over.ts";
 import { GOING_OVER_MS } from "./hall.ts";
 import { popularOrder, voteCount } from "./order.ts";
 import { notePresence, startPresenceHeartbeat } from "./record.ts";
-import { handsUp } from "./room.ts";
+import { handHolders, handsUp } from "./room.ts";
 import { questions, sessions } from "./schema.ts";
 
 // Live updates: every open page holds one server-sent events stream
@@ -80,11 +80,17 @@ function hostOf(sessionId: number): string | null {
   return hosts.get(sessionId) ?? null;
 }
 
-/** Everyone with the session open, the host left out. Never sent anywhere: only how many. */
+/**
+ * Everyone with the session open, and everyone whose hand is still up, the
+ * host left out. A hand stays in the room until it comes down, whether or not
+ * its page is open: a hand that vanished when a phone locked and came back
+ * when it woke would show whose it was. Never sent anywhere: only how many.
+ */
 export function people(sessionId: number): Set<string> {
   const host = hostOf(sessionId);
-  const found = new Set<string>();
-  for (const { person } of listeners.get(sessionId) ?? []) if (person && person !== host) found.add(person);
+  const found = new Set<string>(handHolders(sessionId));
+  for (const { person } of listeners.get(sessionId) ?? []) if (person) found.add(person);
+  if (host) found.delete(host);
   return found;
 }
 
