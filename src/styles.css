@@ -2013,3 +2013,11 @@ body.float {
 .question-room .question-silence[hidden] {
   display: none;
 }
+
+/* on the timeline the pop-out sits on its own line, under the title */
+.timeline-title .pop-control {
+  flex: 1 1 100%;
+  max-width: none;
+  align-items: flex-start;
+  text-align: left;
+}
