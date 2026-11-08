@@ -7,7 +7,7 @@ import SessionBand from "../../components/SessionBand.astro";
 import SessionTabs from "../../components/SessionTabs.astro";
 import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
-import { goingOver, mark, report, timelineMark, vote } from "../../lib/actions.ts";
+import { goingOver, mark, report, timelineMark, unreport, vote } from "../../lib/actions.ts";
 import { authLink } from "../../lib/auth.ts";
 import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
 import { HAND_MS } from "../../lib/hall.ts";
@@ -54,8 +54,8 @@ if (signedOutPost) {
     }
     Astro.response.status = 422;
     log("refused", { action: "hand", session: session.code, reason: "no-such-value" });
-  } else if (intent === "vote" || intent === "report") {
-    const done = intent === "vote" ? vote(session, person, form, log) : report(session, person, form, log);
+  } else if (intent === "vote" || intent === "report" || intent === "unreport") {
+    const done = (intent === "vote" ? vote : intent === "report" ? report : unreport)(session, person, form, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
     Astro.response.status = done.status;
   } else if (intent === "going-over") {

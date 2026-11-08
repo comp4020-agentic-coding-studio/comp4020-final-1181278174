@@ -57,8 +57,10 @@ async function report(who: Visitor, page: Page, id: number): Promise<Page> {
 
 function isReported(page: Page, id: number): void {
   expect(card(page, id).querySelector('[aria-label="You reported this question"]'), "the card doesn't say it was reported").not.toBeNull();
-  // nothing left to report with
+  // nothing left to report with, and for a minute a way to take it back
   expect(reportButton(page, id)).toBeUndefined();
+  const undo = [...card(page, id).querySelectorAll("button")].find((button) => button.textContent?.trim() === "Undo");
+  expect(undo?.closest("form")?.querySelector('input[name="intent"]')?.getAttribute("value")).toBe("unreport");
 }
 
 function noCount(page: Page): void {
@@ -120,6 +122,26 @@ describe("reports over plain HTTP", () => {
       for (const studentPath of [hall.url.pathname, path]) noCount(await who.open(studentPath));
     }
     expect(question(await host.open(path), body)!.votes).toBe(0);
+  });
+
+  it("takes a report back within a minute, and the host's count with it", async () => {
+    const host = new Visitor();
+    const hall = await startSession(host, `Undo ${tag()}`);
+    const path = questionsPath(hall);
+    const body = `Reported by mistake ${tag()}`;
+    const id = question(await ask(new Visitor(), path, body), body)!.id;
+    const student = new Visitor();
+    const reported = await report(student, await student.open(path), id);
+    expect(hostCount(await host.open(path), id)).toBe("Reported 1 time");
+    const undo = [...card(reported, id).querySelectorAll("button")].find((button) => button.textContent?.trim() === "Undo")!;
+    const back = await student.submit(reported, undo.closest("form")!, undo);
+    expect(back.status).toBe(200);
+    expect(reportFlag(back, id), "the triangle didn't come back").toBeDefined();
+    expect(hostCount(await host.open(path), id)).toBeUndefined();
+    // taking back what is no longer there is refused
+    const again = await student.post(path, new URLSearchParams({ intent: "unreport", question: String(id) }));
+    expect(again.status).toBe(404);
+    await again.text();
   });
 
   it("refuses a stale Report form for a hidden question, including one sent by the host", async () => {

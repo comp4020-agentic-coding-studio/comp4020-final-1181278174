@@ -2203,6 +2203,30 @@ span.me-too:hover {
   align-items: center;
 }
 
+.report-undo {
+  margin: 0;
+  animation: undo-gone 1ms step-end var(--undo-left, 0ms) forwards;
+}
+
+.report-undo button {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 700 13px var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@keyframes undo-gone {
+  to {
+    visibility: hidden;
+    width: 0;
+    overflow: hidden;
+  }
+}
+
 .report-count {
   display: inline-flex;
   align-items: center;

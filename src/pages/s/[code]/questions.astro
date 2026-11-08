@@ -7,7 +7,7 @@ import SessionBand from "../../../components/SessionBand.astro";
 import SessionTabs from "../../../components/SessionTabs.astro";
 import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
-import { mark, report, vote } from "../../../lib/actions.ts";
+import { mark, report, unreport, vote } from "../../../lib/actions.ts";
 import { authLink } from "../../../lib/auth.ts";
 import {
   askQuestion,
@@ -64,8 +64,8 @@ if (signedOutPost) {
     Astro.response.status = 422;
     const reason = draft.length === 0 ? "empty" : "too-long";
     log("refused", { action: "ask", session: session.code, reason, length: length(draft) });
-  } else if (intent === "vote" || intent === "state" || intent === "report") {
-    const action = intent === "vote" ? vote : intent === "report" ? report : mark;
+  } else if (intent === "vote" || intent === "state" || intent === "report" || intent === "unreport") {
+    const action = intent === "vote" ? vote : intent === "report" ? report : intent === "unreport" ? unreport : mark;
     const done = action(session, person, form, log);
     if (done.ok) return Astro.redirect(`${here}#q-${done.question}`, 303);
     Astro.response.status = done.status;

@@ -67,6 +67,31 @@ export function report(session: Session, person: string, form: FormData, log: Lo
   return { ok: true, question: id };
 }
 
+/** How long after reporting a question the report can be taken back. */
+export const UNDO_MS = 60_000;
+
+/** Take back this account's report of a question, within UNDO_MS of making it. */
+export function unreport(session: Session, person: string, form: FormData, log: Log, now = Date.now()): Done {
+  const id = Number(form.get("question"));
+  const reporter = tagFor("reporter", person);
+  const found = Number.isInteger(id) && id > 0
+    ? db.select({ at: reports.createdAt }).from(reports).innerJoin(questions, eq(questions.id, reports.questionId))
+      .where(and(eq(reports.questionId, id), eq(reports.reporter, reporter), eq(questions.sessionId, session.id))).get()
+    : undefined;
+  if (!found) {
+    log("refused", { action: "unreport", session: session.code, reason: "no-such-report" });
+    return { ok: false, status: 404 };
+  }
+  if (now - found.at.getTime() > UNDO_MS) {
+    log("refused", { action: "unreport", session: session.code, question: id, reason: "too-late" });
+    return { ok: false, status: 422 };
+  }
+  db.delete(reports).where(and(eq(reports.questionId, id), eq(reports.reporter, reporter))).run();
+  log("report_taken_back", { session: session.code, question: id });
+  publish(session.id);
+  return { ok: true, question: id };
+}
+
 /** The host's buttons on a question. Anyone else who sends this is refused. */
 export function mark(session: Session, person: string, form: FormData, log: Log): Done {
   const id = Number(form.get("question"));

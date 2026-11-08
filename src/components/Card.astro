@@ -1,5 +1,6 @@
 ---
 import type { QuestionView, State } from "../lib/board.ts";
+import { UNDO_MS } from "../lib/actions.ts";
 import { ago, votesLabel } from "../lib/words.ts";
 import Icon from "./Icon.astro";
 
@@ -9,7 +10,8 @@ import Icon from "./Icon.astro";
 type Props = { q: QuestionView; hosting: boolean };
 const { q, hosting } = Astro.props;
 const signedIn = Astro.locals.account !== null;
-
+// a report can be taken back for a minute; the Undo button hides itself when the minute is up
+const undoLeft = q.reportedAt === null ? 0 : Math.max(0, UNDO_MS - (Date.now() - q.reportedAt));
 
 // what the host can do to a question in each state
 const hostButtons: Record<State, [to: State, label: string][]> = {
@@ -73,11 +75,18 @@ const hostButtons: Record<State, [to: State, label: string][]> = {
               </form>
             </details>
           ) : (
-            // reported: the triangle filled
+            // reported: the triangle filled, and for a minute a way to take it back
             <div class="report reported" data-report>
               <span class="report-flag is-on" role="img" aria-label="You reported this question" title="You reported this question">
                 <Icon name="alert" size={16} />
               </span>
+              {undoLeft > 0 && (
+                <form method="post" class="report-undo" style={`--undo-left: ${undoLeft}ms`}>
+                  <input type="hidden" name="intent" value="unreport" />
+                  <input type="hidden" name="question" value={q.id} />
+                  <button type="submit">Undo</button>
+                </form>
+              )}
             </div>
           )
         )}
