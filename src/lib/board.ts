@@ -6,7 +6,9 @@ import { announce, here, publish, publishAfter } from "./live.ts";
 import { notePresence } from "./record.ts";
 import { type Hand, setHand } from "./room.ts";
 import { popularOrder, voteCount } from "./order.ts";
-import { questions, sessions, votes } from "./schema.ts";
+import { AUDIT_KEY_VERSION, seal } from "./escrow.ts";
+import { questions, sealedAuthors, sessions, votes } from "./schema.ts";
+import { tagFor } from "./tags.ts";
 
 export const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 export const MAX_QUESTION = 240;
@@ -86,14 +88,24 @@ export function checkQuestion(body: string): string | undefined {
   }
 }
 
-/** Ask a question; returns its number. */
+/**
+ * Ask a question; returns its number. The question keeps only a tag for who
+ * asked, enough for "Yours"; who asked is sealed to the auditor's public key,
+ * which the app can write and cannot read back. Both are written together or
+ * not at all.
+ */
 export function askQuestion(session: Session, asker: string, body: string): number {
   const createdAt = new Date();
-  const { id } = db
-    .insert(questions)
-    .values({ sessionId: session.id, body, asker, createdAt })
-    .returning({ id: questions.id })
-    .get();
+  const id = db.transaction((tx) => {
+    const { id } = tx
+      .insert(questions)
+      .values({ sessionId: session.id, body, asker: tagFor("asker", asker), createdAt })
+      .returning({ id: questions.id })
+      .get();
+    const envelope = seal({ account: asker, question: id, session: session.code, body, at: createdAt.getTime() });
+    tx.insert(sealedAuthors).values({ questionId: id, keyVersion: AUDIT_KEY_VERSION, envelope }).run();
+    return id;
+  });
   announce(session.id, { id, body, at: createdAt.getTime() }, asker);
   publish(session.id);
   return id;
@@ -153,7 +165,8 @@ export function listQuestions(session: Session, viewer: string, sort: Sort): Que
       body: questions.body,
       createdAt: questions.createdAt,
       votes: voteCount,
-      yours: sql<number>`${questions.asker} = ${viewer}`,
+      // a question asked before tags held the browser's id itself
+      yours: sql<number>`${questions.asker} IN (${tagFor("asker", viewer)}, ${viewer})`,
       voted: sql<number>`EXISTS (SELECT 1 FROM ${votes} WHERE ${votes.questionId} = ${questions.id} AND ${votes.person} = ${viewer})`,
       state: questions.state,
     })
