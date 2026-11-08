@@ -27,6 +27,7 @@ const line = document.querySelector<HTMLElement>("[data-lost][data-room]");
 if (line) watch(line);
 
 function watch(line: HTMLElement): void {
+  const hosting = line.hasAttribute("data-host");
   const first = JSON.parse(line.dataset.room ?? "{}") as { here?: number; hands?: number[]; mine?: number | null; recent?: number[] };
   // the most lost at once in each minute, by minutes since 1970: the server's last 15, then what this page sees
   const minute = (): number => Math.floor(Date.now() / 60_000);
@@ -36,6 +37,9 @@ function watch(line: HTMLElement): void {
   // when each hand went up, this person's among them if it is up
   let hands = (first.hands ?? []).map((ms) => start - ms);
   let mine: number | null = first.mine === null || first.mine === undefined ? null : start - first.mine;
+  // Keep the server's picture separate from the optimistic press. A lost
+  // reply must not leave an extra hand up, or subtract someone else's hand.
+  let confirmedHands = [...hands];
   let pressing = false;
   // this person's hand while a press that puts it down is on its way
   let lowered: number | null = null;
@@ -60,12 +64,13 @@ function watch(line: HTMLElement): void {
     if (mine !== null && now - mine >= HAND_MS) mine = null;
     const rest = others(now);
     const lost = rest.length + (mine === null ? 0 : 1);
-    const text = lostLabel(lost, Math.max(here, lost));
+    const waiting = hosting && here === 0;
+    const text = waiting ? "Waiting for students to join." : lostLabel(lost, Math.max(here, lost));
     for (const el of document.querySelectorAll<HTMLElement>("[data-lost]")) {
       if (el.textContent?.trim() !== text) el.textContent = text;
     }
     // what silence does not show, while no hand is up
-    for (const el of document.querySelectorAll<HTMLElement>("[data-silence]")) el.hidden = lost > 0;
+    for (const el of document.querySelectorAll<HTMLElement>("[data-silence]")) el.hidden = lost > 0 || waiting;
     const until = mine === null ? undefined : new Date(Date.now() + HAND_MS - (now - mine));
     for (const form of forms()) {
       const field = form.querySelector<HTMLInputElement>("input[name='up']");
@@ -97,6 +102,7 @@ function watch(line: HTMLElement): void {
       }
       kept.push(best < 0 ? since : pool.splice(best, 1)[0]);
     }
+    confirmedHands = [...kept];
     hands = kept;
     const near = (since: number): number => hands.findIndex((h) => Math.abs(h - since) < 3000);
     if (pressing && lowered !== null && near(lowered) >= 0) {
@@ -112,15 +118,16 @@ function watch(line: HTMLElement): void {
     render();
   });
 
-  /** This person's hand as the server has it: when it went up, null if down; undefined if the server can't be reached. */
-  async function askServer(): Promise<number | null | undefined> {
+  /** The room and this person's hand as the server has them; undefined if it can't be reached. */
+  async function askServer(): Promise<(Board & { mine: number | null }) | undefined> {
     try {
       const res = await fetch(location.href, { headers: { accept: "text/html" } });
       if (!res.ok) return undefined;
       const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-      const room = JSON.parse(doc.querySelector<HTMLElement>("[data-lost][data-room]")?.dataset.room ?? "null") as { mine?: number | null } | null;
+      const room = JSON.parse(doc.querySelector<HTMLElement>("[data-lost][data-room]")?.dataset.room ?? "null") as (Board & { mine: number | null }) | null;
       if (!room) return undefined;
-      return room.mine === null || room.mine === undefined ? null : performance.now() - room.mine;
+      const now = performance.now();
+      return { here: room.here, hands: room.hands.map((ms) => now - ms), mine: room.mine === null ? null : now - room.mine };
     } catch {
       return undefined;
     }
@@ -156,13 +163,24 @@ function watch(line: HTMLElement): void {
       fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } })
         .then((res) => {
           if (!res.ok) throw new Error(`the server answered ${res.status}`);
+          confirmedHands = [...hands];
         })
         .catch(async () => {
           // No answer. The press may still have reached the server, so ask it
           // what this person's hand is now, rather than guess or press again.
           const real = await askServer();
-          mine = real === undefined ? before : real;
-          if (real === undefined || (mine !== null) !== want) problem = "Couldn't confirm. Retry.";
+          if (real === undefined) {
+            hands = [...confirmedHands];
+            // Restore this person's old hand only if the last server state
+            // still includes it. A stream update may have confirmed it down.
+            mine = before === null ? null : hands.find((since) => Math.abs(since - before) < 3000) ?? null;
+          } else {
+            here = real.here;
+            hands = real.hands;
+            mine = real.mine;
+            confirmedHands = [...hands];
+          }
+          if (real === undefined || (mine !== null) !== want) problem = "Couldn't confirm the press. Try again when connected.";
         })
         .finally(() => {
           pressing = false;
