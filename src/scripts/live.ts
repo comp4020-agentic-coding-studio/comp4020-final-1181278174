@@ -29,22 +29,56 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   // how long a card that moved can't be pressed: the slide, and a little more
   const MOVED_MS = 400;
   const settling = new WeakMap<HTMLElement, number>();
+  // Other status regions belong to the hand, connection or ask form. Keep
+  // keyboard feedback beside this list, using the existing hidden-text style.
+  const focusStatus = holder.querySelector<HTMLElement>("[role='status']:not([data-live-status])") ?? document.createElement("p");
+  if (!focusStatus.isConnected) {
+    focusStatus.className = "unseen";
+    focusStatus.setAttribute("role", "status");
+    holder.before(focusStatus);
+  }
+  let focusNotice = 0;
 
   /** Make a change to the list, keep the keyboard where it was, and slide each card to its new place. */
   function move(change: () => void): void {
-    const before = new Map(cards().map((li) => [li.id, li.getBoundingClientRect().top]));
-    const counted = new Map(cards().map((li) => [li.id, li.querySelector(".n")?.textContent]));
+    const previous = cards();
+    const before = new Map(previous.map((li) => [li.id, li.getBoundingClientRect().top]));
+    const counted = new Map(previous.map((li) => [li.id, li.querySelector(".n")?.textContent]));
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const card = focused?.closest<HTMLElement>(CARD);
+    const place = card ? previous.indexOf(card) : -1;
     const nth = card && focused ? [...card.querySelectorAll("button")].indexOf(focused as HTMLButtonElement) : -1;
+    const action = focused instanceof HTMLButtonElement && focused.name === "to" && focused.form?.getAttribute("aria-busy") === "true"
+      ? focused.value : null;
 
     change();
 
-    if (focused && card && document.activeElement !== focused) {
+    if (focused && card && place >= 0 && document.activeElement !== focused) {
       // a card that moved loses the focus; one that was redrawn has a new button
-      const buttons = document.getElementById(card.id)?.querySelectorAll<HTMLElement>("button");
-      const again = focused.isConnected ? focused : (buttons?.[nth] ?? buttons?.[buttons.length - 1]);
-      again?.focus({ preventScroll: true });
+      const remaining = cards();
+      const same = remaining.find((li) => li.id === card.id);
+      if (same) {
+        const buttons = same.querySelectorAll<HTMLElement>("button");
+        const again = focused.isConnected ? focused : (buttons[nth] ?? buttons[buttons.length - 1] ?? same);
+        if (again === same) same.tabIndex = -1;
+        again.focus({ preventScroll: true });
+      } else {
+        // Use its old place, then the next surviving card (wrapping at the
+        // end). Focusing the card itself also reads the new question's words.
+        const next = remaining[place]
+          ?? previous.slice(place + 1).map((li) => remaining.find((now) => now.id === li.id)).find(Boolean)
+          ?? remaining[0];
+        const empty = holder.querySelector<HTMLAnchorElement>("[data-empty]:not([hidden]) a[href]");
+        const all = [...main.querySelectorAll<HTMLAnchorElement>("a[href]")].find((link) => link.textContent?.trim() === "All questions");
+        const target = next ?? empty ?? all;
+        if (next) next.tabIndex = -1;
+        target?.focus({ preventScroll: true });
+        const happened = action === "answered" ? "Question marked answered." : action === "hidden" ? "Question hidden." : "Question left this list.";
+        const destination = next ? "Focus moved to the next question." : target ? `Focus moved to ${target.textContent?.trim()}` : "";
+        clearTimeout(focusNotice);
+        focusStatus.textContent = "";
+        focusNotice = window.setTimeout(() => { focusStatus.textContent = `${happened} ${destination}`.trim(); }, 0);
+      }
     }
     // A card that has just moved is under a finger that was aimed at another
     // one, so for a moment it can't be pressed (the stylesheet turns its
@@ -257,6 +291,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         arrange(list, want);
       }
       const empty = holder.querySelector<HTMLElement>("[data-empty]");
+      const freshEmpty = fresh.querySelector<HTMLElement>("[data-empty]");
+      if (empty && freshEmpty && empty.innerHTML !== freshEmpty.innerHTML) empty.replaceChildren(...freshEmpty.childNodes);
       if (empty) empty.hidden = cards().length > 0;
       const count = doc.querySelector("[data-count]")?.textContent;
       const label = document.querySelector("[data-count]");
