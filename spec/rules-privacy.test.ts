@@ -34,7 +34,8 @@ describe("no person behind a hand or a question", () => {
     // The cookie is also the person id used for hands and questions on the server.
     expect(holder.secrets.length).toBeGreaterThan(0);
     expect(asker.secrets.length).toBeGreaterThan(0);
-    const secrets = [...holder.secrets, ...asker.secrets];
+    // their sign-in tokens, browser ids and usernames: nothing that names them
+    const secrets = [...holder.secrets, ...asker.secrets, holder.username, asker.username];
     for (const [index, { name, who }] of readers.entries()) {
       const stream = streams[index];
       await stream.until((board) => board.hands.length === 1 && board.questions.length === 1);
