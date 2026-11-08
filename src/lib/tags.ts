@@ -16,6 +16,18 @@ let secret: Buffer | undefined;
 
 function serverSecret(): Buffer {
   if (secret) return secret;
+  // On the live app the key is a Fly secret, kept out of the database, so a copy of
+  // the database alone can't work the tags out; a key left in the database from
+  // before is removed. Locally and in CI, where there is no such secret, the key
+  // is made once and kept in the database.
+  const fromEnv = process.env.TAGS_SECRET;
+  if (fromEnv) {
+    const key = Buffer.from(fromEnv, "base64");
+    if (key.length < 32) throw new Error("TAGS_SECRET must be at least 32 bytes, base64");
+    db.delete(secrets).where(eq(secrets.name, "tags")).run();
+    secret = key;
+    return secret;
+  }
   const read = () => db.select().from(secrets).where(eq(secrets.name, "tags")).get();
   if (!read()) db.insert(secrets).values({ name: "tags", value: randomBytes(32).toString("base64") }).onConflictDoNothing().run();
   secret = Buffer.from(read()!.value, "base64");
