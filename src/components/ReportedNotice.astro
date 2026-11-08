@@ -1,0 +1,25 @@
+---
+// Only the host sees this, above the list: how many questions were reported,
+// and a way to the most reported one, which may be below the fold or not
+// among the hall's three. Hidden while there are none, so a report that comes
+// in while the page is open can show it (src/scripts/live.ts takes the new one).
+import type { QuestionView } from "../lib/board.ts";
+
+type Props = { list: QuestionView[]; hosting: boolean; link: (id: number) => string };
+const { list, hosting, link } = Astro.props;
+const reported = list.filter((q) => q.reports > 0 && q.state !== "hidden").sort((a, b) => b.reports - a.reports);
+const n = reported.length;
+---
+
+{
+  hosting && (
+    <p class="notice" role="status" data-reported hidden={n === 0}>
+      {n > 0 && (
+        <>
+          {n === 1 ? "1 question has been reported." : `${n} questions have been reported.`}{" "}
+          <a href={link(reported[0].id)}>{n === 1 ? "Show it" : "Show the most reported"}</a>
+        </>
+      )}
+    </p>
+  )
+}

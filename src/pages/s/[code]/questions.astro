@@ -1,5 +1,6 @@
 ---
 import Card from "../../../components/Card.astro";
+import ReportedNotice from "../../../components/ReportedNotice.astro";
 import GoingOver from "../../../components/GoingOver.astro";
 import Icon from "../../../components/Icon.astro";
 import JoinForm from "../../../components/JoinForm.astro";
@@ -191,6 +192,7 @@ const room = {
         <GoingOver age={goingOverAge(session.id)} />
         {/* the page's script (src/scripts/live.ts) keeps what is in here up to date */}
         <div data-board data-sort={sort}>
+          <ReportedNotice list={list} hosting={hosting} link={(id) => `#q-${id}`} />
           {/* shown while the list is empty; the script hides it when the first question arrives */}
           <p class="card empty" data-empty hidden={list.length > 0}>
             <Icon name="hand" size={22} /> No questions yet. Be the first to ask.

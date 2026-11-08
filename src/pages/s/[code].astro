@@ -1,5 +1,6 @@
 ---
 import Card from "../../components/Card.astro";
+import ReportedNotice from "../../components/ReportedNotice.astro";
 import GoingOver from "../../components/GoingOver.astro";
 import Icon from "../../components/Icon.astro";
 import JoinForm from "../../components/JoinForm.astro";
@@ -243,6 +244,7 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           </div>
           {/* the three most wanted, fetched again from the server when the questions change */}
           <div data-board data-refresh data-sort="popular">
+            <ReportedNotice list={all} hosting={hosting} link={(id) => `/s/${session.code}/questions#q-${id}`} />
             <p class="card empty" data-empty hidden={wanted.length > 0}>
               <Icon name="hand" size={22} /> {listed > 0 ? "No open questions." : "No questions yet."}{" "}
               <a href={`/s/${session.code}/questions`}>{listed > 0 ? "Ask the next one." : "Ask the first one."}</a>

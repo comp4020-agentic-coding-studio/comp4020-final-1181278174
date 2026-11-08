@@ -333,6 +333,10 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         });
         arrange(list, want);
       }
+      // the host's "N questions have been reported" line (src/components/ReportedNotice.astro)
+      const notice = holder.querySelector<HTMLElement>("[data-reported]");
+      const freshNotice = fresh.querySelector<HTMLElement>("[data-reported]");
+      if (notice && freshNotice && notice.outerHTML !== freshNotice.outerHTML) notice.replaceWith(document.adoptNode(freshNotice));
       const empty = holder.querySelector<HTMLElement>("[data-empty]");
       const freshEmpty = fresh.querySelector<HTMLElement>("[data-empty]");
       if (empty && freshEmpty && empty.innerHTML !== freshEmpty.innerHTML) empty.replaceChildren(...freshEmpty.childNodes);
