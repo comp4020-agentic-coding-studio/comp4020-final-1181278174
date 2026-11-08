@@ -1,0 +1,82 @@
+---
+import type { GuideRole } from "../lib/guide.ts";
+import { GOING_OVER_MS, HAND_MS } from "../lib/hall.ts";
+
+type Props = { role: GuideRole; replay?: boolean };
+const { role, replay = false } = Astro.props;
+const hosting = role === "host";
+const title = hosting ? "Host guide" : "Student guide";
+---
+
+{/* In the document flow, after the hall's controls. Every step and both
+    completion actions work without script. No focus moves on page load. */}
+<section class="guide" id="guide" aria-labelledby="guide-title" data-guide>
+  <div class="guide-heading">
+    <h2 id="guide-title">{title}</h2>
+    <span data-guide-progress hidden />
+  </div>
+  <ol data-guide-steps>
+    {hosting ? <>
+      <li tabindex="-1"><strong>Start class.</strong> Hands can go up once you start. You teach, so you have no hand and aren't counted.</li>
+      <li tabindex="-1"><strong>Put up the projector page.</strong> Show it on the screen at the front so everyone can join with the code.</li>
+      <li tabindex="-1"><strong>Look when you pause.</strong> You don't need to watch the count: "At your next pause" keeps the part so far, its minute with the most hands up and the most wanted question. Going back over a point? Press <strong>Going over it</strong>; everyone sees it for {GOING_OVER_MS / 60_000} minutes.</li>
+      <li tabindex="-1"><strong>Mark each new part.</strong> After class, use the marks and timeline to find where people said they were lost.</li>
+      <li tabindex="-1"><strong>End class.</strong> Every hand comes down. You can start class again with the same code next time.</li>
+    </> : <>
+      <li tabindex="-1"><strong>Lost? Press I'm lost.</strong> No words and no name. Sign in to take part; hands open when the host starts class.</li>
+      <li tabindex="-1"><strong>Everyone sees how many, never whose.</strong> The host sees the same count. Seats and hands in the picture are placed at random.</li>
+      <li tabindex="-1"><strong>Your hand comes down by itself</strong> after {HAND_MS / 60_000} minutes. Press again to lower it sooner, or raise it again if you're still lost.</li>
+      <li tabindex="-1"><strong>Ask without your name.</strong> Open Questions to ask, or press Me too on a question you share.</li>
+      <li tabindex="-1"><strong>Pop out the small window</strong> to keep the count and the button over your slides, and ask from it without your name, where your browser supports it. Keep the hall tab open.</li>
+    </>}
+  </ol>
+  <div class="guide-controls">
+    <div class="guide-paging" data-guide-paging hidden>
+      <button class="button" type="button" data-guide-back>Back</button>
+      <button class="button" type="button" data-guide-next>Next</button>
+    </div>
+    <form method="post" data-plain>
+      <input type="hidden" name="intent" value="guide" />
+      <button class="button ink" type="submit" name="guide_action" value="finish">Got it</button>
+      <button class="guide-skip" type="submit" name="guide_action" value="skip">Skip</button>
+      {replay && <button class="guide-skip" type="submit" name="guide_action" value="reset">Show on my next visit</button>}
+    </form>
+  </div>
+</section>
+
+<script>
+  for (const guide of document.querySelectorAll<HTMLElement>("[data-guide]")) {
+    const steps = [...guide.querySelectorAll<HTMLLIElement>("[data-guide-steps] > li")];
+    const progress = guide.querySelector<HTMLElement>("[data-guide-progress]")!;
+    const paging = guide.querySelector<HTMLElement>("[data-guide-paging]")!;
+    const back = guide.querySelector<HTMLButtonElement>("[data-guide-back]")!;
+    const next = guide.querySelector<HTMLButtonElement>("[data-guide-next]")!;
+    let current = 0;
+    function show(focus: boolean): void {
+      steps.forEach((step, index) => { step.value = index + 1; step.hidden = index !== current; });
+      progress.textContent = `${current + 1} of ${steps.length}`;
+      back.disabled = current === 0;
+      next.hidden = current === steps.length - 1;
+      if (focus) steps[current].focus({ preventScroll: true });
+    }
+    back.addEventListener("click", () => { current = Math.max(0, current - 1); show(true); });
+    next.addEventListener("click", () => { current = Math.min(steps.length - 1, current + 1); show(true); });
+    show(false);
+    paging.hidden = false;
+    progress.hidden = false;
+  }
+</script>
+
+<style>
+  .guide { padding: 16px; border: var(--line); border-radius: 12px; background: var(--ground); color: var(--ink); }
+  .guide-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .guide h2 { margin: 0; font: 800 20px var(--display); }
+  .guide ol { margin: 12px 0 16px; padding-left: 24px; display: flex; flex-direction: column; gap: 12px; }
+  .guide li { font-size: 16px; line-height: 1.5; }
+  .guide-controls, .guide-paging, .guide form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .guide form { margin: 0; }
+  .guide .button { min-height: 44px; padding: 0 14px; font-size: 16px; }
+  .guide-skip { min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: var(--ink); font: 600 16px var(--text); text-decoration: underline; cursor: pointer; }
+  .guide button:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+  .guide [hidden] { display: none; }
+</style>

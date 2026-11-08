@@ -175,6 +175,23 @@ export const accounts = sqliteTable(
   (t) => [check("accounts_username_length", sql`length(${t.username}) BETWEEN 3 AND 30`)],
 );
 
+// A guide is remembered per account and per role: learning how to raise a
+// hand does not dismiss the host's introduction. Nothing here is public.
+export const accountGuides = sqliteTable(
+  "account_guides",
+  {
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    role: text("role", { enum: ["student", "host"] }).notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.accountId, t.role] }),
+    check("account_guides_role", sql`${t.role} IN ('student', 'host')`),
+  ],
+);
+
 // A signed-in browser: the hash of the random token in its cookie, never the
 // token itself, so a copy of the database can't be used to sign in.
 export const signIns = sqliteTable(

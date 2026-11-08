@@ -2,10 +2,32 @@
 // How it works: what a student and a host do, and what no one is shown.
 // Drawn on the design canvas first ("How it works · phone", 9 November).
 import SlimHeader from "../components/SlimHeader.astro";
+import Guide from "../components/Guide.astro";
 import Layout from "../layouts/Layout.astro";
 import { GOING_OVER_MS, HAND_MS } from "../lib/hall.ts";
+import { guideDone, handleGuide } from "../lib/guide.ts";
 
 const minutes = (ms: number): string => `${Math.round(ms / 60_000)} minutes`;
+const selected = Astro.url.searchParams.get("guide");
+const guideRole = selected === "student" || selected === "host" ? selected : null;
+const context = { account: Astro.locals.account, cookies: Astro.cookies, url: Astro.url, log: Astro.locals.log };
+let problem = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  if (form.get("intent") !== "guide" || !guideRole) {
+    Astro.response.status = 422;
+    problem = "Choose the student or host guide below.";
+    Astro.locals.log("refused", { action: "guide", reason: "no-such-guide" });
+  } else {
+    const done = handleGuide(form, context, guideRole);
+    if (done.ok) {
+      // Reset keeps the preview open; finishing returns to this help page.
+      return Astro.redirect(form.get("guide_action") === "reset" ? Astro.url.pathname + Astro.url.search + "#guide" : "/help", 303);
+    }
+    Astro.response.status = done.status;
+    problem = done.message;
+  }
+}
 ---
 
 <Layout title="How it works · Hands Up">
@@ -13,6 +35,15 @@ const minutes = (ms: number): string => `${Math.round(ms / 60_000)} minutes`;
   <main id="main" class="wrap info">
     <h1>How it works</h1>
     <p class="lead">One room, one code. A hand needs no words, and the whole room sees how many are up.</p>
+    {problem && <p class="alert" role="alert">{problem}</p>}
+    <nav class="guide-links" aria-label="First-visit guides">
+      <a href="/help?guide=student#guide">Show the guide again</a>
+      <a href="/help?guide=host#guide">Show the host guide again</a>
+    </nav>
+    {guideRole && <>
+      <Guide role={guideRole} replay />
+      {!guideDone(context, guideRole) && <p class="notice" role="status">This guide will show next time you open the hall.</p>}
+    </>}
 
     <section class="card panel" aria-labelledby="in-the-room">
       <h2 id="in-the-room">In the room</h2>
@@ -48,3 +79,8 @@ const minutes = (ms: number): string => `${Math.round(ms / 60_000)} minutes`;
     </section>
   </main>
 </Layout>
+
+<style>
+  .guide-links { display: flex; flex-wrap: wrap; gap: 0 20px; }
+  .guide-links a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; }
+</style>

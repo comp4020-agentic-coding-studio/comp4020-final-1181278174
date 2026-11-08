@@ -57,6 +57,13 @@
       "when": 1794161359213,
       "tag": "0007_class",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794162081870,
+      "tag": "0008_guide",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@
 import Card from "../../components/Card.astro";
 import ReportedNotice from "../../components/ReportedNotice.astro";
 import GoingOver from "../../components/GoingOver.astro";
+import Guide from "../../components/Guide.astro";
 import Icon from "../../components/Icon.astro";
 import JoinForm from "../../components/JoinForm.astro";
 import SessionBand from "../../components/SessionBand.astro";
@@ -15,6 +16,7 @@ import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } 
 import { classState, latestClass } from "../../lib/classes.ts";
 import { HAND_MS } from "../../lib/hall.ts";
 import { goingOverAge } from "../../lib/going-over.ts";
+import { guideDone, handleGuide } from "../../lib/guide.ts";
 import { people } from "../../lib/live.ts";
 import { MAX_MARK, marksOf, partSoFar, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
@@ -34,19 +36,31 @@ const person = Astro.locals.person;
 const signedIn = Astro.locals.account !== null;
 const returnTo = Astro.url.pathname + Astro.url.search;
 const log = Astro.locals.log;
+const hosting = signedIn && session !== undefined && isHost(session, person);
+const guideRole = hosting ? "host" : "student";
+const guideContext = { account: Astro.locals.account, cookies: Astro.cookies, url: Astro.url, log };
 let goingOverProblem = "";
 // a refused press comes back saying why; a refused mark keeps its words
 let problem = "";
 let markValue = "";
 let markProblem = "";
-const signedOutPost = session && Astro.request.method === "POST" && !signedIn;
+const form = Astro.request.method === "POST" ? await Astro.request.formData() : undefined;
+const intent = form?.get("intent");
+const signedOutPost = session && form && !signedIn && intent !== "guide";
 
-if (signedOutPost) {
+if (form && intent === "guide") {
+  if (session) {
+    const done = handleGuide(form, guideContext, guideRole);
+    if (done.ok) return Astro.redirect(returnTo, 303);
+    Astro.response.status = done.status;
+    problem = done.message;
+  } else {
+    log("refused", { action: "guide", reason: "session-not-found" });
+  }
+} else if (signedOutPost) {
   Astro.response.status = 401;
   log("refused", { session: session.code, reason: "signed-out" });
-} else if (session && Astro.request.method === "POST") {
-  const form = await Astro.request.formData();
-  const intent = form.get("intent");
+} else if (session && form) {
   if (intent === "hand" && isHost(session, person)) {
     // the host teaches and has no hand: a press sent by hand is refused, so no host hand reaches a count or the record
     Astro.response.status = 403;
@@ -120,7 +134,7 @@ if (signedOutPost) {
 }
 if (!session) Astro.response.status = 404;
 
-const hosting = signedIn && session !== undefined && isHost(session, person);
+const guideComplete = guideDone(guideContext, guideRole);
 const all = session ? listQuestions(session, signedIn ? person : "", "popular") : [];
 const listed = all.filter((q) => q.state !== "hidden").length;
 const wanted = all.filter((q) => q.state === "open").slice(0, 3);
@@ -153,7 +167,7 @@ const lastClass = session ? latestClass(session.id) : undefined;
 {
   session ? (
     <Layout title={`${session.title} · Hands Up`}>
-      <SessionBand code={session.code} title={session.title} hosting={hosting}>
+      <SessionBand code={session.code} title={session.title} hosting={hosting} guideComplete={guideComplete}>
         <SessionTabs code={session.code} at="hall" count={listed} />
       </SessionBand>
 
@@ -166,7 +180,7 @@ const lastClass = session ? latestClass(session.id) : undefined;
           {/* the hall is drawn here by src/scripts/hall.ts; the sentence under it says the same in words */}
           <div class="hall-view" data-hall data-view={hosting ? "front" : "seat"} aria-hidden="true" />
           <div class="hall-meta">
-            <p class="hint hall-caption">Seats and hands are placed at random on each screen.</p>
+            {!guideComplete && <p class="hint hall-caption">Seats and hands are placed at random on each screen.</p>}
             {/* shown by the page's script once its stream is open */}
             <p class="live" role="status" data-live-status hidden />
           </div>
@@ -181,9 +195,9 @@ const lastClass = session ? latestClass(session.id) : undefined;
               </button>
               <p class="hint" id="class-note">
                 {classNow === "on" && lastClass
-                  ? `Class started at ${moment(lastClass.startedAt)}. Hands can go up until you end it.`
+                  ? `Class started at ${moment(lastClass.startedAt)}. Hands are open.`
                   : classNow === "over" && lastClass?.endedAt
-                    ? `Class ended at ${moment(lastClass.endedAt)}. Every hand came down; start the class again to open them.`
+                    ? `Class ended at ${moment(lastClass.endedAt)}. All hands are down.`
                     : "Hands open when you start the class."}
               </p>
             </form>
@@ -193,7 +207,7 @@ const lastClass = session ? latestClass(session.id) : undefined;
           )}
           <GoingOver age={goingOverAge(session.id)} />
           <p class="hint hall-silence" data-silence hidden={room.hands.length > 0 || (hosting && room.here === 0)}>
-            {hosting ? SILENCE_SHORT : SILENCE}
+            {hosting || guideComplete ? SILENCE_SHORT : SILENCE}
           </p>
           <p class="hint">
             <Icon name="lock" size={14} /> No one, the host included, is shown whose hand is up.
@@ -216,7 +230,7 @@ const lastClass = session ? latestClass(session.id) : undefined;
                 <Icon name="hand" size={22} /> Sign in to raise your hand
               </a>
               <p class="hint">
-                No account yet? <a href={authLink("signup", returnTo)}>Create one</a>: a username and a password, nothing else.
+                No account? <a href={authLink("signup", returnTo)}>Create one</a>: just a username and password.
               </p>
             </div>
           )}
@@ -230,12 +244,13 @@ const lastClass = session ? latestClass(session.id) : undefined;
               <p class="hint pop-note" id="hall-pop-note">Keep this tab open; you can switch to your slides.</p>
             </div>
           </div>
+          {!hosting && !guideComplete && <Guide role="student" />}
         </section>
 
         {hosting && (
           <section class="card host-panel hall-host" id="host" aria-labelledby="host-title">
             <h2 id="host-title">For the host</h2>
-            <p class="hint host-note">You teach: you have no hand here, and you aren't counted.</p>
+            {!guideComplete && <p class="hint host-note">You teach: you have no hand here, and you aren't counted.</p>}
             {/* refreshed by src/scripts/checkpoint.ts as the room changes; copied into the host's floating window */}
             <section class="checkpoint" aria-labelledby="checkpoint-title" data-checkpoint hidden={!checkpoint}>
               <h3 id="checkpoint-title">At your next pause</h3>
@@ -262,13 +277,13 @@ const lastClass = session ? latestClass(session.id) : undefined;
             {goingOverProblem && <p class="alert" role="alert">{goingOverProblem}</p>}
             <form method="post" class="hall-going-over" data-going-over-form data-plain>
               <input type="hidden" name="intent" value="going-over" />
-              <button class="button ink" type="submit" aria-describedby="going-over-note">Going over it</button>
-              <p class="hint" id="going-over-note">{GOING_OVER_NOTE}</p>
+              <button class="button ink" type="submit" aria-describedby={guideComplete ? undefined : "going-over-note"}>Going over it</button>
+              {!guideComplete && <p class="hint" id="going-over-note">{GOING_OVER_NOTE}</p>}
               <p class="alert" role="status" data-going-over-problem hidden />
             </form>
             <form method="post" class="hall-mark" data-plain>
               <input type="hidden" name="intent" value="timeline_mark" />
-              <label for="mark-label">Starting a new part? Mark it on the timeline</label>
+              <label for="mark-label">Mark a new part</label>
               <div class="host-row">
                 <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${parts.length + 1}`} value={markValue} aria-describedby={markProblem ? "mark-problem" : undefined} />
                 <button class="button ink" type="submit">
@@ -287,6 +302,7 @@ const lastClass = session ? latestClass(session.id) : undefined;
                 </p>
               )}
             </form>
+            {!guideComplete && <Guide role="host" />}
           </section>
         )}
 
@@ -316,7 +332,7 @@ const lastClass = session ? latestClass(session.id) : undefined;
 
         {!hosting && (
           <p class="foot session-foot">
-            <a href={`/s/${session.code}/present`}>Projector page</a> <span>For the screen at the front.</span>
+            <a href={`/s/${session.code}/present`}>Projector page</a>{!guideComplete && <> <span>For the screen at the front.</span></>}
           </p>
         )}
       </main>

@@ -25,6 +25,7 @@ import {
 } from "../../../lib/board.ts";
 import { howMany, lostLabel, refusal, SILENCE_SHORT, tooFast } from "../../../lib/words.ts";
 import { goingOverAge } from "../../../lib/going-over.ts";
+import { guideDone } from "../../../lib/guide.ts";
 import { people } from "../../../lib/live.ts";
 import { handsUp } from "../../../lib/room.ts";
 
@@ -93,6 +94,7 @@ if (!session) Astro.response.status = 404;
 
 const list = session ? listQuestions(session, signedIn ? person : "", sort) : [];
 const hosting = signedIn && session !== undefined && isHost(session, person);
+const guideComplete = guideDone({ account: Astro.locals.account, cookies: Astro.cookies }, hosting ? "host" : "student");
 const listed = list.filter((q) => q.state !== "hidden").length;
 // Only confirm a question this person can still find in this session's list.
 const posted = Astro.request.method === "GET"
@@ -110,7 +112,7 @@ const room = {
 {
   session ? (
     <Layout title={`Questions · ${session.title} · Hands Up`}>
-      <SessionBand code={session.code} title={session.title} hosting={hosting}>
+      <SessionBand code={session.code} title={session.title} hosting={hosting} guideComplete={guideComplete}>
         <SessionTabs code={session.code} at="questions" count={listed} />
       </SessionBand>
 
@@ -146,7 +148,7 @@ const room = {
             )}
             <a class="button tomato" href={authLink("signin", returnTo)}>Sign in to ask a question</a>
             <p class="hint">
-              No account yet? <a href={authLink("signup", returnTo)}>Create one</a>: a username and a password, nothing else.
+              No account? <a href={authLink("signup", returnTo)}>Create one</a>: just a username and password.
             </p>
           </section>
         )}
@@ -213,7 +215,7 @@ const room = {
         </template>
         {!hosting && (
           <p class="foot session-foot">
-            <a href={`/s/${session.code}/present`}>Projector page</a> <span>For the screen at the front.</span>
+            <a href={`/s/${session.code}/present`}>Projector page</a>{!guideComplete && <> <span>For the screen at the front.</span></>}
           </p>
         )}
       </main>
