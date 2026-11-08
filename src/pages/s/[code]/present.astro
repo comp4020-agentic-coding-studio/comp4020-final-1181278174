@@ -4,13 +4,16 @@ import JoinForm from "../../../components/JoinForm.astro";
 import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { findSession, isCode, listQuestions, normaliseCode } from "../../../lib/board.ts";
-import { howMany } from "../../../lib/words.ts";
+import { people } from "../../../lib/live.ts";
+import { handsUp } from "../../../lib/room.ts";
+import { howMany, lostLabel } from "../../../lib/words.ts";
 import { renderSVG } from "uqr";
 
-// The session for the screen at the front of the room: where to join, and the
-// questions most people want answered, in type the back row can read. Nobody
-// presses anything here, so it has no forms.
-const TOP = 5;
+// The session for the screen at the front of the room: where to join, the
+// hall seen from the front, so the room sees itself, how many are lost, and
+// the questions most people want answered, in type the back row can read.
+// Nobody presses anything here, so it has no forms.
+const TOP = 3;
 
 const raw = Astro.params.code ?? "";
 const code = normaliseCode(raw);
@@ -24,6 +27,10 @@ const top = all.filter((q) => q.state === "open").slice(0, TOP);
 // the QR code opens the session page itself, so a scan skips typing the code
 const address = session ? new URL(`/s/${session.code}`, Astro.url).href : "";
 const qr = session ? renderSVG(address, { border: 0, ecc: "M", blackColor: "#121212", whiteColor: "#ffffff" }) : "";
+
+// the hall as it is now; this screen is not a person, so it is not in it
+const inRoom = session ? [...people(session.id)] : [];
+const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom) : [], mine: null, recent: [] };
 ---
 
 {
@@ -61,6 +68,14 @@ const qr = session ? renderSVG(address, { border: 0, ecc: "M", blackColor: "#121
             </p>
           </div>
 
+          <div class="stage-hall">
+            {/* drawn by src/scripts/hall.ts from the front of the room; the sentence under it says the same in words */}
+            <div class="hall-view" data-hall data-view="front" aria-hidden="true" />
+            <p class="stage-lost" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
+              {lostLabel(room.hands.length, room.here)}
+            </p>
+          </div>
+
           {/* the page's script (src/scripts/live.ts) redraws what is in here after every change */}
           <div class="stage-list" data-board data-refresh>
             {top.length === 0 ? (
@@ -87,12 +102,14 @@ const qr = session ? renderSVG(address, { border: 0, ecc: "M", blackColor: "#121
           </div>
 
           <p class="stage-foot">
-            <Icon name="lock" size={18} /> Anonymous: nobody, the host included, can see who asked.
+            <Icon name="lock" size={18} /> Anonymous: nobody, the host included, can see who asked or whose hand is up.
           </p>
         </main>
       </div>
       <script>
         import "../../../scripts/live.ts";
+        import "../../../scripts/hand.ts";
+        void import("../../../scripts/hall.ts");
       </script>
     </Layout>
   ) : (

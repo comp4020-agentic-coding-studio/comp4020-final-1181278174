@@ -195,8 +195,8 @@ function draw(view: HTMLElement): void {
   );
   // a shadow on the step under everyone
   const shadows = shapes(
-    () => new THREE.CircleGeometry(0.34, 24).rotateX(-Math.PI / 2).translate(0, 0.01, 0.02),
-    new THREE.MeshBasicMaterial({ color: color(LOOK.ink), transparent: true, opacity: 0.12, depthWrite: false }),
+    () => new THREE.CircleGeometry(0.3, 24).rotateX(-Math.PI / 2).translate(0, 0.01, -0.1),
+    new THREE.MeshBasicMaterial({ color: color(LOOK.ink), transparent: true, opacity: 0.08, depthWrite: false }),
     false,
   );
 
