@@ -40,6 +40,24 @@ export function findSession(code: string): Session | undefined {
   return db.select().from(sessions).where(eq(sessions.code, code)).get();
 }
 
+/** How many of a host's sessions the home page lists. */
+const HOSTED_SHOWN = 10;
+
+/**
+ * The sessions this browser started, newest first, so a lecturer can find
+ * last week's timeline. A host is the browser's cookie, so another device, or
+ * cleared cookies, has none of them; there are no accounts to recover them.
+ */
+export function sessionsHostedBy(person: string): Pick<Session, "code" | "title" | "createdAt">[] {
+  return db
+    .select({ code: sessions.code, title: sessions.title, createdAt: sessions.createdAt })
+    .from(sessions)
+    .where(eq(sessions.host, person))
+    .orderBy(desc(sessions.createdAt), desc(sessions.id))
+    .limit(HOSTED_SHOWN)
+    .all();
+}
+
 /** Characters as a person counts them (and SQLite's length() does). */
 export const length = (s: string): number => [...s].length;
 

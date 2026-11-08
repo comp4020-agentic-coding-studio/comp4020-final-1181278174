@@ -2,7 +2,8 @@
 import Icon from "../components/Icon.astro";
 import JoinForm from "../components/JoinForm.astro";
 import Layout from "../layouts/Layout.astro";
-import { checkTitle, length, MAX_TITLE, startSession } from "../lib/board.ts";
+import { checkTitle, length, MAX_TITLE, sessionsHostedBy, startSession } from "../lib/board.ts";
+import { clock, day } from "../lib/words.ts";
 
 // Starting a session posts back here: on success it goes to the new
 // session, otherwise this page comes back with the name kept and the reason.
@@ -21,6 +22,9 @@ if (Astro.request.method === "POST") {
   const reason = title.length === 0 ? "empty" : "too-long";
   Astro.locals.log("refused", { action: "start", reason, length: length(title) });
 }
+
+// the sessions this browser started, for coming back to a lecture's timeline
+const hosted = sessionsHostedBy(Astro.locals.person);
 ---
 
 <Layout title="Hands Up" sunny>
@@ -57,6 +61,27 @@ if (Astro.request.method === "POST") {
           <button class="button ink" type="submit">Start a session</button>
         </form>
       </section>
+
+      {hosted.length > 0 && (
+        <section class="card quiet panel hosted" aria-labelledby="hosted-heading">
+          <h2 id="hosted-heading">Sessions you started in this browser</h2>
+          <ul class="hosted-list" aria-label="Sessions you started">
+            {hosted.map((h) => (
+              <li>
+                <p class="hosted-title">{h.title}</p>
+                <p class="hint">
+                  {day(h.createdAt)}, {clock(h.createdAt)} · Code {h.code}
+                </p>
+                <p class="hosted-links">
+                  <a href={`/s/${h.code}`}>Hall</a>
+                  <a href={`/s/${h.code}/timeline`}>When the room was lost</a>
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p class="hint">Kept with this browser: on another device, or after clearing cookies, they won't be here.</p>
+        </section>
+      )}
 
       <p class="foot"><a href="/readme/">About Hands Up</a> <span>No accounts. No names.</span></p>
     </div>
