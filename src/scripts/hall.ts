@@ -23,15 +23,15 @@ import { type Hall, lastHall } from "./hand.ts";
 
 /** Every colour and size the hall is drawn with, in one place, so the look can change without the code. */
 const LOOK = {
-  paper: "#f1f3eb", // the background, and the fog the back of the hall fades into
-  floor: "#e5e9dc", // the floor at the front
-  step: "#e7d78e", // the top of each row
-  stepSide: "#c0af6d", // the rise of each row
-  chair: "#f8f8ef",
-  person: "#b5bead", // everyone else: one colour, no faces
-  you: "#2554c7", // this person, on their own screen only
-  hand: "#c34b2b", // a raised hand: the only strong colour
-  ink: "#30392f", // outlines
+  paper: "#eaf0eb", // the background, and the fog the back of the hall fades into
+  floor: "#dce5dc", // the floor at the front
+  step: "#f5dfa0", // the top of each row
+  stepSide: "#d5bb70", // the rise of each row
+  chair: "#f7f8ee",
+  person: "#b8c6ba", // everyone else: one colour, no faces
+  you: "#2855b8", // this person, on their own screen only
+  hand: "#d74b2d", // a raised hand: the only strong colour
+  ink: "#20352f", // outlines
   white: "#ffffff",
   tones: [150, 150, 150, 255, 210, 210, 210, 255, 255, 255, 255, 255],
   glow: 0.10, // how strong the light round a raised hand is
