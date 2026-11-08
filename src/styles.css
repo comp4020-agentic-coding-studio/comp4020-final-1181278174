@@ -1399,3 +1399,126 @@ textarea {
   padding-top: 10px;
   border-top: 2px dashed #e7dcc0;
 }
+
+/* "Pop out": a small window that stays above the others (Chrome and Edge on a computer) */
+
+.hall-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.timeline-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.button.pop {
+  min-height: 44px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card);
+  font-family: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.button.pop[hidden] {
+  display: none;
+}
+
+body.float {
+  margin: 0;
+  background: var(--ground);
+}
+
+.float-box {
+  box-sizing: border-box;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.float-count {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 23px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.float-chart {
+  height: 46px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  border-bottom: var(--line);
+}
+
+.float-chart span {
+  flex: 1 1 0;
+  border-radius: 2px 2px 0 0;
+  background: #cdbf9c;
+}
+
+.float-chart span.now {
+  background: var(--tomato);
+}
+
+.float-axis {
+  margin: -4px 0 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.float-box .lost-button {
+  width: 100%;
+  min-height: 52px;
+}
+
+.float-mark {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.float-mark input {
+  flex: 1 1 120px;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: var(--line);
+  border-radius: 12px;
+  padding: 0 10px;
+  font: inherit;
+  background: var(--card);
+}
+
+.float-said {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.float-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.float-timeline .sitting {
+  margin: 0;
+  box-shadow: none;
+}

@@ -1,0 +1,136 @@
+import { type Hall, lastHall } from "./hand.ts";
+
+// A small window that stays above every other window (Chrome and Edge on a
+// computer: Document Picture-in-Picture), so the hall is in view while
+// someone watches Echo360, follows the slides or teaches from them.
+//
+// - On the hall, a student's window: how many are lost, the last 15 minutes,
+//   and "I'm lost". The host's: the same, with a mark for a new part instead
+//   of the button.
+// - On the timeline: the newest sitting's chart, to keep beside the recording.
+//
+// The window holds its own copies of these, drawn from the page's state
+// ("hands-up:hall" from src/scripts/hand.ts); its buttons press the page's
+// own forms. Where the browser can't open one, the "Pop out" button stays hidden.
+
+type Pip = { requestWindow(options?: { width?: number; height?: number }): Promise<Window>; window: Window | null };
+const pip = (window as unknown as { documentPictureInPicture?: Pip }).documentPictureInPicture;
+
+for (const button of document.querySelectorAll<HTMLButtonElement>("button[data-pop]")) {
+  if (!pip) continue;
+  button.hidden = false;
+  button.addEventListener("click", () => {
+    if (pip.window) {
+      pip.window.focus();
+      return;
+    }
+    void (button.dataset.pop === "timeline" ? popTimeline() : popHall());
+  });
+}
+
+/** Copy the page's styles into the window, so it looks like the page. */
+function styled(win: Window): void {
+  for (const sheet of document.styleSheets) {
+    try {
+      const style = win.document.createElement("style");
+      style.textContent = [...sheet.cssRules].map((rule) => rule.cssText).join("\n");
+      win.document.head.append(style);
+    } catch {
+      if (!sheet.href) continue;
+      const link = win.document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = sheet.href;
+      win.document.head.append(link);
+    }
+  }
+  win.document.body.classList.add("float");
+}
+
+/** The hall in a small window: the count, the last 15 minutes, and the button or the host's mark. */
+async function popHall(): Promise<void> {
+  const hosting = document.querySelector("form.hall-mark") !== null;
+  const win = await pip!.requestWindow({ width: 320, height: hosting ? 290 : 250 });
+  styled(win);
+  const doc = win.document;
+  doc.title = "Hands Up";
+  const box = doc.createElement("main");
+  box.className = "float-box";
+  box.innerHTML = `
+    <p class="float-count" aria-live="polite"></p>
+    <div class="float-chart" aria-hidden="true"></div>
+    <p class="float-axis" aria-hidden="true"><span>15 min ago</span><span>now</span></p>
+  `;
+  doc.body.append(box);
+  const count = box.querySelector<HTMLElement>(".float-count")!;
+  const chart = box.querySelector<HTMLElement>(".float-chart")!;
+  for (let i = 0; i < 15; i++) chart.append(doc.createElement("span"));
+
+  let press: HTMLButtonElement | undefined;
+  if (hosting) {
+    // the host's mark: the hall's own form, sent from here
+    const form = doc.createElement("form");
+    form.className = "float-mark";
+    form.innerHTML = `
+      <label class="float-hidden" for="float-mark">Name for the mark</label>
+      <input id="float-mark" name="label" type="text" maxlength="60" placeholder="Next part" />
+      <button class="button ink" type="submit">Mark</button>
+      <p class="float-said" role="status"></p>
+    `;
+    box.append(form);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = form.querySelector("input")!;
+      const said = form.querySelector<HTMLElement>(".float-said")!;
+      const body = new URLSearchParams({ intent: "timeline_mark", label: input.value });
+      fetch(location.pathname, { method: "POST", body, headers: { accept: "text/html" } })
+        .then((res) => {
+          if (!res.ok) throw new Error(String(res.status));
+          said.textContent = `Marked ${input.value.trim() || "a new part"} at ${new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+          input.value = "";
+        })
+        .catch(() => {
+          said.textContent = "Not marked: no answer from the server.";
+        });
+    });
+  } else {
+    // "I'm lost": presses the hall's own button, so the page and the window agree
+    press = doc.createElement("button");
+    press.type = "button";
+    press.className = "button tomato lost-button";
+    // the same hand icon as the page's button
+    const icon = document.querySelector("form[data-hand] button svg");
+    if (icon) press.append(doc.importNode(icon, true));
+    press.append(" I'm lost");
+    press.addEventListener("click", () => document.querySelector<HTMLFormElement>("form[data-hand]")?.requestSubmit());
+    box.append(press);
+  }
+
+  const draw = (hall: Hall): void => {
+    const lost = hall.others.length + (hall.mine === null ? 0 : 1);
+    count.textContent = `${lost} of ${hall.here} here ${lost === 1 ? "is" : "are"} lost`;
+    const top = Math.max(1, hall.here, ...hall.recent);
+    hall.recent.forEach((n, i) => {
+      const bar = chart.children[i] as HTMLElement;
+      bar.style.height = `${n === 0 ? 0 : Math.max(8, (n / top) * 100)}%`;
+      bar.classList.toggle("now", i === hall.recent.length - 1);
+    });
+    press?.setAttribute("aria-pressed", String(hall.mine !== null));
+  };
+  const listen = (event: Event): void => draw((event as CustomEvent<Hall>).detail);
+  if (lastHall) draw(lastHall);
+  document.addEventListener("hands-up:hall", listen);
+  win.addEventListener("pagehide", () => document.removeEventListener("hands-up:hall", listen));
+}
+
+/** The newest sitting's chart in a small window, to keep beside the recording. */
+async function popTimeline(): Promise<void> {
+  const sitting = document.querySelector<HTMLElement>(".sitting");
+  if (!sitting) return;
+  const win = await pip!.requestWindow({ width: 480, height: 360 });
+  styled(win);
+  win.document.title = "When the room was lost";
+  const box = win.document.createElement("main");
+  box.className = "float-box float-timeline";
+  box.append(win.document.adoptNode(sitting.cloneNode(true)));
+  win.document.body.append(box);
+}

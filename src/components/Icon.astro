@@ -1,7 +1,7 @@
 ---
 // Stroke icons from Lucide (lucide.dev, ISC licence). The raised hand is the
 // app's mark, and sits on every "Me too" button too.
-type Props = { name: "hand" | "lock" | "arrow"; size?: number };
+type Props = { name: "hand" | "lock" | "arrow" | "pop"; size?: number };
 const { name, size = 20 } = Astro.props;
 ---
 
@@ -32,6 +32,14 @@ const { name, size = 20 } = Astro.props;
       <>
         <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </>
+    )
+  }
+  {
+    name === "pop" && (
+      <>
+        <rect x="3" y="4" width="18" height="14" rx="2" />
+        <rect x="12" y="10" width="7" height="6" rx="1" />
       </>
     )
   }

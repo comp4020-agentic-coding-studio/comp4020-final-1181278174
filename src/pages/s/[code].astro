@@ -10,7 +10,7 @@ import { timelineMark, vote } from "../../lib/actions.ts";
 import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
 import { HAND_MS } from "../../lib/hall.ts";
 import { people } from "../../lib/live.ts";
-import { MAX_MARK, marksOf } from "../../lib/record.ts";
+import { MAX_MARK, marksOf, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
 import { handNote, lostLabel } from "../../lib/words.ts";
 
@@ -63,7 +63,13 @@ const parts = session && hosting ? marksOf(session.id) : [];
 // hand has been up is put in their page, never in what the stream sends.
 const inRoom = session ? [...new Set([...people(session.id), person])] : [];
 const mine = session ? handOf(session.id, person) : undefined;
-const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom) : [], mine: mine ?? null };
+// and the last 15 minutes, for the small window's chart
+const room = {
+  here: inRoom.length,
+  hands: session ? handsUp(session.id, inRoom) : [],
+  mine: mine ?? null,
+  recent: session ? recentLost(session.id) : [],
+};
 const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - mine);
 ---
 
@@ -106,9 +112,13 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
               </div>
             </form>
           )}
-          <p class="hall-links">
+          <div class="hall-links">
             <a href={`/s/${session.code}/timeline`}>When the room was lost</a>
-          </p>
+            {/* shown by src/scripts/float.ts where the browser can keep a small window above the others */}
+            <button class="button pop" type="button" data-pop="hall" hidden>
+              <Icon name="pop" size={16} /> Pop out
+            </button>
+          </div>
         </section>
 
         <section class="wanted" aria-labelledby="wanted-title">
@@ -145,6 +155,7 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
       <script>
         import "../../scripts/live.ts";
         import "../../scripts/hand.ts";
+        import "../../scripts/float.ts";
         // three.js is big: the button works before it arrives
         void import("../../scripts/hall.ts");
       </script>

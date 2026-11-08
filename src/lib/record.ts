@@ -156,3 +156,23 @@ export function atCanberra(ref: Date, hhmm: string): Date | undefined {
   };
   return new Date(guess - offset(guess) * MINUTE);
 }
+
+/** How many people had a hand up in each of the last `minutes` minutes, oldest first, this minute last. */
+export function recentLost(sessionId: number, minutes = 15, now = Date.now()): number[] {
+  const end = Math.floor(now / MINUTE);
+  const start = end - minutes + 1;
+  const raised = db
+    .select({ person: hands.person, raisedAt: hands.raisedAt, loweredAt: hands.loweredAt })
+    .from(hands)
+    .where(sql`${hands.sessionId} = ${sessionId} AND ${hands.raisedAt} >= ${start * MINUTE - HAND_MS}`)
+    .all()
+    .map((h) => ({
+      person: h.person,
+      up: h.raisedAt.getTime(),
+      down: Math.min(h.loweredAt?.getTime() ?? h.raisedAt.getTime() + HAND_MS, h.raisedAt.getTime() + HAND_MS, now),
+    }));
+  return Array.from({ length: minutes }, (_, i) => {
+    const from = (start + i) * MINUTE;
+    return new Set(raised.filter((h) => h.up < from + MINUTE && h.down > from).map((h) => h.person)).size;
+  });
+}

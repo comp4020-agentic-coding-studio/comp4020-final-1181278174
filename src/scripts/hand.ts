@@ -12,8 +12,11 @@ import { handNote, lostLabel } from "../lib/words.ts";
 // other hand went up, and when this person's did.
 // Without this script the button is a plain form and the page reloads.
 
-/** Sent on: what the room looks like now. Times are `performance.now()` times. */
-export type Hall = { here: number; others: number[]; mine: number | null };
+/**
+ * Sent on: what the room looks like now. Times are `performance.now()` times.
+ * `recent` is how many were lost in each of the last 15 minutes, this one last.
+ */
+export type Hall = { here: number; others: number[]; mine: number | null; recent: number[] };
 
 type Board = { here: number; hands: number[] };
 
@@ -24,7 +27,10 @@ const line = document.querySelector<HTMLElement>("[data-lost][data-room]");
 if (line) watch(line);
 
 function watch(line: HTMLElement): void {
-  const first = JSON.parse(line.dataset.room ?? "{}") as { here?: number; hands?: number[]; mine?: number | null };
+  const first = JSON.parse(line.dataset.room ?? "{}") as { here?: number; hands?: number[]; mine?: number | null; recent?: number[] };
+  // the most lost at once in each minute, by minutes since 1970: the server's last 15, then what this page sees
+  const minute = (): number => Math.floor(Date.now() / 60_000);
+  const history = new Map<number, number>((first.recent ?? []).map((n, i, all) => [minute() - (all.length - 1 - i), n]));
   let here = first.here ?? 0;
   const start = performance.now();
   // when each hand went up, this person's among them if it is up
@@ -65,7 +71,10 @@ function watch(line: HTMLElement): void {
       const said = handNote(until);
       if (note && note.textContent?.trim() !== said) note.textContent = said;
     }
-    lastHall = { here: Math.max(here, lost), others: rest, mine };
+    const m = minute();
+    history.set(m, Math.max(history.get(m) ?? 0, lost));
+    const recent = Array.from({ length: 15 }, (_, i) => history.get(m - 14 + i) ?? 0);
+    lastHall = { here: Math.max(here, lost), others: rest, mine, recent };
     document.dispatchEvent(new CustomEvent<Hall>("hands-up:hall", { detail: lastHall }));
   }
 
