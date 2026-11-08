@@ -65,3 +65,24 @@ describe("At your next pause", () => {
     expect(said).toContain(`Most wanted: “${body}” · 0 Me too`);
   });
 });
+
+describe("The class that ended", () => {
+  it("shows the host its minutes with the most hands up and the questions left open, until the next class starts", async () => {
+    const host = new Visitor();
+    const path = (await startSession(host, `Recap ${tag()}`)).url.pathname;
+    await hand(new Visitor(), path, "1");
+    await ask(new Visitor(), `${path}/questions`, `Left open ${tag()}?`);
+    await press(host, path, /^end class$/i);
+
+    const recap = (await host.open(path)).doc.querySelector("[data-recap]");
+    expect(recap, "the host has no recap after End class").not.toBeNull();
+    const minutes = [...recap!.querySelectorAll("ol > li")].map((li) => text(li));
+    expect(minutes).toHaveLength(1);
+    expect(minutes[0]).toMatch(/^\d\d:\d\d 1 of 1 said they were lost/);
+    expect(text(recap)).toContain("1 question left open.");
+    expect((await new Visitor().open(path)).doc.querySelector("[data-recap]"), "a student is shown the host's recap").toBeNull();
+
+    await press(host, path, /^start class$/i);
+    expect((await host.open(path)).doc.querySelector("[data-recap]")).toBeNull();
+  });
+});

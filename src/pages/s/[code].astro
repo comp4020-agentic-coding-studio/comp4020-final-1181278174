@@ -18,7 +18,7 @@ import { HAND_MS } from "../../lib/hall.ts";
 import { goingOverAge } from "../../lib/going-over.ts";
 import { guideDone, handleGuide } from "../../lib/guide.ts";
 import { people } from "../../lib/live.ts";
-import { MAX_MARK, marksOf, partSoFar, recentLost } from "../../lib/record.ts";
+import { classRecap, intoRecording, MAX_MARK, marksOf, partAt, partSoFar, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
 import { classNote, clock, GOING_OVER_NOTE, handNote, lostLabel, moment, refusal, SILENCE, SILENCE_SHORT, tooFast } from "../../lib/words.ts";
 
@@ -141,6 +141,9 @@ const wanted = all.filter((q) => q.state === "open").slice(0, 3);
 const parts = session && hosting ? marksOf(session.id) : [];
 // for the host's next pause: the part so far, while a class is on
 const checkpoint = session && hosting ? partSoFar(session.id, people(session.id).size) : null;
+// once the class has ended, until the next one starts: when the room was lost in it
+const recap = session && hosting ? classRecap(session.id, people(session.id).size) : null;
+const openQuestions = all.filter((q) => q.state === "open").length;
 // the mark the host has just made, said back to them under the form
 const marked = Astro.request.method === "GET" ? parts[Number(Astro.url.searchParams.get("marked")) - 1] : undefined;
 
@@ -274,6 +277,35 @@ const lastClass = session ? latestClass(session.id) : undefined;
                 </>
               )}
             </section>
+            {recap && (
+              <section class="checkpoint recap" aria-labelledby="recap-title" data-recap>
+                <h3 id="recap-title">The class that ended</h3>
+                <p class="hint">
+                  {clock(recap.from)} to {moment(recap.to)}.
+                </p>
+                {recap.busiest.length > 0 ? (
+                  <ol class="recap-list" aria-label="The minutes most people were lost">
+                    {recap.busiest.map((m) => {
+                      const into = intoRecording(session.recordingAt, m.at);
+                      const part = partAt(parts, m.at)?.label;
+                      return (
+                        <li>
+                          <strong>{clock(m.at)}</strong>{" "}
+                          {[`${m.lost} of ${m.here} said they were lost`, part, into === undefined ? undefined : `${into} min into the recording`].filter(Boolean).join(" · ")}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                ) : (
+                  <p>No one said they were lost in this class. {SILENCE_SHORT}</p>
+                )}
+                <p>
+                  {openQuestions === 0 ? "No questions left open." : `${openQuestions} ${openQuestions === 1 ? "question" : "questions"} left open.`}{" "}
+                  <a href={`/s/${session.code}/questions`}>Questions</a>{" · "}
+                  <a href={`/s/${session.code}/timeline`}>The whole timeline</a>
+                </p>
+              </section>
+            )}
             {goingOverProblem && <p class="alert" role="alert">{goingOverProblem}</p>}
             <form method="post" class="hall-going-over" data-going-over-form data-plain>
               <input type="hidden" name="intent" value="going-over" />

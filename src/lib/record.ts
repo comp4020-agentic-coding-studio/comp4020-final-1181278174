@@ -235,3 +235,23 @@ export function partSoFar(sessionId: number, hereNow: number, now = Date.now()):
   const most = minutes.reduce<Minute | null>((best, m) => (!best || m.lost >= best.lost ? m : best), null);
   return { from, label: mark?.label ?? null, most };
 }
+
+/** The class that ended, for the host until the next one starts: when, and its minutes with the most hands up. */
+export type ClassRecap = { from: Date; to: Date; busiest: Minute[] };
+
+/**
+ * The newest class, once it has ended: its minutes with the most hands up,
+ * most first (the earlier one when two tie), at most three. Null while a class
+ * is on or before the first one.
+ */
+export function classRecap(sessionId: number, hereNow: number, now = Date.now()): ClassRecap | null {
+  const lesson = latestClass(sessionId);
+  if (!lesson?.endedAt) return null;
+  const from = Math.floor(lesson.startedAt.getTime() / MINUTE) * MINUTE;
+  const to = lesson.endedAt.getTime();
+  const minutes = sittings(sessionId, hereNow, now)
+    .flatMap((s) => s.minutes)
+    .filter((m) => m.at.getTime() >= from && m.at.getTime() < to && m.lost > 0);
+  const busiest = minutes.sort((a, b) => b.lost - a.lost || a.at.getTime() - b.at.getTime()).slice(0, 3);
+  return { from: lesson.startedAt, to: lesson.endedAt, busiest };
+}

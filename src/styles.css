@@ -1751,6 +1751,20 @@ body.float {
   overflow-wrap: anywhere;
 }
 
+/* the class that ended: its minutes with the most hands up */
+.recap-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recap-list strong {
+  font-family: var(--display);
+}
+
 /* made small, the window keeps the number and the button */
 @media (max-height: 280px) {
   .float-box .float-trend,
