@@ -75,6 +75,20 @@ async function watch(who: Visitor, path: string): Promise<Stream> {
 }
 
 describe("reports over plain HTTP", () => {
+  it("offers no report where a session has no host, and refuses one sent by hand", async () => {
+    // HAND starts with no host in a new database, as the checks' server has it
+    const body = `Nobody hosts this ${tag()}`;
+    const id = question(await ask(new Visitor(), "/s/HAND/questions", body), body)!.id;
+    const student = new Visitor();
+    for (const route of ["/s/HAND", "/s/HAND/questions"]) {
+      const page = await student.open(route);
+      if (page.doc.getElementById(`q-${id}`)) expect(reportFlag(page, id), route).toBeUndefined();
+    }
+    const refused = await student.post("/s/HAND/questions", reportData(id));
+    expect(refused.status).toBe(422);
+    expect(await refused.text()).toContain("This session has no host to report to.");
+  });
+
   it.each(["hall", "questions"] as const)("reports from the %s, once per account, with a count only for the host", async (from) => {
     const host = new Visitor();
     const hall = await startSession(host, `Reports ${tag()}`);
@@ -122,6 +136,27 @@ describe("reports over plain HTTP", () => {
       for (const studentPath of [hall.url.pathname, path]) noCount(await who.open(studentPath));
     }
     expect(question(await host.open(path), body)!.votes).toBe(0);
+  });
+
+  it("tells the host, above the list, that a question was reported, with a way to it", async () => {
+    const host = new Visitor();
+    const hall = await startSession(host, `Reported notice ${tag()}`);
+    const path = questionsPath(hall);
+    const body = `Report me ${tag()}`;
+    const id = question(await ask(new Visitor(), path, body), body)!.id;
+    const said = (page: Page): string => page.doc.querySelector("[data-reported]:not([hidden])")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    expect(said(await host.open(path)), "before any report").toBe("");
+    const reporter = new Visitor();
+    await report(reporter, await reporter.open(path), id);
+    for (const [route, target] of [[path, `#q-${id}`], [hall.url.pathname, `${path}#q-${id}`]] as const) {
+      const page = await host.open(route);
+      expect(said(page), route).toContain("1 question has been reported.");
+      expect(page.doc.querySelector("[data-reported] a")?.getAttribute("href"), route).toBe(target);
+    }
+    // nobody else is told that anything was reported
+    for (const who of [reporter, new Visitor(), new Visitor({ signedOut: true })]) {
+      for (const route of [path, hall.url.pathname]) expect((await who.open(route)).doc.querySelector("[data-reported]"), route).toBeNull();
+    }
   });
 
   it("takes a report back within a minute, and the host's count with it", async () => {

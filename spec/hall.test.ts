@@ -76,7 +76,7 @@ describe("the hall", () => {
     await press(lost, path);
     const { board } = await stream.until((b) => b.hands.length === 1);
 
-    expect(Object.keys(board).sort()).toEqual(["goingOver", "hands", "here", "questions"]);
+    expect(Object.keys(board).sort()).toEqual(["classState", "goingOver", "hands", "here", "questions"]);
     expect(board.goingOver).toBeNull();
     for (const ms of board.hands) expect(typeof ms).toBe("number");
     for (const secret of lost.secrets) {

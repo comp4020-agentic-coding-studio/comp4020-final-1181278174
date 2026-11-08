@@ -1,5 +1,6 @@
 ---
 import Card from "../../../components/Card.astro";
+import ReportedNotice from "../../../components/ReportedNotice.astro";
 import GoingOver from "../../../components/GoingOver.astro";
 import Icon from "../../../components/Icon.astro";
 import JoinForm from "../../../components/JoinForm.astro";
@@ -24,6 +25,7 @@ import {
 } from "../../../lib/board.ts";
 import { howMany, lostLabel, refusal, SILENCE_SHORT, tooFast } from "../../../lib/words.ts";
 import { goingOverAge } from "../../../lib/going-over.ts";
+import { guideDone } from "../../../lib/guide.ts";
 import { people } from "../../../lib/live.ts";
 import { handsUp } from "../../../lib/room.ts";
 
@@ -92,6 +94,7 @@ if (!session) Astro.response.status = 404;
 
 const list = session ? listQuestions(session, signedIn ? person : "", sort) : [];
 const hosting = signedIn && session !== undefined && isHost(session, person);
+const guideComplete = guideDone({ account: Astro.locals.account, cookies: Astro.cookies }, hosting ? "host" : "student");
 const listed = list.filter((q) => q.state !== "hidden").length;
 // Only confirm a question this person can still find in this session's list.
 const posted = Astro.request.method === "GET"
@@ -109,7 +112,7 @@ const room = {
 {
   session ? (
     <Layout title={`Questions · ${session.title} · Hands Up`}>
-      <SessionBand code={session.code} title={session.title} hosting={hosting}>
+      <SessionBand code={session.code} title={session.title} hosting={hosting} guideComplete={guideComplete}>
         <SessionTabs code={session.code} at="questions" count={listed} />
       </SessionBand>
 
@@ -145,7 +148,7 @@ const room = {
             )}
             <a class="button tomato" href={authLink("signin", returnTo)}>Sign in to ask a question</a>
             <p class="hint">
-              No account yet? <a href={authLink("signup", returnTo)}>Create one</a>: a username and a password, nothing else.
+              No account? <a href={authLink("signup", returnTo)}>Create one</a>: just a username and password.
             </p>
           </section>
         )}
@@ -191,6 +194,7 @@ const room = {
         <GoingOver age={goingOverAge(session.id)} />
         {/* the page's script (src/scripts/live.ts) keeps what is in here up to date */}
         <div data-board data-sort={sort}>
+          <ReportedNotice list={list} hosting={hosting} link={(id) => `#q-${id}`} />
           {/* shown while the list is empty; the script hides it when the first question arrives */}
           <p class="card empty" data-empty hidden={list.length > 0}>
             <Icon name="hand" size={22} /> <span>No questions yet.</span>{" "}
@@ -198,7 +202,7 @@ const room = {
           </p>
           <ol aria-label="Questions" class="questions">
             {list.map((q) => (
-              <Card q={q} hosting={hosting} />
+              <Card q={q} hosting={hosting} reportable={session.host !== null} />
             ))}
           </ol>
         </div>
@@ -207,11 +211,12 @@ const room = {
           <Card
             q={{ id: 0, body: "", createdAt: new Date(0), votes: 0, yours: false, voted: false, reported: false, reportedAt: null, reports: 0, state: "open" }}
             hosting={hosting}
+            reportable={session.host !== null}
           />
         </template>
         {!hosting && (
           <p class="foot session-foot">
-            <a href={`/s/${session.code}/present`}>Projector page</a> <span>For the screen at the front.</span>
+            <a href={`/s/${session.code}/present`}>Projector page</a>{!guideComplete && <> <span>For the screen at the front.</span></>}
           </p>
         )}
       </main>

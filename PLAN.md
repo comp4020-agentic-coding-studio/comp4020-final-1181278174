@@ -623,6 +623,55 @@ the account that asked it, by someone allowed to, for a reason.
   someone and a question there can be hidden. A new database still starts HAND
   with no host.
 
+### A class: the host starts it and ends it
+
+Decided 9 November, 05:00. A session used to be open all the time, so a hand
+could go up at night, and the timeline had no start or end for a lecture.
+
+- A hand goes up only while the host's class is on. Before the host presses
+  **Start class** the button is off and says the class hasn't started.
+- **End class** takes every hand down, and none can go up until the class is
+  started again. Questions can be asked at any time.
+- The same code can hold a class every week: start it again and the timeline
+  shows each class's start and end, apart from the numbered parts.
+- Starting the class also sets when the recording started, to that moment; the
+  host can change it on the timeline.
+- HAND is always open, with no class to start.
+
+### At your next pause
+
+Decided 9 November, 05:45, after a round with GPT on whether a lecturer really
+watches the count while they talk. They can't: watching a number breaks their
+rhythm. The count is for the room; the lecturer looks when they pause anyway,
+at the end of an explanation or when they ask for questions.
+
+- The host's hall has a card, "At your next pause": the part so far (since the
+  last mark in this class, or since the class started), its minute with the
+  most hands up, out of how many were here then, and the most wanted question.
+  A hand that came down still counts in the minutes it was up.
+- The host's floating window shows the same card in place of the moving chart.
+- 05:55: once the class ends, until the next one starts, the host's hall shows
+  the class that ended: its minutes with the most hands up, each with its part
+  and how far into the recording it is, and how many questions are left open.
+  That is when a lecturer plans how to open the next lecture.
+- Not yet: a cue that comes once when many hands go up together and stay up,
+  a view for a tutor helping in the room. Whether these help is something to
+  try with a lecturer and a few students.
+
+### A guide for a first visit, then less small text
+
+Decided 9 November, 05:15: the hall had too much small explanatory text.
+
+- A first visit to the hall shows a short guide, five steps for a student and
+  five for the host, after the controls, so it never stands in front of the
+  button. Got it and Skip are plain forms; the app remembers them for the
+  account, or in a cookie while signed out. How it works brings the guide back.
+- After it, the hall drops what the guide taught: where seats are placed, the
+  host's "you teach" note, how long Going over it shows, the projector line.
+  What stays: no one is shown whose hand is up, silence doesn't mean everyone
+  follows, counts with how many are here, when your hand comes down, and why
+  the button is off.
+
 ### Order of work
 
 1. this plan

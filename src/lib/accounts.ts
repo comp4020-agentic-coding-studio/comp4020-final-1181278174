@@ -183,6 +183,13 @@ export function startSignIn(accountId: string, verifiedHash?: string): string | 
 }
 
 /** Expired and ended tokens confer no account, even when their cookie remains. */
+/**
+ * A mark for the pages of one account, so a page's script can tell that its
+ * browser is now signed in as someone else (src/scripts/live.ts). Worked out
+ * from the account's id, but not the id, and only ever in that account's pages.
+ */
+export const pageMark = (account: Account): string => createHash("sha256").update(`page ${account.id}`).digest("base64url").slice(0, 16);
+
 export function findAccount(token?: string): Account | null {
   if (!token || !TOKEN.test(token)) return null;
   return db.select({ id: accounts.id, username: accounts.username })

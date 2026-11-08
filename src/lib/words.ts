@@ -33,6 +33,10 @@ export const SILENCE = "That doesn't mean everyone follows. Lost? Raise yours, n
 /** The same, short enough for the projector and the small window. */
 export const SILENCE_SHORT = "That doesn't mean everyone follows.";
 
+/** Why a hand can't go up now: the class hasn't started, or has ended. */
+export const classNote = (state: "before" | "on" | "over"): string =>
+  state === "before" ? "The class hasn't started. Hands open when the host starts it." : state === "over" ? "The class has ended." : "";
+
 /** The lecturer's acknowledgement, without claiming what it changed. */
 /** A refusal for going too fast, saying how long to wait. */
 export function tooFast(seconds = 60): string {
@@ -45,6 +49,7 @@ export function refusal(intent: string, status: number): string {
   if (status === 403) return intent === "hand" ? "The host teaches and has no hand." : "Only the host can do that.";
   if (status === 404) return intent === "unreport" ? "There's no report of yours to take back." : "That question isn't here any more.";
   if (status === 422 && intent === "unreport") return "A report can only be taken back within a minute.";
+  if (status === 422 && intent === "report") return "This session has no host to report to.";
   return "That didn't work. Reload the page and try again.";
 }
 
@@ -64,3 +69,7 @@ export const handNote = (until: Date | undefined): string =>
 /** A day as the room says it: "Monday 9 November". */
 export const day = (when: Date): string =>
   when.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", timeZone: "Australia/Sydney" });
+
+/** A time today ("14:02"), or on another day ("14:02 on Monday 2 November"). */
+export const moment = (when: Date, now = new Date()): string =>
+  day(when) === day(now) ? clock(when) : `${clock(when)} on ${day(when)}`;

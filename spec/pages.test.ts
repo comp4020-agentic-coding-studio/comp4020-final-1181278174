@@ -73,6 +73,22 @@ describe("pages a real site has", () => {
     }
   });
 
+  it("says at the foot of the timeline what each person can do in the hall", async () => {
+    const host = new Visitor();
+    const hall = (await startSession(host, `Timeline foot ${Date.now() % 100000}`)).url.pathname;
+    const foot = async (who: Visitor): Promise<string> => text((await who.open(`${hall}/timeline`)).doc.querySelector(".session-foot"));
+    expect(await foot(host)).toContain("You teach: you have no hand here.");
+    expect(await foot(new Visitor())).toContain("Raise your hand there, no words needed.");
+    expect(await foot(new Visitor({ signedOut: true }))).toContain("Sign in to raise a hand.");
+  });
+
+  it("sends a README link to a file in the repo to GitHub, so none leads nowhere", async () => {
+    const page = await new Visitor({ signedOut: true }).open("/readme/");
+    const hrefs = [...page.doc.querySelectorAll("main a[href]")].map((a) => a.getAttribute("href")!);
+    expect(hrefs.length).toBeGreaterThan(0);
+    for (const href of hrefs) expect(href, "a link relative to /readme/").toMatch(/^(https?:|\/|#|mailto:)/);
+  });
+
   it("sets two cookies and no more, as Privacy and rules says", async () => {
     // a browser's whole first visit: the home page, signing up, a session's pages
     const origin = (await new Visitor({ signedOut: true }).open("/")).url.origin;

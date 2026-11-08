@@ -14,31 +14,47 @@ import { announceSessionChange, onSessionChange } from "./session-tabs.ts";
 // background, so the page doesn't reload, and takes the list from the answer.
 // Without this script the page works as plain forms.
 
-type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[]; goingOver: number | null };
+type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[]; goingOver: number | null; classState?: "before" | "on" | "over" };
 type Added = { id: number; body: string; at: number };
 
 const CARD = "li[id^='q-']";
 const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+// a question half written when this tab's sign-in changed, kept across the load (see `accountChanged`)
+const KEPT = `hands-up:kept-question:${location.pathname}`;
 
 const main = document.querySelector<HTMLElement>("[data-live]");
 const holder = main?.querySelector<HTMLElement>("[data-board]");
 if (main?.dataset.live && holder && "EventSource" in window) watch(main, main.dataset.live, holder);
 
 function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
+  showKept(holder);
   const cards = (): HTMLElement[] => [...holder.querySelectorAll<HTMLElement>(CARD)];
 
   // how long a card that moved can't be pressed: the slide, and a little more
   const MOVED_MS = 400;
   const settling = new WeakMap<HTMLElement, number>();
-  // Other status regions belong to the hand, connection or ask form. Keep
-  // keyboard feedback beside this list, using the existing hidden-text style.
-  const focusStatus = holder.querySelector<HTMLElement>("[role='status']:not([data-live-status])") ?? document.createElement("p");
-  if (!focusStatus.isConnected) {
-    focusStatus.className = "unseen";
-    focusStatus.setAttribute("role", "status");
-    holder.before(focusStatus);
-  }
+  // Other status regions belong to the hand, the connection, the ask form and
+  // the host's reported line. Keyboard feedback has its own, beside this list,
+  // outside what a refresh replaces.
+  const focusStatus = document.createElement("p");
+  focusStatus.className = "unseen";
+  focusStatus.setAttribute("role", "status");
+  focusStatus.dataset.focusStatus = "";
+  holder.before(focusStatus);
   let focusNotice = 0;
+
+  // The controls in a card the keyboard can reach: its buttons and the report
+  // triangle, but not a button inside a closed "Report to the host?".
+  const controls = (li: HTMLElement): HTMLElement[] =>
+    [...li.querySelectorAll<HTMLElement>("button, summary")].filter((el) => el.tagName === "SUMMARY" || !el.closest("details:not([open])"));
+  // What a control does, so the same one can be found in a redrawn card: the
+  // triangle, or a button by its form's intent (and the host's state it sets).
+  const identity = (el: HTMLElement): string => {
+    if (el.tagName === "SUMMARY") return "triangle";
+    const intent = el.closest("form")?.querySelector<HTMLInputElement>("input[name='intent']")?.value ?? "";
+    return `${intent}|${el instanceof HTMLButtonElement && el.name === "to" ? el.value : ""}`;
+  };
 
   /** Make a change to the list, keep the keyboard where it was, and slide each card to its new place. */
   function move(change: () => void): void {
@@ -48,7 +64,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const card = focused?.closest<HTMLElement>(CARD);
     const place = card ? previous.indexOf(card) : -1;
-    const nth = card && focused ? [...card.querySelectorAll("button")].indexOf(focused as HTMLButtonElement) : -1;
+    const nth = card && focused ? controls(card).indexOf(focused) : -1;
+    const was = focused ? identity(focused) : "";
     const action = focused instanceof HTMLButtonElement && focused.name === "to" && focused.form?.getAttribute("aria-busy") === "true"
       ? focused.value : null;
 
@@ -59,8 +76,13 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       const remaining = cards();
       const same = remaining.find((li) => li.id === card.id);
       if (same) {
-        const buttons = same.querySelectorAll<HTMLElement>("button");
-        const again = focused.isConnected ? focused : (buttons[nth] ?? buttons[buttons.length - 1] ?? same);
+        const reachable = controls(same);
+        // the same control if it is still there; after Undo, the triangle it gave back
+        const again = focused.isConnected && reachable.includes(focused) ? focused
+          : reachable.find((el) => identity(el) === was)
+            ?? (was.startsWith("unreport|") ? reachable.find((el) => el.tagName === "SUMMARY") : undefined)
+            ?? reachable[Math.min(nth, reachable.length - 1)]
+            ?? same;
         if (again === same) same.tabIndex = -1;
         again.focus({ preventScroll: true });
       } else {
@@ -292,6 +314,38 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   }
 
   /** Take the list from the server's own HTML for this person, keeping the cards already here. */
+  /**
+   * The host's "N questions have been reported" line (src/components/ReportedNotice.astro),
+   * as the fresh page has it: added, changed in place, or taken away. Focus on
+   * its link stays there, or goes to the list when the line goes.
+   */
+  function reported(fresh: HTMLElement): void {
+    const notice = holder.querySelector<HTMLElement>("[data-reported]");
+    const freshNotice = fresh.querySelector<HTMLElement>("[data-reported]");
+    const focused = notice?.contains(document.activeElement) ?? false;
+    if (!freshNotice) {
+      notice?.remove();
+    } else if (!notice) {
+      holder.prepend(document.adoptNode(freshNotice));
+      return;
+    } else {
+      notice.hidden = freshNotice.hidden;
+      const link = notice.querySelector("a");
+      const freshLink = freshNotice.querySelector("a");
+      if (link && freshLink && link.textContent === freshLink.textContent) {
+        // the same link to another question: move it, keeping focus on it
+        link.href = freshLink.href;
+        if (link.previousSibling && freshLink.previousSibling) link.previousSibling.textContent = freshLink.previousSibling.textContent;
+      } else if (notice.innerHTML !== freshNotice.innerHTML) {
+        notice.replaceChildren(...[...freshNotice.childNodes].map((node) => document.adoptNode(node)));
+      }
+    }
+    if (focused && !holder.querySelector("[data-reported]:not([hidden])")?.contains(document.activeElement)) {
+      const next = holder.querySelector<HTMLElement>("[data-reported]:not([hidden]) a") ?? cards()[0]?.querySelector<HTMLElement>("button, summary, a");
+      next?.focus();
+    }
+  }
+
   function adopt(doc: Document): void {
     const fresh = doc.querySelector<HTMLElement>("[data-board]");
     if (!fresh) return;
@@ -315,6 +369,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         });
         arrange(list, want);
       }
+      reported(fresh);
       const empty = holder.querySelector<HTMLElement>("[data-empty]");
       const freshEmpty = fresh.querySelector<HTMLElement>("[data-empty]");
       if (empty && freshEmpty && empty.innerHTML !== freshEmpty.innerHTML) empty.replaceChildren(...freshEmpty.childNodes);
@@ -323,6 +378,25 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       const label = document.querySelector("[data-count]");
       if (label && count) label.textContent = count;
     });
+  }
+
+  /**
+   * This browser's sign-in changed elsewhere: signed out ("Sign out everywhere
+   * else", a password change) or signed in as someone else in another tab. The
+   * page's account bar, question box and host-only parts no longer apply, so it
+   * loads again, at once: a host's page must not keep what only the host may
+   * see. A half-written question is kept for this tab, to copy after the load.
+   */
+  function accountChanged(): void {
+    const draft = document.querySelector<HTMLTextAreaElement>("form[data-ask] textarea")?.value.trim();
+    if (draft) {
+      try {
+        sessionStorage.setItem(KEPT, draft);
+      } catch {
+        // storage refused: the page still loads again
+      }
+    }
+    location.reload();
   }
 
   // One fetch at a time; a change that arrives during one is picked up by another straight after.
@@ -344,6 +418,11 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         if (!res.ok) throw new Error(`the server answered ${res.status}`);
         const doc = new DOMParser().parseFromString(await res.text(), "text/html");
         if (!doc.querySelector("[data-board]")) throw new Error("No question list in the response");
+        // which sign-in the page was made for (src/layouts/Layout.astro)
+        if (document.body.dataset.signedIn !== doc.body.dataset.signedIn) {
+          accountChanged();
+          return;
+        }
         adopt(doc);
       } while (again);
       cardsStale = false;
@@ -429,7 +508,6 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         reply = await post();
       }
       const { doc, ok } = reply;
-      adopt(doc);
       if (ok && ["vote", "report"].includes(fields.get("intent") ?? "")) announceSessionChange();
       if (asking && text) {
         // a refused question comes back with the reason; an accepted one empties the box
@@ -448,6 +526,9 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         problem(doc.querySelector("[role='alert']")?.textContent?.trim()
           || "Could not save that change. Check the list before trying again.");
       }
+      // The list itself comes from a fetch made after this reply: a slow reply
+      // must not put back an older list over a newer one.
+      await refresh();
     } catch {
       if (button && pressed) button.setAttribute("aria-pressed", pressed);
       problem(asking
@@ -540,4 +621,29 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     };
   }
   connect();
+}
+
+/** After a load caused by a change of sign-in: the question that wasn't sent, to copy. */
+function showKept(holder: HTMLElement): void {
+  let kept: string | null = null;
+  try {
+    kept = sessionStorage.getItem(KEPT);
+    sessionStorage.removeItem(KEPT);
+  } catch {
+    return;
+  }
+  if (!kept) return;
+  const note = document.createElement("div");
+  note.className = "alert kept-question";
+  note.setAttribute("role", "alert");
+  note.dataset.keptQuestion = "";
+  const said = document.createElement("p");
+  said.textContent = "This browser's sign-in changed before your question was sent. Here it is, to copy:";
+  const words = document.createElement("textarea");
+  words.readOnly = true;
+  words.rows = 3;
+  words.value = kept;
+  words.setAttribute("aria-label", "Your question, not sent");
+  note.append(said, words);
+  (document.querySelector("form[data-ask]") ?? holder).before(note);
 }

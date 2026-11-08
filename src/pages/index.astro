@@ -6,6 +6,7 @@ import { checkTitle, length, MAX_TITLE, sessionsHostedBy, startSession } from ".
 import { clock, day, tooFast } from "../lib/words.ts";
 import { authLink } from "../lib/auth.ts";
 import { accountRefusal } from "../lib/abuse.ts";
+import { guideDone } from "../lib/guide.ts";
 
 // Starting a session posts back here: on success it goes to the new
 // session, otherwise this page comes back with the name kept and the reason.
@@ -42,6 +43,7 @@ if (Astro.request.method === "POST" && signedOut) {
 
 // The account's sessions are available in every signed-in browser.
 const hosted = Astro.locals.account ? sessionsHostedBy(Astro.locals.person) : [];
+const hostGuideComplete = guideDone({ account: Astro.locals.account, cookies: Astro.cookies }, "host");
 ---
 
 <Layout title="Hands Up" sunny>
@@ -73,7 +75,7 @@ const hosted = Astro.locals.account ? sessionsHostedBy(Astro.locals.person) : []
     <div class="stack">
       <section class="card panel join-panel" aria-labelledby="join-heading">
         <h2 id="join-heading">Join a session</h2>
-        <p>Type the code on the screen at the front of the room.</p>
+        <p>Enter the code shown in class.</p>
         <JoinForm />
         <a class="go" href="/s/HAND">Try the open hall: HAND <Icon name="arrow" size={16} /></a>
       </section>
@@ -118,7 +120,7 @@ const hosted = Astro.locals.account ? sessionsHostedBy(Astro.locals.person) : []
               </li>
             ))}
           </ul>
-          <p class="hint">Sign in on any device to find your sessions here.</p>
+          {!hostGuideComplete && <p class="hint">Sign in on any device to find your sessions here.</p>}
         </section>
       )}
 

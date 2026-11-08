@@ -7,8 +7,9 @@ import Icon from "./Icon.astro";
 // One question as one person sees it. The session page uses it for every
 // question in the list, and once more inside a <template>, which the page's
 // script copies to draw a question that arrives while the page is open.
-type Props = { q: QuestionView; hosting: boolean };
-const { q, hosting } = Astro.props;
+// `reportable` false: the session has no host, so a report would reach no one
+type Props = { q: QuestionView; hosting: boolean; reportable?: boolean };
+const { q, hosting, reportable = true } = Astro.props;
 const signedIn = Astro.locals.account !== null;
 // a report can be taken back for a minute; the Undo button hides itself when the minute is up
 const undoLeft = q.reportedAt === null ? 0 : Math.max(0, UNDO_MS - (Date.now() - q.reportedAt));
@@ -60,7 +61,7 @@ const hostButtons: Record<State, [to: State, label: string][]> = {
             <span class="n">{q.votes}</span>
           </button>
         </form>
-        {!hosting && !q.yours && (
+        {!hosting && !q.yours && reportable && (
           q.reportedAt === null ? (
             // a small triangle; pressing it asks once more before anything is sent
             <details class="report" data-report>

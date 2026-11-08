@@ -2772,3 +2772,212 @@ button:disabled,
     background: CanvasText;
   }
 }
+
+/* Added on main since the last merge (class controls, the floating window, the
+   host's pause card and recap, a kept question); to be restyled in this system */
+
+/* the host's Start class / End class, where a student has their hand button */
+.hall-class {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hall-class p {
+  margin: 0;
+}
+
+.lost-button:disabled {
+  opacity: 0.65;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* the number first, large enough to read at a glance from the side of the
+   screen; the sentence beside it says the same with its denominator */
+.float-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.float-big {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--display);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.float-big strong {
+  min-width: 1em;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: var(--tomato);
+  color: var(--ink);
+  font-size: 44px;
+  text-align: center;
+}
+
+.float-big.is-zero strong {
+  padding: 4px 0;
+  background: none;
+}
+
+.float-words {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.float-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.float-said.float-hand {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.float-ask summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.float-ask summary::after {
+  content: "+";
+  font-size: 22px;
+  line-height: 1;
+}
+
+.float-ask[open] summary::after {
+  content: "\2212";
+}
+
+.float-ask form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.float-ask textarea {
+  flex: 1 1 100%;
+  min-height: 56px;
+  box-sizing: border-box;
+  border: var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font: inherit;
+  background: var(--card);
+  resize: vertical;
+}
+
+/* the host's: the hall's "At your next pause" card */
+.float-top {
+  margin: 0;
+  padding: 8px 10px;
+  border: var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.float-checkpoint h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.float-checkpoint p {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.float-checkpoint[hidden] {
+  display: none;
+}
+
+/* the host's card on the hall: the part so far, for the next pause */
+.checkpoint {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: var(--line);
+  border-radius: 14px;
+  background: var(--field);
+}
+
+.checkpoint[hidden] {
+  display: none;
+}
+
+.checkpoint h3,
+.checkpoint p {
+  margin: 0;
+}
+
+.checkpoint h3 {
+  font-size: 17px;
+}
+
+.checkpoint-question a {
+  overflow-wrap: anywhere;
+}
+
+/* the class that ended: its minutes with the most hands up */
+.recap-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recap-list strong {
+  font-family: var(--display);
+}
+
+/* made small, the window keeps the number and the button */
+@media (max-height: 280px) {
+  .float-box .float-trend,
+  .float-box .float-silence,
+  .float-box .float-lifetime,
+  .float-box .float-ask,
+  .float-box .float-top,
+  .float-box .float-mark,
+  .float-box #float-going-over-note {
+    display: none;
+  }
+}
+
+/* a question not sent when this tab's sign-in changed, kept to copy (src/scripts/live.ts) */
+.kept-question p {
+  margin: 0;
+}
+
+.kept-question textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  border: var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font: inherit;
+  background: var(--card);
+}

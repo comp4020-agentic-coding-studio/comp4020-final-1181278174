@@ -1,5 +1,6 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "./db.ts";
+import { classesOf, latestClass } from "./classes.ts";
 import { goingOversOf } from "./going-over.ts";
 import { HAND_MS } from "./hall.ts";
 import { hands, marks, presence, sessions } from "./schema.ts";
@@ -52,10 +53,14 @@ export type Sitting = { from: Date; to: Date; minutes: Minute[]; most: number; m
 /** The newest sittings first, each minute by minute. `hereNow` is how many have it open at this moment. */
 export function sittings(sessionId: number, hereNow: number, now = Date.now()): Sitting[] {
   const rows = db.select().from(presence).where(eq(presence.sessionId, sessionId)).orderBy(asc(presence.minute)).all();
-  const goingOverMinutes = goingOversOf(sessionId).map((event) => Math.floor(event.at.getTime() / MINUTE));
-  if (rows.length === 0 && goingOverMinutes.length === 0) return [];
+  // the host's own moments: Going over it, and each class's start and end
+  const eventMinutes = [
+    ...goingOversOf(sessionId).map((event) => event.at),
+    ...classesOf(sessionId).flatMap((c) => (c.endedAt ? [c.startedAt, c.endedAt] : [c.startedAt])),
+  ].map((at) => Math.floor(at.getTime() / MINUTE)).sort((a, b) => a - b);
+  if (rows.length === 0 && eventMinutes.length === 0) return [];
   const nowMinute = Math.floor(now / MINUTE);
-  const end = hereNow > 0 ? nowMinute : Math.max(rows.at(-1)?.minute ?? 0, goingOverMinutes.at(-1) ?? 0);
+  const end = hereNow > 0 ? nowMinute : Math.max(rows.at(-1)?.minute ?? 0, eventMinutes.at(-1) ?? 0);
 
   // A missing row gets at most two minutes of grace. Longer gaps are quiet,
   // including after a restart that never got to write a final zero.
@@ -70,10 +75,11 @@ export function sittings(sessionId: number, hereNow: number, now = Date.now()): 
       for (let m = row.minute + 1; m <= carriedTo; m++) counted.push({ minute: m, here: row.last });
     }
   }
-  // A host can press Going over it without a student stream open. Keep that
-  // minute in the record too, without counting the host as someone here.
+  // A host can press Going over it, or start or end a class, without a student
+  // stream open. Keep that minute in the record too, without counting the host
+  // as someone here.
   const activity = new Map(counted.filter((c) => c.here > 0).map((c) => [c.minute, c]));
-  for (const minute of goingOverMinutes) {
+  for (const minute of eventMinutes) {
     if (!activity.has(minute)) activity.set(minute, { minute, here: 0 });
   }
   const occupied = [...activity.values()].sort((a, b) => a.minute - b.minute);
@@ -208,4 +214,44 @@ export function recentLost(sessionId: number, minutes = 15, now = Date.now()): n
     const from = (start + i) * MINUTE;
     return new Set(raised.filter((h) => h.up < from + MINUTE && h.down > from).map((h) => h.person)).size;
   });
+}
+
+/** The part of the class the host is teaching: where it starts, its mark, and its minute with the most hands up. */
+export type PartSoFar = { from: Date; label: string | null; most: Minute | null };
+
+/**
+ * For the host's next pause: the part so far, since the last mark in this class
+ * or since the class started, and its minute with the most hands up (the later
+ * one when two tie). Hands that have come down since still count in the minutes
+ * they were up. Null while no class is on.
+ */
+export function partSoFar(sessionId: number, hereNow: number, now = Date.now()): PartSoFar | null {
+  const lesson = latestClass(sessionId);
+  if (!lesson || lesson.endedAt) return null;
+  const mark = marksOf(sessionId).filter((m) => m.at >= lesson.startedAt).at(-1);
+  const from = mark?.at ?? lesson.startedAt;
+  const start = Math.floor(from.getTime() / MINUTE) * MINUTE;
+  const minutes = (sittings(sessionId, hereNow, now)[0]?.minutes ?? []).filter((m) => m.at.getTime() >= start && m.lost > 0);
+  const most = minutes.reduce<Minute | null>((best, m) => (!best || m.lost >= best.lost ? m : best), null);
+  return { from, label: mark?.label ?? null, most };
+}
+
+/** The class that ended, for the host until the next one starts: when, and its minutes with the most hands up. */
+export type ClassRecap = { from: Date; to: Date; busiest: Minute[] };
+
+/**
+ * The newest class, once it has ended: its minutes with the most hands up,
+ * most first (the earlier one when two tie), at most three. Null while a class
+ * is on or before the first one.
+ */
+export function classRecap(sessionId: number, hereNow: number, now = Date.now()): ClassRecap | null {
+  const lesson = latestClass(sessionId);
+  if (!lesson?.endedAt) return null;
+  const from = Math.floor(lesson.startedAt.getTime() / MINUTE) * MINUTE;
+  const to = lesson.endedAt.getTime();
+  const minutes = sittings(sessionId, hereNow, now)
+    .flatMap((s) => s.minutes)
+    .filter((m) => m.at.getTime() >= from && m.at.getTime() < to && m.lost > 0);
+  const busiest = minutes.sort((a, b) => b.lost - a.lost || a.at.getTime() - b.at.getTime()).slice(0, 3);
+  return { from: lesson.startedAt, to: lesson.endedAt, busiest };
 }

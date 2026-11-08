@@ -63,7 +63,7 @@ const said =
     <p class="lead">You're signed in as <strong>{account.username}</strong>. Only you see your username.</p>
     {said && <p class="notice" role="status">{said}</p>}
 
-    <form method="post" action="/account" class="card panel" aria-labelledby="password-title">
+    <form method="post" action="/account" class="card panel account-panel" aria-labelledby="password-title">
       <h2 id="password-title">Change your password</h2>
       <input type="hidden" name="intent" value="password" />
       <label for="current">Current password</label>

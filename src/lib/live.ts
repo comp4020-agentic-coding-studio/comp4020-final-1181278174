@@ -1,4 +1,5 @@
 import { and, eq, ne } from "drizzle-orm";
+import { classState, type ClassState } from "./classes.ts";
 import { db } from "./db.ts";
 import { goingOverAge } from "./going-over.ts";
 import { GOING_OVER_MS } from "./hall.ts";
@@ -25,6 +26,8 @@ export type Board = {
   questions: [id: number, votes: number, state: "open" | "answered"][];
   hands: number[];
   goingOver: number | null;
+  // whether hands can go up: before the host starts the class, on, or over (src/lib/classes.ts)
+  classState: ClassState;
 };
 
 /** One open stream. `person` is null for a signed-out viewer or projector. */
@@ -53,6 +56,7 @@ export function board(sessionId: number): Board {
     .orderBy(...popularOrder)
     .all();
   const present = [...people(sessionId)];
+  const lesson = db.select({ id: sessions.id, code: sessions.code }).from(sessions).where(eq(sessions.id, sessionId)).get();
   const goingOver = goingOverAge(sessionId);
   // A connection opened after a restart also schedules the remaining time.
   // Only one expiry is needed per session, however often its state changes.
@@ -72,6 +76,7 @@ export function board(sessionId: number): Board {
     questions: rows.map((q) => [q.id, Number(q.votes), q.state === "answered" ? "answered" : "open"]),
     hands: handsUp(sessionId, present),
     goingOver,
+    classState: lesson ? classState(lesson) : "on",
   };
 }
 

@@ -136,6 +136,27 @@ export const goingOvers = sqliteTable(
   (t) => [index("going_overs_by_session").on(t.sessionId, t.at)],
 );
 
+// Each class held under a session's code: the host starts it and ends it,
+// and hands can go up only while one is on. The same code can hold a class
+// every week, so a session keeps every class it has had.
+export const classes = sqliteTable(
+  "classes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => sessions.id),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+    // null while the class is on
+    endedAt: integer("ended_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    index("classes_by_session").on(t.sessionId, t.startedAt),
+    // at most one class on at a time, even when two presses arrive together
+    uniqueIndex("classes_one_on").on(t.sessionId).where(sql`ended_at IS NULL`),
+  ],
+);
+
 // People who have signed up: a username and a password, nothing else. No
 // email and no real name. The username is shown to nobody but its owner; to
 // everyone else the app shows what people did, never who did it.
@@ -152,6 +173,23 @@ export const accounts = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
   (t) => [check("accounts_username_length", sql`length(${t.username}) BETWEEN 3 AND 30`)],
+);
+
+// A guide is remembered per account and per role: learning how to raise a
+// hand does not dismiss the host's introduction. Nothing here is public.
+export const accountGuides = sqliteTable(
+  "account_guides",
+  {
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    role: text("role", { enum: ["student", "host"] }).notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.accountId, t.role] }),
+    check("account_guides_role", sql`${t.role} IN ('student', 'host')`),
+  ],
 );
 
 // A signed-in browser: the hash of the random token in its cookie, never the

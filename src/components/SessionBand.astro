@@ -4,8 +4,8 @@ import Icon from "./Icon.astro";
 // The sunflower band at the top of both parts of a session: the code, the
 // title, and for the host a pointer to the projector page. The parts' tabs go
 // in its slot.
-type Props = { code: string; title: string; hosting: boolean };
-const { code, title, hosting } = Astro.props;
+type Props = { code: string; title: string; hosting: boolean; guideComplete?: boolean };
+const { code, title, hosting, guideComplete } = Astro.props;
 ---
 
 <header class="band">
@@ -23,8 +23,12 @@ const { code, title, hosting } = Astro.props;
     {
       hosting && (
         <p class="note">
-          You're hosting. So the room can join, open the{" "}
-          <a href={`/s/${code}/present`}>projector page</a> on the screen at the front.
+          You're hosting.{" "}
+          {guideComplete === undefined
+            ? <>So the room can join, open the <a href={`/s/${code}/present`}>projector page</a> on the screen at the front.</>
+            : guideComplete
+              ? <><a href={`/s/${code}/present`}>Projector page</a>.</>
+              : <>Open the <a href={`/s/${code}/present`}>projector page</a>.</>}
         </p>
       )
     }

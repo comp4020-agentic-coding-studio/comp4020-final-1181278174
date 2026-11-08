@@ -118,7 +118,7 @@ describe("the room's promises", () => {
 
   it("puts the timeline's floating window button in the page before anyone has joined, for its script to show later", async () => {
     const host = new Visitor();
-    const path = (await startSession(host, `Early timeline ${tag()}`)).url.pathname;
+    const path = (await startSession(host, `Early timeline ${tag()}`, { started: false })).url.pathname;
     const page = await host.open(`${path}/timeline`);
     expect(page.status).toBe(200);
     expect(page.doc.querySelectorAll(".sitting"), "someone is already in the record").toHaveLength(0);

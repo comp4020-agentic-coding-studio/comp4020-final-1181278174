@@ -4,7 +4,7 @@ import type { Fields } from "./log.ts";
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 export type Refused = { ok: false; status: number; retryAfter?: number };
-type Action = "ask" | "start" | "hand" | "vote" | "report" | "unreport" | "mark" | "going_over" | "timeline_mark" | "recording";
+type Action = "ask" | "start" | "hand" | "vote" | "report" | "unreport" | "mark" | "going_over" | "timeline_mark" | "recording" | "class";
 
 /** Every browser and session of an account spends the same allowance. */
 export function accountRules(person: string, action: Action): WindowRule[] {
@@ -15,6 +15,8 @@ export function accountRules(person: string, action: Action): WindowRule[] {
   ];
   if (action === "start") return [{ key: key + "start", max: 10, windowMs: HOUR }];
   if (action === "hand") return [{ key: key + "hand", max: 20, windowMs: MINUTE }];
+  // starting and ending a class: a few a minute is plenty, apart from the host's other controls
+  if (action === "class") return [{ key: key + "class", max: 10, windowMs: MINUTE }];
   if (action === "vote" || action === "report" || action === "unreport") {
     return [{ key: key + "feedback", max: 60, windowMs: MINUTE }];
   }

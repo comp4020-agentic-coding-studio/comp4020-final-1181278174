@@ -6,7 +6,15 @@ import SlimHeader from "../components/SlimHeader.astro";
 import Layout from "../layouts/Layout.astro";
 
 const title = readme.getHeadings().find((h) => h.depth === 1)?.text ?? "About";
-const html = await readme.compiledContent();
+// A link in the README to a file in the repo (docs/..., reflections/...) is
+// relative to the README; served at /readme/ it would lead nowhere, so it goes
+// to the file on GitHub instead. Images are left alone: nothing here is loaded
+// from another site.
+const REPO = "https://github.com/comp4020-agentic-coding-studio/comp4020-final-1181278174/blob/main/";
+const html = (await readme.compiledContent()).replace(
+  /<a href="(?![a-z][a-z0-9+.-]*:|\/|#)([^"]+)"/gi,
+  (_, path: string) => `<a href="${REPO}${path.replace(/^\.\//, "")}"`,
+);
 ---
 
 <Layout title={`${title} · About`}>
