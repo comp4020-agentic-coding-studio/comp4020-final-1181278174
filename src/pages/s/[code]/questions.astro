@@ -69,6 +69,9 @@ if (signedOutPost) {
     const done = action(session, person, form, log);
     if (done.ok) return Astro.redirect(`${here}#q-${done.question}`, 303);
     Astro.response.status = done.status;
+  } else {
+    Astro.response.status = 400;
+    log("refused", { session: session.code, reason: "no-such-intent" });
   }
 }
 if (!session) Astro.response.status = 404;

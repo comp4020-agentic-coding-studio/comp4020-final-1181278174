@@ -39,6 +39,21 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const took = Math.round(performance.now() - started);
     write(id, `${context.request.method} ${context.url.pathname} ${status} ${took}ms`, { person: who, error });
   };
+  // Pages are read with GET and changed with POST; nothing else is answered.
+  if (!["GET", "HEAD", "POST"].includes(context.request.method)) {
+    context.locals.log("refused", { reason: "no-such-method" });
+    line(405);
+    return new Response("Use GET or POST.\n", { status: 405, headers: { allow: "GET, HEAD, POST", "content-type": "text/plain; charset=utf-8" } });
+  }
+  // A form here is small: anything over 64 KB, or of no stated size, is refused unread.
+  if (context.request.method === "POST") {
+    const size = Number(context.request.headers.get("content-length") ?? Number.NaN);
+    if (!Number.isFinite(size) || size > 64 * 1024) {
+      context.locals.log("refused", { reason: Number.isFinite(size) ? "too-big" : "no-length" });
+      line(Number.isFinite(size) ? 413 : 411);
+      return new Response("That is too much to send.\n", { status: Number.isFinite(size) ? 413 : 411, headers: { "content-type": "text/plain; charset=utf-8" } });
+    }
+  }
   // Every page reads a POST as a form. A body sent any other way, or a form that
   // can't be read, is refused here with a 400 instead of failing in the page.
   if (context.request.method === "POST") {

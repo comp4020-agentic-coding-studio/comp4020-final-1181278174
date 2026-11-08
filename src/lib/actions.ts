@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { isHost, type Session, setState, setVote, STATES } from "./board.ts";
+import { isHost, type Session, setState, setVote, STATES, UNSHOWABLE } from "./board.ts";
 import { db } from "./db.ts";
 import { publish } from "./live.ts";
 import { recordGoingOver } from "./going-over.ts";
@@ -30,8 +30,14 @@ export function goingOver(session: Session, person: string, log: Log): { ok: tru
 export function vote(session: Session, person: string, form: FormData, log: Log): Done {
   // a question this person can't see takes no vote, and is a 404 to them
   const id = Number(form.get("question"));
-  const want = form.get("want") === "1";
-  const done = Number.isInteger(id) ? setVote(session, id, person, want) : "no-such-question";
+  // a vote says 1 or 0; anything else changes nothing, rather than taking a vote back
+  const given = form.get("want");
+  if (given !== "1" && given !== "0") {
+    log("refused", { action: "vote", session: session.code, reason: "no-such-want" });
+    return { ok: false, status: 422 };
+  }
+  const want = given === "1";
+  const done = Number.isInteger(id) && id > 0 ? setVote(session, id, person, want) : "no-such-question";
   if (done === "changed" || done === "unchanged") {
     const what = done === "unchanged" ? "vote_unchanged" : want ? "vote_given" : "vote_taken_back";
     log(what, { session: session.code, question: id });
@@ -71,7 +77,7 @@ export function mark(session: Session, person: string, form: FormData, log: Log)
   }
   const reason = !to ? "no-such-state" : isHost(session, person) ? "no-such-question" : "not-host";
   log("refused", { action: "mark", session: session.code, question: Number.isInteger(id) ? id : undefined, reason });
-  return { ok: false, status: to ? 403 : 422 };
+  return { ok: false, status: !to ? 422 : reason === "no-such-question" ? 404 : 403 };
 }
 
 /** The host marks the start of a part of the lecture, now. Anyone else is refused. */
@@ -81,7 +87,7 @@ export function timelineMark(session: Session, person: string, form: FormData, l
     log("refused", { action: "timeline_mark", session: session.code, reason: "not-host" });
     return { ok: false, status: 403 };
   }
-  if ([...label].length > MAX_MARK) {
+  if ([...label].length > MAX_MARK || UNSHOWABLE.test(label)) {
     log("refused", { action: "timeline_mark", session: session.code, reason: "too-long" });
     return { ok: false, status: 422 };
   }

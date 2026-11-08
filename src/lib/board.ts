@@ -66,8 +66,12 @@ export function sessionsHostedBy(person: string): Pick<Session, "code" | "title"
 /** Characters as a person counts them (and SQLite's length() does). */
 export const length = (s: string): number => [...s].length;
 
+/** Characters that can't be shown, such as NUL; line breaks and tabs are fine. */
+export const UNSHOWABLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+
 export function checkTitle(title: string): string | undefined {
   if (title.length === 0) return "Give the session a name, so the room knows it's the right one.";
+  if (UNSHOWABLE.test(title)) return "Take out the characters that can't be shown.";
   if (length(title) > MAX_TITLE) return `A name can be up to ${MAX_TITLE} characters; this one is ${length(title)}.`;
 }
 
@@ -85,6 +89,7 @@ export function startSession(title: string, host: string): string {
 
 export function checkQuestion(body: string): string | undefined {
   if (body.length === 0) return "Write your question first.";
+  if (UNSHOWABLE.test(body)) return "Take out the characters that can't be shown.";
   if (length(body) > MAX_QUESTION) {
     return `A question can be up to ${MAX_QUESTION} characters; this one is ${length(body)}.`;
   }
@@ -147,10 +152,12 @@ export function isHost(session: Session, person: string): boolean {
 /** The host marks a question answered, hides it, or puts it back. False if this person is not the host. */
 export function setState(session: Session, questionId: number, person: string, to: State): boolean {
   if (!isHost(session, person)) return false;
-  db.update(questions)
+  const { changes } = db
+    .update(questions)
     .set({ state: to })
     .where(and(eq(questions.id, questionId), eq(questions.sessionId, session.id)))
     .run();
+  if (changes === 0) return false;
   publish(session.id);
   return true;
 }
