@@ -197,6 +197,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     const questions = JSON.stringify(board.questions);
     if (questions === lastQuestions) return;
     lastQuestions = questions;
+    // a refresh already on its way carries an older list: it fetches once more
+    if (fetching) again = true;
     if (down()) {
       waiting = board;
     } else {
