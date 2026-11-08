@@ -1,0 +1,154 @@
+---
+import Card from "../../../components/Card.astro";
+import Icon from "../../../components/Icon.astro";
+import JoinForm from "../../../components/JoinForm.astro";
+import SessionBand from "../../../components/SessionBand.astro";
+import SessionTabs from "../../../components/SessionTabs.astro";
+import SlimHeader from "../../../components/SlimHeader.astro";
+import Layout from "../../../layouts/Layout.astro";
+import { mark, vote } from "../../../lib/actions.ts";
+import {
+  askQuestion,
+  checkQuestion,
+  findSession,
+  isCode,
+  isHost,
+  length,
+  listQuestions,
+  MAX_QUESTION,
+  normaliseCode,
+  type Sort,
+} from "../../../lib/board.ts";
+import { howMany } from "../../../lib/words.ts";
+
+// The questions, the second part of a session: asking, "Me too", and the
+// host's buttons. The hall, at /s/CODE, is the first.
+const raw = Astro.params.code ?? "";
+const code = normaliseCode(raw);
+if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
+  return Astro.redirect(`/s/${code}/questions${Astro.url.search}`, 301);
+}
+const session = isCode(code) ? findSession(code) : undefined;
+const sort: Sort = Astro.url.searchParams.get("sort") === "recent" ? "recent" : "popular";
+const base = `/s/${code}/questions`;
+const here = sort === "recent" ? `${base}?sort=recent` : base;
+const person = Astro.locals.person;
+const log = Astro.locals.log;
+
+// Asking and voting post back to this page: plain forms, no script needed.
+// A refused question comes back with the text kept and the reason.
+let draft = "";
+let problem: string | undefined;
+if (session && Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const intent = form.get("intent");
+  if (intent === "ask") {
+    draft = String(form.get("body") ?? "").trim();
+    problem = checkQuestion(draft);
+    if (!problem) {
+      const id = askQuestion(session, person, draft);
+      log("question_asked", { session: session.code, question: id });
+      return Astro.redirect(here, 303);
+    }
+    Astro.response.status = 422;
+    const reason = draft.length === 0 ? "empty" : "too-long";
+    log("refused", { action: "ask", session: session.code, reason, length: length(draft) });
+  } else if (intent === "vote" || intent === "state") {
+    const done = intent === "vote" ? vote(session, person, form, log) : mark(session, person, form, log);
+    if (done.ok) return Astro.redirect(`${here}#q-${done.question}`, 303);
+    Astro.response.status = done.status;
+  }
+}
+if (!session) Astro.response.status = 404;
+
+const list = session ? listQuestions(session, person, sort) : [];
+const hosting = session !== undefined && isHost(session, person);
+const listed = list.filter((q) => q.state !== "hidden").length;
+---
+
+{
+  session ? (
+    <Layout title={`Questions · ${session.title} · Hands Up`}>
+      <SessionBand code={session.code} title={session.title} hosting={hosting}>
+        <SessionTabs code={session.code} at="questions" count={listed} />
+      </SessionBand>
+
+      <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
+        <form method="post" class="card ask" data-ask>
+          <input type="hidden" name="intent" value="ask" />
+          <label for="body">Your question</label>
+          <textarea id="body" name="body" rows="2" maxlength={MAX_QUESTION} required placeholder="What do you want to ask?" aria-describedby="body-help">{draft}</textarea>
+          {problem && (
+            <p class="alert" role="alert">
+              {problem}
+            </p>
+          )}
+          <div class="ask-row">
+            <p class="hint" id="body-help">
+              <Icon name="lock" size={14} /> Anonymous, even to the host
+            </p>
+            <button class="button tomato" type="submit">
+              Ask
+            </button>
+          </div>
+        </form>
+
+        <div class="bar">
+          <nav class="tabs" aria-label="Order">
+            <a href={base} aria-current={sort === "popular" ? "page" : undefined}>
+              Popular
+            </a>
+            <a href={`${base}?sort=recent`} aria-current={sort === "recent" ? "page" : undefined}>
+              Recent
+            </a>
+          </nav>
+          <div class="bar-end">
+            {/* shown by the page's script once its stream is open */}
+            <p class="live" role="status" data-live-status hidden />
+            <p class="count-label" data-here hidden />
+            <p class="count-label" data-count>{howMany(listed)}</p>
+          </div>
+        </div>
+
+        {/* the page's script (src/scripts/live.ts) keeps what is in here up to date */}
+        <div data-board data-sort={sort}>
+          {/* shown while the list is empty; the script hides it when the first question arrives */}
+          <p class="card empty" data-empty hidden={list.length > 0}>
+            <Icon name="hand" size={22} /> No questions yet. Be the first to ask.
+          </p>
+          <ol aria-label="Questions" class="questions">
+            {list.map((q) => (
+              <Card q={q} hosting={hosting} />
+            ))}
+          </ol>
+        </div>
+        {/* an empty card for the script to copy when a question arrives while the page is open */}
+        <template data-card>
+          <Card
+            q={{ id: 0, body: "", createdAt: new Date(0), votes: 0, yours: false, voted: false, state: "open" }}
+            hosting={hosting}
+          />
+        </template>
+        {!hosting && (
+          <p class="foot session-foot">
+            <a href={`/s/${session.code}/present`}>Projector page</a> <span>For the screen at the front.</span>
+          </p>
+        )}
+      </main>
+      <script>
+        import "../../../scripts/live.ts";
+      </script>
+    </Layout>
+  ) : (
+    <Layout title="No such session · Hands Up">
+      <SlimHeader />
+      <main id="main" class="wrap lost">
+        <div class="card panel">
+          <h1>No session with the code {code}</h1>
+          <p>Check the code on the screen at the front of the room, and try again.</p>
+          <JoinForm value={raw} />
+        </div>
+      </main>
+    </Layout>
+  )
+}

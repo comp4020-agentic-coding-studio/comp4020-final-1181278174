@@ -29,4 +29,4 @@ export const clock = (when: Date): string =>
 export const handNote = (until: Date | undefined): string =>
   until
     ? `Your hand is up. It comes down by itself at ${clock(until)}, or press again once you've caught up.`
-    : "One press, no words. Nobody, the host included, can see whose hand it is.";
+    : "One press, no words.";

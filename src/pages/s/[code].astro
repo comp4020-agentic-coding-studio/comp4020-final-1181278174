@@ -2,97 +2,55 @@
 import Card from "../../components/Card.astro";
 import Icon from "../../components/Icon.astro";
 import JoinForm from "../../components/JoinForm.astro";
+import SessionBand from "../../components/SessionBand.astro";
+import SessionTabs from "../../components/SessionTabs.astro";
 import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
-import {
-  askQuestion,
-  checkQuestion,
-  findSession,
-  isCode,
-  isHost,
-  length,
-  listQuestions,
-  MAX_QUESTION,
-  normaliseCode,
-  raiseHand,
-  setState,
-  setVote,
-  type Sort,
-  STATES,
-} from "../../lib/board.ts";
-import { people } from "../../lib/live.ts";
+import { vote } from "../../lib/actions.ts";
+import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
 import { HAND_MS } from "../../lib/hall.ts";
+import { people } from "../../lib/live.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
-import { handNote, howMany, lostLabel } from "../../lib/words.ts";
+import { handNote, lostLabel } from "../../lib/words.ts";
 
+// The hall, the first part of a session: "I'm lost", and how many of the
+// people here have pressed it. Under it, the three open questions the room
+// wants answered most, which take "Me too" here too. The questions page,
+// /s/CODE/questions, is the second part.
 const raw = Astro.params.code ?? "";
 const code = normaliseCode(raw);
 if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
   return Astro.redirect(`/s/${code}${Astro.url.search}`, 301);
 }
 const session = isCode(code) ? findSession(code) : undefined;
-const sort: Sort = Astro.url.searchParams.get("sort") === "recent" ? "recent" : "popular";
-const here = sort === "recent" ? `/s/${code}?sort=recent` : `/s/${code}`;
 const person = Astro.locals.person;
 const log = Astro.locals.log;
 
-// Asking and voting post back to this page: plain forms, no script needed.
-// A refused question comes back with the text kept and the reason.
-let draft = "";
-let problem: string | undefined;
 if (session && Astro.request.method === "POST") {
   const form = await Astro.request.formData();
-  if (form.get("intent") === "ask") {
-    draft = String(form.get("body") ?? "").trim();
-    problem = checkQuestion(draft);
-    if (!problem) {
-      const id = askQuestion(session, person, draft);
-      log("question_asked", { session: session.code, question: id });
-      return Astro.redirect(here, 303);
-    }
-    Astro.response.status = 422;
-    const reason = draft.length === 0 ? "empty" : "too-long";
-    log("refused", { action: "ask", session: session.code, reason, length: length(draft) });
-  } else if (form.get("intent") === "vote") {
-    // a question this person can't see takes no vote, and is a 404 to them
-    const id = Number(form.get("question"));
-    const want = form.get("want") === "1";
-    const vote = Number.isInteger(id) ? setVote(session, id, person, want) : "no-such-question";
-    if (vote === "changed" || vote === "unchanged") {
-      const what = vote === "unchanged" ? "vote_unchanged" : want ? "vote_given" : "vote_taken_back";
-      log(what, { session: session.code, question: id });
-      return Astro.redirect(`${here}#q-${id}`, 303);
-    }
-    Astro.response.status = 404;
-    log("refused", { action: "vote", session: session.code, question: Number.isInteger(id) ? id : undefined, reason: vote });
-  } else if (form.get("intent") === "hand") {
+  const intent = form.get("intent");
+  if (intent === "hand") {
     // "I'm lost": one press, no words. Like a vote, it sends up (1) or down (0).
     const up = form.get("up");
     if (up === "1" || up === "0") {
       const done = raiseHand(session, person, up === "1");
       log(done === "unchanged" ? "hand_unchanged" : `hand_${done}`, { session: session.code });
-      return Astro.redirect(`${here}#hall`, 303);
+      return Astro.redirect(`/s/${session.code}#hall`, 303);
     }
     Astro.response.status = 422;
     log("refused", { action: "hand", session: session.code, reason: "no-such-value" });
-  } else if (form.get("intent") === "state") {
-    // the host's buttons. Anyone else who sends this is refused, and shown the page as it is.
-    const id = Number(form.get("question"));
-    const to = STATES.find((state) => state === form.get("to"));
-    if (Number.isInteger(id) && to && setState(session, id, person, to)) {
-      log("question_marked", { session: session.code, question: id, to });
-      return Astro.redirect(`${here}#q-${id}`, 303);
-    }
-    Astro.response.status = to ? 403 : 422;
-    const reason = !to ? "no-such-state" : isHost(session, person) ? "no-such-question" : "not-host";
-    log("refused", { action: "mark", session: session.code, question: Number.isInteger(id) ? id : undefined, reason });
+  } else if (intent === "vote") {
+    const done = vote(session, person, form, log);
+    if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
+    Astro.response.status = done.status;
   }
 }
 if (!session) Astro.response.status = 404;
 
-const list = session ? listQuestions(session, person, sort) : [];
 const hosting = session !== undefined && isHost(session, person);
-const listed = list.filter((q) => q.state !== "hidden").length;
+const all = session ? listQuestions(session, person, "popular") : [];
+const listed = all.filter((q) => q.state !== "hidden").length;
+const wanted = all.filter((q) => q.state === "open").slice(0, 3);
 
 // The hall as this person is about to see it: everyone with the session open,
 // and this person, who will be once the page's stream opens. How long their own
@@ -106,31 +64,17 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
 {
   session ? (
     <Layout title={`${session.title} · Hands Up`}>
-      <header class="band">
-        <div class="wrap">
-          <div class="band-top">
-            <a class="brand" href="/">
-              <span class="brand-mark">
-                <Icon name="hand" />
-              </span>
-              Hands Up
-            </a>
-            <p class="code">Code <strong>{session.code}</strong></p>
-          </div>
-          <h1>{session.title}</h1>
-          {hosting && (
-            <p class="note">
-              You started this session. Put the code on the screen so the room can join: open the{" "}
-              <a href={`/s/${session.code}/present`}>projector page</a> there.
-            </p>
-          )}
-        </div>
-      </header>
+      <SessionBand code={session.code} title={session.title} hosting={hosting}>
+        <SessionTabs code={session.code} at="hall" count={listed} />
+      </SessionBand>
 
       <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
         <section class="card hall" id="hall" aria-labelledby="hall-count">
           <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
             {lostLabel(room.hands.length, room.here)}
+          </p>
+          <p class="hint">
+            <Icon name="lock" size={14} /> Nobody, the host included, can see whose hands they are.
           </p>
           <form method="post" class="hall-hand" data-hand>
             <input type="hidden" name="intent" value="hand" />
@@ -144,61 +88,31 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           </form>
         </section>
 
-        <form method="post" class="card ask" data-ask>
-          <input type="hidden" name="intent" value="ask" />
-          <label for="body">Your question</label>
-          <textarea id="body" name="body" rows="2" maxlength={MAX_QUESTION} required placeholder="What do you want to ask?" aria-describedby="body-help">{draft}</textarea>
-          {problem && (
-            <p class="alert" role="alert">
-              {problem}
-            </p>
-          )}
-          <div class="ask-row">
-            <p class="hint" id="body-help">
-              <Icon name="lock" size={14} /> Anonymous, even to the host
-            </p>
-            <button class="button tomato" type="submit">
-              Ask
-            </button>
+        <section class="wanted" aria-labelledby="wanted-title">
+          <div class="bar">
+            <h2 id="wanted-title">Most wanted</h2>
+            <div class="bar-end">
+              {/* shown by the page's script once its stream is open */}
+              <p class="live" role="status" data-live-status hidden />
+              <a class="count-label" href={`/s/${session.code}/questions`}>
+                All <span data-questions-n>{listed}</span> questions
+              </a>
+            </div>
           </div>
-        </form>
-
-        <div class="bar">
-          <nav class="tabs" aria-label="Order">
-            <a href={`/s/${session.code}`} aria-current={sort === "popular" ? "page" : undefined}>
-              Popular
-            </a>
-            <a href={`/s/${session.code}?sort=recent`} aria-current={sort === "recent" ? "page" : undefined}>
-              Recent
-            </a>
-          </nav>
-          <div class="bar-end">
-            {/* shown by the page's script once its stream is open */}
-            <p class="live" role="status" data-live-status hidden />
-            <p class="count-label" data-here hidden />
-            <p class="count-label" data-count>{howMany(listed)}</p>
+          {/* the three most wanted, fetched again from the server when the questions change */}
+          <div data-board data-refresh data-sort="popular">
+            <p class="card empty" data-empty hidden={wanted.length > 0}>
+              <Icon name="hand" size={22} /> No questions yet.{" "}
+              <a href={`/s/${session.code}/questions`}>Ask the first one.</a>
+            </p>
+            <ol aria-label="Most wanted" class="questions">
+              {wanted.map((q) => (
+                <Card q={q} hosting={false} />
+              ))}
+            </ol>
           </div>
-        </div>
+        </section>
 
-        {/* the page's script (src/scripts/live.ts) keeps what is in here up to date */}
-        <div data-board data-sort={sort}>
-          {/* shown while the list is empty; the script hides it when the first question arrives */}
-          <p class="card empty" data-empty hidden={list.length > 0}>
-            <Icon name="hand" size={22} /> No questions yet. Be the first to ask.
-          </p>
-          <ol aria-label="Questions" class="questions">
-            {list.map((q) => (
-              <Card q={q} hosting={hosting} />
-            ))}
-          </ol>
-        </div>
-        {/* an empty card for the script to copy when a question arrives while the page is open */}
-        <template data-card>
-          <Card
-            q={{ id: 0, body: "", createdAt: new Date(0), votes: 0, yours: false, voted: false, state: "open" }}
-            hosting={hosting}
-          />
-        </template>
         {!hosting && (
           <p class="foot session-foot">
             <a href={`/s/${session.code}/present`}>Projector page</a> <span>For the screen at the front.</span>

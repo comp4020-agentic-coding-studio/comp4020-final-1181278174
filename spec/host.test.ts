@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { ask, hostPress, meToo, question, questions, startSession, type Stream, Visitor } from "./visitor.ts";
+import { ask, hostPress, meToo, question, questions, questionsPath, startSession, type Stream, Visitor } from "./visitor.ts";
 
 // What the person who started a session can do to a question: mark it
 // answered, or hide it. Everyone with the session open is sent the change.
@@ -13,7 +13,7 @@ afterEach(() => {
 /** A session with two questions, the first with a vote, and a guest watching live. */
 async function hosted() {
   const host = new Visitor();
-  const path = (await startSession(host, `Hosted ${tag()}`)).url.pathname;
+  const path = questionsPath(await startSession(host, `Hosted ${tag()}`));
   const voted = `Has a vote ${tag()}`;
   const plain = `Has none ${tag()}`;
   await ask(new Visitor(), path, voted);

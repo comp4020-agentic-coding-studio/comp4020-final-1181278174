@@ -261,7 +261,7 @@ textarea {
 /* asking */
 
 .ask {
-  margin-top: 18px;
+  margin-top: -42px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1168,4 +1168,38 @@ textarea {
   * {
     transition: none !important;
   }
+}
+
+/* the two parts of a session, as tabs at the foot of the band */
+
+.band .parts {
+  margin-top: 16px;
+}
+
+.parts a {
+  flex: 1 1 0;
+  justify-content: center;
+  gap: 6px;
+}
+
+.parts-n {
+  font-family: var(--display);
+  font-weight: 800;
+}
+
+/* under the hall: the three questions the room wants answered most */
+
+.wanted {
+  margin-top: 8px;
+}
+
+.wanted h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.wanted .count-label {
+  color: var(--ink);
 }

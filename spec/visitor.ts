@@ -253,9 +253,9 @@ export type Question = {
   button: (name: RegExp) => HTMLButtonElement | undefined;
 };
 
-/** The questions on a session page, top to bottom: the list named "Questions". */
-export function questions(p: Page): Question[] {
-  const list = p.doc.querySelector('[aria-label="Questions"]');
+/** The questions on a session page, top to bottom: the list named "Questions", or another list by its name. */
+export function questions(p: Page, named = "Questions"): Question[] {
+  const list = p.doc.querySelector(`[aria-label="${named}"]`);
   return [...(list?.querySelectorAll(":scope > li") ?? [])].map((li) => {
     const meToo = [...li.querySelectorAll("button")].find((b) => /me too/i.test(nameOf(b)));
     if (!meToo) throw new Error(`a question with no "Me too" button: ${text(li)}`);
@@ -275,7 +275,12 @@ export function question(p: Page, body: string): Question | undefined {
   return questions(p).find((q) => q.text.includes(body));
 }
 
-/** Start a session from the home page; returns its page, at /s/<code>. */
+/** The questions page of a session, from its hall page at /s/<code>: /s/<code>/questions. */
+export function questionsPath(session: Page): string {
+  return `${session.url.pathname.replace(/\/$/, "")}/questions`;
+}
+
+/** Start a session from the home page; returns its page, at /s/<code>: the hall. */
 export async function startSession(host: Visitor, title: string): Promise<Page> {
   const home = await host.open("/");
   const form = formWithButton(home, /start/i);

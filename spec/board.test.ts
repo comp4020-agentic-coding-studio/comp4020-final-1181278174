@@ -6,6 +6,7 @@ import {
   meToo,
   question,
   questions,
+  questionsPath,
   startSession,
   Visitor,
 } from "./visitor.ts";
@@ -58,14 +59,18 @@ describe("a session", () => {
     const hand = await guest.open(new URL(link!.getAttribute("href")!, home.url));
     expect(hand.status).toBe(200);
     expect(codeOf(hand.url)).toBe("HAND");
-    expect(() => formWithButton(hand, /^ask/i)).not.toThrow();
+    // the hall first; its tab for the questions leads to where they are asked
+    const tab = [...hand.doc.querySelectorAll('[aria-label="Parts of the session"] a')].find((a) => /questions/i.test(a.textContent ?? ""));
+    expect(tab, "no tab for the questions on HAND's hall").toBeDefined();
+    const asking = await guest.open(new URL(tab!.getAttribute("href")!, hand.url));
+    expect(() => formWithButton(asking, /^ask/i)).not.toThrow();
   });
 });
 
 describe("asking", () => {
   it("a question stays: a stranger sees it, and the asker finds it marked theirs on coming back", async () => {
     const host = new Visitor();
-    const path = (await startSession(host, `Crit ${tag()}`)).url.pathname;
+    const path = questionsPath(await startSession(host, `Crit ${tag()}`));
     const asker = new Visitor();
     const body = `Why server-sent events and not WebSockets? ${tag()}`;
     await ask(asker, path, body);
@@ -82,7 +87,7 @@ describe("asking", () => {
 
   it("nothing sent to anyone else carries who asked, the host included", async () => {
     const host = new Visitor();
-    const path = (await startSession(host, `Crit ${tag()}`)).url.pathname;
+    const path = questionsPath(await startSession(host, `Crit ${tag()}`));
     const asker = new Visitor();
     await asker.open("/");
     expect(asker.secrets, "the app gave the asker no id to tell them apart").not.toEqual([]);
@@ -96,7 +101,7 @@ describe("asking", () => {
 
   it("refuses an empty question and one over 240 characters, and takes 240 Chinese characters", async () => {
     const host = new Visitor();
-    const path = (await startSession(host, `Limits ${tag()}`)).url.pathname;
+    const path = questionsPath(await startSession(host, `Limits ${tag()}`));
     const asker = new Visitor();
 
     const empty = await ask(asker, path, "   ");
@@ -121,7 +126,7 @@ describe("asking", () => {
 describe("voting", () => {
   it("counts one vote per person, even sent twice at once, and can take it back", async () => {
     const host = new Visitor();
-    const path = (await startSession(host, `Votes ${tag()}`)).url.pathname;
+    const path = questionsPath(await startSession(host, `Votes ${tag()}`));
     const body = `Can it run a whole lecture theatre? ${tag()}`;
     await ask(new Visitor(), path, body);
 
@@ -148,7 +153,7 @@ describe("voting", () => {
 
   it("Popular puts the most votes first; Recent puts the newest first", async () => {
     const host = new Visitor();
-    const path = (await startSession(host, `Order ${tag()}`)).url.pathname;
+    const path = questionsPath(await startSession(host, `Order ${tag()}`));
     const [a, b, c] = ["first", "second", "third"].map((n) => `The ${n} question ${tag()}`);
     const asker = new Visitor();
     for (const body of [a, b, c]) await ask(asker, path, body);

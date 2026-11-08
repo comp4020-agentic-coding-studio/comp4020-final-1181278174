@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ask, meToo, startSession, type Page, Visitor } from "./visitor.ts";
+import { ask, meToo, questionsPath, startSession, type Page, Visitor } from "./visitor.ts";
 
 // The projector page: the session for the screen at the front of the room.
 // It is found the way a person finds it, by the link on the session page.
@@ -18,9 +18,10 @@ describe("the projector page", () => {
     const code = path.split("/").filter(Boolean).pop()!;
     const first = `Asked first ${tag()}`;
     const second = `Asked second ${tag()}`;
-    await ask(new Visitor(), path, first);
-    await ask(new Visitor(), path, second);
-    await meToo(new Visitor(), path, second);
+    const asking = questionsPath(session);
+    await ask(new Visitor(), asking, first);
+    await ask(new Visitor(), asking, second);
+    await meToo(new Visitor(), asking, second);
 
     const screen = new Visitor();
     const page = await projector(screen, await screen.open(path));

@@ -1,0 +1,13 @@
+---
+// The two parts of a session: the hall, where anyone can raise a hand, and
+// the questions. The number of questions is kept up to date by the page's script.
+type Props = { code: string; at: "hall" | "questions"; count: number };
+const { code, at, count } = Astro.props;
+---
+
+<nav class="tabs parts" aria-label="Parts of the session">
+  <a href={`/s/${code}`} aria-current={at === "hall" ? "page" : undefined}>Hall</a>
+  <a href={`/s/${code}/questions`} aria-current={at === "questions" ? "page" : undefined}>
+    Questions{" "}<span class="parts-n" data-questions-n>{count}</span>
+  </a>
+</nav>

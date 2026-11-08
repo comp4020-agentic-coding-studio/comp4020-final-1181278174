@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { type Page, startSession, type Stream, Visitor } from "./visitor.ts";
+import { ask, hostPress, meToo, type Page, questions, questionsPath, startSession, type Stream, Visitor } from "./visitor.ts";
 
 // The final version: "I'm lost" is a hand anyone can raise with one press and
 // no words, and the whole room sees how many are up. These read the pages and
@@ -105,5 +105,59 @@ describe("the hall", () => {
     const text = after.doc.body.textContent ?? "";
     const said = [clock(pressed + 179_000), clock(pressed + 182_000)].some((time) => text.includes(`comes down by itself at ${time}`));
     expect(said, `the page does not say when the hand comes down: ${handButton(after).closest("form")?.textContent}`).toBe(true);
+  });
+});
+
+describe("the two parts of a session", () => {
+  it("the hall shows the three open questions with the most Me too, and takes Me too there", async () => {
+    const host = new Visitor();
+    const hallPage = await startSession(host, `Wanted ${tag()}`);
+    const asking = questionsPath(hallPage);
+    const t = tag();
+    const [a, b, c, d, e] = ["a", "b", "c", "d", "e"].map((n) => `Question ${n} ${t}`);
+    const vote = async (body: string, times: number): Promise<void> => {
+      for (let i = 0; i < times; i++) await meToo(new Visitor(), asking, body);
+    };
+    const wanted = async (): Promise<string[]> =>
+      questions(await new Visitor().open(hallPage.url.pathname), "Most wanted").map(
+        (q) => [a, b, c, d, e].find((body) => q.text.includes(body)) ?? q.text,
+      );
+
+    for (const body of [a, b, c]) await ask(new Visitor(), asking, body);
+    await vote(b, 1);
+    await vote(c, 2);
+    // an answered question is no longer wanted, however many votes it has
+    await hostPress(host, asking, c, /^answered/i);
+    expect(await wanted()).toEqual([b, a]);
+
+    // only the top three
+    for (const body of [d, e]) await ask(new Visitor(), asking, body);
+    await vote(e, 3);
+    expect(await wanted()).toEqual([e, b, a]);
+
+    const guest = new Visitor();
+    const page = await guest.open(hallPage.url.pathname);
+    const first = questions(page, "Most wanted").find((q) => q.text.includes(a))!;
+    const after = await guest.submit(page, first.meToo.closest("form")!, first.meToo);
+    expect(after.url.pathname).toBe(hallPage.url.pathname);
+    const voted = questions(after, "Most wanted").find((q) => q.text.includes(a))!;
+    expect(voted.pressed).toBe(true);
+    expect(voted.votes).toBe(1);
+  });
+
+  it("each part has a tab for the other, and says which one it is", async () => {
+    const hallPage = await startSession(new Visitor(), `Parts ${tag()}`);
+    const guest = new Visitor();
+    const tabs = (p: Page): HTMLAnchorElement[] => [...p.doc.querySelectorAll<HTMLAnchorElement>('[aria-label="Parts of the session"] a')];
+
+    const fromHall = tabs(await guest.open(hallPage.url.pathname));
+    expect(fromHall.map((a) => a.getAttribute("aria-current"))).toEqual(["page", null]);
+    const questionsPage = await guest.open(new URL(fromHall[1].getAttribute("href")!, hallPage.url));
+    expect(questionsPage.url.pathname).toBe(questionsPath(hallPage));
+    expect(questions(questionsPage)).toEqual([]);
+
+    const fromQuestions = tabs(questionsPage);
+    expect(fromQuestions.map((a) => a.getAttribute("aria-current"))).toEqual([null, "page"]);
+    expect(new URL(fromQuestions[0].getAttribute("href")!, questionsPage.url).pathname).toBe(hallPage.url.pathname);
   });
 });

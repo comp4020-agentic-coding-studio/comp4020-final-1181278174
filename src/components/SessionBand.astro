@@ -1,0 +1,33 @@
+---
+import Icon from "./Icon.astro";
+
+// The sunflower band at the top of both parts of a session: the code, the
+// title, and for the host a pointer to the projector page. The parts' tabs go
+// in its slot.
+type Props = { code: string; title: string; hosting: boolean };
+const { code, title, hosting } = Astro.props;
+---
+
+<header class="band">
+  <div class="wrap">
+    <div class="band-top">
+      <a class="brand" href="/">
+        <span class="brand-mark">
+          <Icon name="hand" />
+        </span>
+        Hands Up
+      </a>
+      <p class="code">Code <strong>{code}</strong></p>
+    </div>
+    <h1>{title}</h1>
+    {
+      hosting && (
+        <p class="note">
+          You started this session. Put the code on the screen so the room can join: open the{" "}
+          <a href={`/s/${code}/present`}>projector page</a> there.
+        </p>
+      )
+    }
+    <slot />
+  </div>
+</header>

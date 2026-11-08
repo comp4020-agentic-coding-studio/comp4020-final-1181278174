@@ -155,6 +155,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     }
     const count = document.querySelector("[data-count]");
     if (count && holder.dataset.refresh === undefined) count.textContent = howMany(board.questions.length);
+    for (const n of document.querySelectorAll<HTMLElement>("[data-questions-n]")) n.textContent = String(board.questions.length);
     // a state sent because a hand went up or down leaves the questions as they were
     const questions = JSON.stringify(board.questions);
     if (questions === lastQuestions) return;

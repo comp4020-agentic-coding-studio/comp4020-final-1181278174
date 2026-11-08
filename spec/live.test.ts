@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { ask, meToo, questions, startSession, type Stream, Visitor } from "./visitor.ts";
+import { ask, meToo, questions, questionsPath, startSession, type Stream, Visitor } from "./visitor.ts";
 
 // Crit 9: a change one person makes reaches every other open page within
 // about a second, with no reload. These read the stream a page names, over
@@ -18,7 +18,7 @@ afterEach(() => {
 /** A new session with one person watching it live. */
 async function watched(): Promise<{ path: string; watcher: Visitor; stream: Stream }> {
   const session = await startSession(new Visitor(), `Live ${tag()}`);
-  const path = session.url.pathname;
+  const path = questionsPath(session);
   const watcher = new Visitor();
   const stream = await watcher.listen(await watcher.open(path));
   open.push(stream);
@@ -159,7 +159,8 @@ describe("live", () => {
     const { path, watcher } = await watched();
     const page = await watcher.open(path);
     const named = page.doc.querySelector("[data-live]")!.getAttribute("data-live")!;
-    const code = path.split("/").filter(Boolean).pop()!;
+    // the code is the part after /s/
+    const code = path.split("/")[2];
     // "0000" has the right length but no session can have it: codes have no 0
     const stream = await watcher.listenTo(new URL(named.replace(code, "0000"), page.url));
     expect(stream.status).toBe(404);
