@@ -7,6 +7,7 @@ import { popularOrder, voteCount } from "./order.ts";
 import { notePresence, startPresenceHeartbeat } from "./record.ts";
 import { handHolders, handsUp } from "./room.ts";
 import { questions, sessions } from "./schema.ts";
+import { tutorialFor, type TutorialLive } from "./tutorial.ts";
 
 // Live updates: every open page holds one server-sent events stream
 // (src/pages/s/[code]/events.ts), and a write to a session tells its streams.
@@ -28,12 +29,18 @@ export type Board = {
   goingOver: number | null;
   // whether hands can go up: before the host starts the class, on, or over (src/lib/classes.ts)
   classState: ClassState;
+  // Absent for lectures. Private help tickets and queue details never enter
+  // this common event; each tutorial page fetches its own server-rendered view.
+  tutorial?: TutorialLive;
 };
 
 /** One open stream. `person` is null for a signed-out viewer or projector. */
 type Listener = {
   person: string | null;
   send: (event: string) => void;
+  // Tutorial projectors show the shared task, so question text stays off
+  // that stream as well as off the visible screen.
+  questions?: boolean;
   // the sign-in it was opened under (its token's digest), and how to end it
   signIn?: string;
   end?: () => void;
@@ -58,6 +65,7 @@ export function board(sessionId: number): Board {
   const present = [...people(sessionId)];
   const lesson = db.select({ id: sessions.id, code: sessions.code }).from(sessions).where(eq(sessions.id, sessionId)).get();
   const goingOver = goingOverAge(sessionId);
+  const tutorial = tutorialFor(sessionId);
   // A connection opened after a restart also schedules the remaining time.
   // Only one expiry is needed per session, however often its state changes.
   if (goingOver !== null && !goingOverTimers.has(sessionId)) {
@@ -77,6 +85,7 @@ export function board(sessionId: number): Board {
     hands: handsUp(sessionId, present),
     goingOver,
     classState: lesson ? classState(lesson) : "on",
+    ...(tutorial ? { tutorial: { ...tutorial, serverNow: Date.now() } } : {}),
   };
 }
 
@@ -120,7 +129,7 @@ export type Added = { id: number; body: string; at: number };
 export function announce(sessionId: number, question: Added, asker: string): void {
   const event = `event: question\ndata: ${JSON.stringify(question)}\n\n`;
   for (const listener of listeners.get(sessionId) ?? []) {
-    if (listener.person !== asker) listener.send(event);
+    if (listener.person !== asker && listener.questions !== false) listener.send(event);
   }
 }
 

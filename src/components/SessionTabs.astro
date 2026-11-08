@@ -2,13 +2,13 @@
 // The two parts of a session: the hall, where anyone can raise a hand, and
 // the questions. The number of questions is kept up to date by the page's script.
 // On the hall's timeline neither tab is the page itself.
-type Props = { code: string; at: "hall" | "questions" | "timeline"; count: number };
-const { code, at, count } = Astro.props;
+type Props = { code: string; at: "hall" | "questions" | "timeline"; count: number; mode?: "lecture" | "tutorial" };
+const { code, at, count, mode = "lecture" } = Astro.props;
 ---
 
 <nav class="tabs parts" aria-label="Parts of the session">
-  <a href={`/s/${code}`} aria-current={at === "hall" ? "page" : undefined}>Hall</a>
+  <a href={`/s/${code}`} aria-current={at === "hall" ? "page" : undefined}>{mode === "tutorial" ? "Tutorial room" : "Hall"}</a>
   <a href={`/s/${code}/questions`} aria-current={at === "questions" ? "page" : undefined}>
-    Questions{" "}<span class="parts-n" data-questions-n>{count}</span>
+    {mode === "tutorial" ? "Questions for later" : "Questions"}{" "}<span class="parts-n" data-questions-n>{count}</span>
   </a>
 </nav>

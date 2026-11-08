@@ -1,0 +1,172 @@
+---
+import Icon from "../../../components/Icon.astro";
+import JoinForm from "../../../components/JoinForm.astro";
+import SessionBand from "../../../components/SessionBand.astro";
+import SessionTabs from "../../../components/SessionTabs.astro";
+import SlimHeader from "../../../components/SlimHeader.astro";
+import TutorialTimer from "../../../components/TutorialTimer.astro";
+import Layout from "../../../layouts/Layout.astro";
+import { authLink } from "../../../lib/auth.ts";
+import { findSession, isCode, isHost, listQuestions, normaliseCode } from "../../../lib/board.ts";
+import { classState } from "../../../lib/classes.ts";
+import { tutorialAction } from "../../../lib/tutorial-actions.ts";
+import { tutorialFor, tutorialView } from "../../../lib/tutorial.ts";
+import "../../../tutorial.css";
+
+const code = normaliseCode(Astro.params.code ?? "");
+const session = isCode(code) ? findSession(code) : undefined;
+const exists = session && tutorialFor(session.id) !== undefined;
+const signedIn = Astro.locals.account !== null;
+const person = signedIn ? Astro.locals.person : null;
+const hosting = session && person !== null && isHost(session, person);
+let problem = "";
+let label = "";
+let minutes = "10";
+if (!exists) {
+  Astro.response.status = 404;
+  if (Astro.request.method === "POST") Astro.locals.log("refused", { action: "tutorial", reason: "no-such-tutorial" });
+} else if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  label = String(form.get("label") ?? "");
+  minutes = String(form.get("minutes") ?? "10");
+  if (!signedIn) {
+    Astro.response.status = 401;
+    problem = "Sign in to do that.";
+    Astro.locals.log("refused", { action: "tutorial", session: code, reason: "signed-out" });
+  } else {
+    const done = tutorialAction(session, Astro.locals.person, form, Astro.locals.log);
+    if (done.ok) return Astro.redirect(`/s/${code}`, 303);
+    Astro.response.status = done.status;
+    problem = done.error;
+    if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
+  }
+}
+const view = exists ? tutorialView(session, person) : undefined;
+const lesson = session ? classState(session) : "before";
+const listed = session ? listQuestions(session, person ?? "", "popular").filter(q => q.state !== "hidden").length : 0;
+const path = `/s/${code}`;
+---
+
+{session && view ? (
+  <Layout title={`Tutorial · ${session.title} · Hands Up`}>
+    <SessionBand code={code} title={session.title} hosting={false}>
+      <p class="note">Tutorial mode · {hosting ? "For the tutor" : "Work together. Ask when you need a hand."}</p>
+      <SessionTabs code={code} at="hall" count={listed} mode="tutorial" />
+    </SessionBand>
+    <main id="main" class="wrap tutorial-room" data-live={`/s/${code}/events`} data-tutorial-room data-revision={view.tutorial.revision} data-class={lesson}>
+      {problem && <p class="alert tutorial-wide" role="alert">{problem}</p>}
+      <div class="tutorial-wide tutorial-status-row">
+        <p class="live" role="status" data-live-status>Refresh this page for updates.</p>
+        <a href={path} class="tutorial-refresh">Refresh</a>
+      </div>
+      <section class="card quiet tutorial-wide tutorial-class" data-tutorial-refresh="class" aria-label="Tutorial status" tabindex="-1">
+        <div>
+          <p class="tutorial-eyebrow">{lesson === "on" ? "Tutorial running" : lesson === "over" ? "Tutorial ended" : "Before the tutorial"}</p>
+          <p>{lesson === "on" ? "Talk at your table; use the queue when the tutor is busy." : lesson === "over" ? "The help queue and timer are cleared. Questions stay for later." : "Help requests open when the tutor starts the tutorial."}</p>
+        </div>
+        {hosting && <form method="post" data-plain>
+          <input type="hidden" name="intent" value={lesson === "on" ? "class-end" : "class-start"} />
+          <button id="tutorial-class-button" class={lesson === "on" ? "button" : "button ink"} type="submit">{lesson === "on" ? "End tutorial" : "Start tutorial"}</button>
+        </form>}
+      </section>
+
+      <section class="card tutorial-help" data-tutorial-refresh="queue" aria-label={hosting ? "Tutor help queue" : "Your help request"} tabindex="-1">
+        <p class="tutorial-eyebrow">{hosting ? "Tutor visits" : "Need the tutor?"}</p>
+        {hosting && view.queue ? <>
+          <h2>Help queue</h2>
+          <p class="tutorial-queue-count">{view.queue.waiting} of {view.queue.total} open requests waiting</p>
+          <p class="hint">These are requests, not attendance or a measure of understanding. You are not in the queue.</p>
+          {view.queue.called ? <div class="tutorial-ticket called">
+            <p>Call ticket</p>
+            <strong data-ticket>{view.queue.called.ticket}</strong>
+            <p>Say the number aloud. Its holder can respond or show their screen.</p>
+            <form method="post" data-plain>
+              <input type="hidden" name="intent" value="tutorial-finish" />
+              <input type="hidden" name="request" value={view.queue.called.request} />
+              <button id="tutorial-finish-button" class="button ink" type="submit">Finish helping</button>
+            </form>
+            <p class="hint">Also use this to clear an absent ticket. Then call the next one.</p>
+          </div> : <div class="tutorial-queue-empty">
+            <p>{view.queue.waiting > 0 ? "The next request is ready for you." : "No one is waiting for a visit."}</p>
+            <form method="post" data-plain>
+              <input type="hidden" name="intent" value="tutorial-call" />
+              <button id="tutorial-call-button" class="button ink" type="submit" disabled={lesson !== "on" || view.queue.waiting === 0}>Call next ticket</button>
+            </form>
+          </div>}
+          <p class="hint tutorial-divider">First come, first served. Only the called ticket is shown to you; no names, seats or list of students.</p>
+        </> : signedIn ? <>
+          <h2>{view.own ? "You're in the queue" : "Ask for a visit"}</h2>
+          {view.own ? <div class:list={["tutorial-ticket", {called: view.own.called}]}>
+            <p>Your ticket</p>
+            <strong data-ticket>{view.own.ticket}</strong>
+            {view.own.called ? <p class="tutorial-position" role="status">The tutor is calling your ticket. Let them know where you are.</p> : <>
+              <p class="tutorial-position" role="status">{view.own.position} of {view.own.waiting} waiting</p>
+              <p>{view.own.ahead === 0 ? "You're next when the tutor is free." : `${view.own.ahead} ${view.own.ahead === 1 ? "request" : "requests"} ahead of you.`} Keep working with your group.</p>
+            </>}
+            <form method="post" data-plain>
+              <input type="hidden" name="intent" value="tutorial-leave" />
+              <button id="tutorial-leave-button" class="button" type="submit">Leave queue</button>
+            </form>
+            <p class="hint">Sorted it out with a classmate? Leave the queue. A new request joins at the back.</p>
+          </div> : <>
+            <p>No explanation to type. The tutor will call your ticket when it's your turn.</p>
+            <form method="post" class="tutorial-join" data-plain>
+              <input type="hidden" name="intent" value="tutorial-join" />
+              <button id="tutorial-join-button" class="button tomato" type="submit" disabled={lesson !== "on"}><Icon name="hand" size={22} /> Ask tutor to come over</button>
+            </form>
+            <p class="hint">One request per account. You can still ask aloud or work with a classmate.</p>
+          </>}
+          <p class="hint tutorial-divider">Your student page shows only your ticket. The tutor sees it when called. People nearby can identify you from your screen or when you respond.</p>
+        </> : <>
+          <h2>Ask for a visit</h2>
+          <p>Sign in to get a ticket and see your own place in the queue.</p>
+          <a class="button tomato tutorial-link-button" href={authLink("signin", path)}>Sign in to request help</a>
+          <p class="hint">You can read the exercise and questions without signing in.</p>
+        </>}
+      </section>
+
+      <section class="card tutorial-exercise">
+        <TutorialTimer state={view.tutorial} />
+        {hosting && <div class="tutorial-exercise-controls">
+          <div data-tutorial-refresh="exercise-stop" tabindex="-1">
+            {view.tutorial.endsAt !== null && <form method="post" data-plain>
+              <input type="hidden" name="intent" value="tutorial-clear-exercise" />
+              <input type="hidden" name="endsAt" value={view.tutorial.endsAt} />
+              <button id="tutorial-clear-button" class="button" type="submit">Clear exercise</button>
+            </form>}
+          </div>
+          <form method="post" class="panel tutorial-exercise-form" data-plain>
+            <input type="hidden" name="intent" value="tutorial-exercise" />
+            <label for="exercise-label">Exercise or worksheet reference</label>
+            <input id="exercise-label" name="label" type="text" maxlength="80" required value={label} placeholder="Exercise 3 · Graph traversal" />
+            <label for="exercise-minutes">Minutes until regrouping</label>
+            <input id="exercise-minutes" name="minutes" type="number" min="1" max="120" step="1" required value={minutes} />
+            <button id="tutorial-exercise-button" class="button ink" type="submit" disabled={lesson !== "on"} data-exercise-start>Start exercise</button>
+            <p class="hint">Starting another exercise replaces this timer. It leaves help requests in place. Use a worksheet reference, without student names.</p>
+          </form>
+        </div>}
+      </section>
+
+      <section class="card quiet tutorial-later tutorial-wide">
+        <div>
+          <p class="tutorial-eyebrow">Keep it for the next lecture</p>
+          <h2>Questions for later</h2>
+          <p>Leave an unresolved question, or add “Me too”. Questions stay under this session code after the tutorial; the tutor can reopen them in the next lecture.</p>
+        </div>
+        <a class="button tutorial-link-button" href={`${path}/questions`}>Open questions <Icon name="arrow" size={18} /></a>
+      </section>
+      <div class="tutorial-wide tutorial-footnote">
+        <p>The help queue shows no names or table locations. Small counts, question wording and timing can still identify someone in this room. The server stores which account holds each active ticket; it is removed when cleared. <a href="/privacy">Privacy and rules</a>.</p>
+        {hosting && <a href={`${path}/present`}>Open projector page</a>}
+      </div>
+    </main>
+  </Layout>
+) : (
+  <Layout title="No such tutorial · Hands Up">
+    <SlimHeader />
+    <main id="main" class="wrap lost"><div class="card panel">
+      <h1>No tutorial with the code {code}</h1>
+      <p>Check the session code and try again.</p><JoinForm value={code} />
+    </div></main>
+  </Layout>
+)}

@@ -203,12 +203,14 @@ body:has(> .site-footer) > :not(.skip) {
 }
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
 button,
 a,
 input,
+select,
 textarea,
 summary {
   -webkit-tap-highlight-color: transparent;
@@ -519,6 +521,7 @@ label {
   color: var(--ink);
 }
 input:not([type="hidden"]),
+select,
 textarea {
   min-width: 0;
   width: 100%;
@@ -543,20 +546,25 @@ textarea {
   opacity: 1;
 }
 input:not([type="hidden"]):hover,
+select:hover,
 textarea:hover {
   border-color: var(--ink);
 }
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible {
   border-color: var(--ink);
 }
 input:not([type="hidden"]):user-invalid,
+select:user-invalid,
 textarea:user-invalid,
 input:not([type="hidden"])[aria-invalid="true"],
+select[aria-invalid="true"],
 textarea[aria-invalid="true"] {
   border: 2px solid var(--color-error);
 }
 input:disabled,
+select:disabled,
 textarea:disabled {
   background: var(--color-surface-subtle);
   color: var(--muted);

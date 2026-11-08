@@ -3,6 +3,7 @@ import { findSession, isCode, normaliseCode } from "../../../lib/board.ts";
 import { pageMark, SIGNIN_COOKIE, tokenHash } from "../../../lib/accounts.ts";
 import { asEvent, board, here, listen } from "../../../lib/live.ts";
 import { connections, networkAddress } from "../../../lib/limits.ts";
+import { tutorialFor } from "../../../lib/tutorial.ts";
 
 // The live stream of one session, as server-sent events. It opens with the
 // current state and sends the state again after every change. A comment line
@@ -92,7 +93,8 @@ export const GET: APIRoute = (context) => {
         return;
       }
       try {
-        stop = listen(session.id, { person, send, signIn, end });
+        const questions = !(url.searchParams.has("screen") && tutorialFor(session.id));
+        stop = listen(session.id, { person, send, signIn, end, questions });
         locals.log(person ? "session_joined" : "screen_opened", { session: session.code, here: here(session.id) });
         beat = setInterval(() => send(": still here\n\n"), BEAT_MS);
         // if the connection drops, the browser tries again after two seconds

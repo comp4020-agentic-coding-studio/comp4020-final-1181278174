@@ -1,0 +1,88 @@
+---
+import Icon from "./Icon.astro";
+import TutorialTimer from "./TutorialTimer.astro";
+import Layout from "../layouts/Layout.astro";
+import type { TutorialState } from "../lib/tutorial.ts";
+
+type Props = {
+  code: string;
+  title: string;
+  state: TutorialState;
+  address: string;
+  qr: string;
+};
+const { code, title, state, address, qr } = Astro.props;
+---
+
+<Layout title={`Tutorial · ${title} · Hands Up`} account={false} footer={false}>
+  <div class="present tutorial-present" data-live={`/s/${code}/events?screen`}>
+    <main id="main" class="stage tutorial-stage">
+      <div class="stage-top">
+        <h1>{title}</h1>
+        <p class="tutorial-label">Tutorial</p>
+      </div>
+      <div class="present-room">
+        <div class="projected-exercise">
+          <TutorialTimer state={state} />
+          <p class="live present-live" role="status" data-live-status hidden />
+        </div>
+        <aside class="rail" aria-label="How to join">
+          <div class="rail-step rail-address">
+            <p>Scan, or go to</p>
+            <p class="rail-where">{Astro.url.host}</p>
+          </div>
+          <div class="qr" role="img" aria-label={`QR code for ${address}`} set:html={qr} />
+          <a class="rail-ask" href={`/s/${code}`}>Join from this device <Icon name="arrow" size={18} /></a>
+          <div class="rail-step rail-code">
+            <p>and type the code</p>
+            <p class="big-code">{code}</p>
+          </div>
+        </aside>
+      </div>
+      <section class="tutorial-directions stage-list" aria-labelledby="working-title">
+        <h2 id="working-title">Work together. Ask when you need help.</h2>
+        <p>On your own screen, request a tutor visit or keep a question for the next lecture.</p>
+        <a href={`/s/${code}/questions`}>Questions for later <Icon name="arrow" size={18} /></a>
+      </section>
+      <div class="present-foot">
+        <a class="brand" href="/">
+          <span class="brand-mark"><Icon name="hand" /></span>
+          Hands Up
+        </a>
+        <p class="stage-foot">This screen shows the shared exercise and timer. Help tickets and question text stay off the projector.</p>
+      </div>
+    </main>
+  </div>
+</Layout>
+
+<style>
+  .tutorial-label {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .projected-exercise { min-width: 0; }
+  .projected-exercise :global(.tutorial-clock) { font-size: clamp(4rem, 8vw, 8rem); }
+  .projected-exercise :global(h2) { font-size: clamp(1.5rem, 3vw, 3rem); }
+  .projected-exercise :global(.hint) { font-size: clamp(1rem, 1.25vw, 1.5rem); }
+  .projected-exercise .live { margin-top: var(--space-5); }
+  .tutorial-directions h2 {
+    margin: 0 0 var(--space-2);
+    font: var(--weight-semibold) var(--text-2xl) / var(--leading-heading) var(--display);
+    letter-spacing: var(--tracking-heading);
+  }
+  .tutorial-directions p { margin: 0 0 var(--space-2); color: var(--muted); }
+  .tutorial-directions a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--target-min);
+    font-weight: var(--weight-semibold);
+  }
+  @media (max-width: 1099px) {
+    .projected-exercise { order: 1; }
+  }
+</style>

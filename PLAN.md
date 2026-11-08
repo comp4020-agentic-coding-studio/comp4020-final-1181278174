@@ -686,6 +686,21 @@ D from Apple's way of designing.
 - What it costs: the earlier bold look, thick black outlines and a sunflower
   band, is gone, and the design canvas still shows it.
 
+### Tutorials get their own mode
+
+Decided 9 November, 09:06. The mode was designed on its own branch that morning
+and brought onto main as it stood.
+
+- Starting a session, the host chooses Lecture, the default, or Tutorial.
+- A tutorial has no hand to raise and no 3D hall: in a room of 10 to 30, a
+  count can show whose hand it is. Instead, a student asks the tutor to come
+  over with one press and sees a ticket number on their own screen only; the
+  tutor calls the next number aloud and sees no names or seats. A shared timer
+  shows the exercise and when to regroup, and the question board stays for the
+  next lecture.
+- The projector shows the exercise and the timer, never tickets, queue counts
+  or questions.
+
 ### Order of work
 
 1. this plan

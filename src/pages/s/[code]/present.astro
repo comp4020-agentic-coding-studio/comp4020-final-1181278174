@@ -4,12 +4,14 @@ import GoingOver from "../../../components/GoingOver.astro";
 import JoinForm from "../../../components/JoinForm.astro";
 import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
+import TutorialProjector from "../../../components/TutorialProjector.astro";
 import { findSession, isCode, listQuestions, normaliseCode } from "../../../lib/board.ts";
 import { people } from "../../../lib/live.ts";
 import { goingOverAge } from "../../../lib/going-over.ts";
 import { handsUp } from "../../../lib/room.ts";
 import { classNote, howMany, lostLabel, SILENCE_SHORT } from "../../../lib/words.ts";
 import { classState } from "../../../lib/classes.ts";
+import { tutorialFor } from "../../../lib/tutorial.ts";
 import { renderSVG } from "uqr";
 
 // The session for the screen at the front of the room: where to join, the
@@ -21,6 +23,7 @@ const TOP = 3;
 const raw = Astro.params.code ?? "";
 const code = normaliseCode(raw);
 const session = isCode(code) ? findSession(code) : undefined;
+const tutorial = session ? tutorialFor(session.id) : undefined;
 if (!session) Astro.response.status = 404;
 
 // Popular order puts the open questions first, so the top of it is what is still to answer
@@ -39,7 +42,9 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
 ---
 
 {
-  session ? (
+  session && tutorial ? (
+    <TutorialProjector code={code} title={session.title} state={tutorial} address={address} qr={qr} />
+  ) : session ? (
     <Layout title={`${session.title} · Hands Up`} account={false} footer={false}>
       <div class="present" data-live={`/s/${session.code}/events?screen`}>
         <main id="main" class="stage">
@@ -136,7 +141,7 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
       <script>
         import "../../../scripts/live.ts";
         import "../../../scripts/hand.ts";
-        void import("../../../scripts/hall.ts");
+        if (document.querySelector("[data-hall]")) void import("../../../scripts/hall.ts");
       </script>
     </Layout>
   ) : (

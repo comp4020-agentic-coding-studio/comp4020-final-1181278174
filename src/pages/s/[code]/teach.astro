@@ -2,6 +2,7 @@
 import Layout from "../../../layouts/Layout.astro";
 import SlimHeader from "../../../components/SlimHeader.astro";
 import { findSession, isCode, isHost, normaliseCode } from "../../../lib/board.ts";
+import { tutorialFor } from "../../../lib/tutorial.ts";
 
 const raw = Astro.params.code ?? "";
 const code = normaliseCode(raw);
@@ -9,6 +10,8 @@ if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
   return Astro.redirect(`/s/${code}/teach${Astro.url.search}`, 301);
 }
 const session = isCode(code) ? findSession(code) : undefined;
+// a tutorial has its own room, for the tutor and the students alike
+if (session && tutorialFor(session.id)) return Astro.redirect(`/s/${session.code}`, 302);
 // Reuse the canonical page's 404 and all its form handling. Rewrites preserve
 // the request body. Keep the action target in request-local state as well.
 if (!session || (Astro.locals.account && isHost(session, Astro.locals.person))) {
