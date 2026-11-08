@@ -180,6 +180,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   });
 
   let lastQuestions = "";
+  let connected = false;
+  let cardsStale = false;
   /** The state the server sent. The labels change at once; the list waits for a finger to lift. */
   function show(board: Board): void {
     const here = document.querySelector<HTMLElement>("[data-here]");
@@ -205,6 +207,12 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
 
   /** Change counts and the order here, or fetch what this page hasn't got. */
   function redraw(board: Board): void {
+    // A failed or pending HTML refresh may contain changes the public state
+    // cannot describe (including this person's pressed buttons).
+    if (cardsStale) {
+      void refresh();
+      return;
+    }
 
     // The host's page also lists the hidden questions, which the server leaves
     // out of the state; they stay where the server put them, at the end.
@@ -303,21 +311,34 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   // One fetch at a time; a change that arrives during one is picked up by another straight after.
   let fetching = false;
   let again = false;
-  async function refresh(): Promise<void> {
+  let retryTimer: number | undefined;
+  async function refresh(retry = true): Promise<void> {
     if (fetching) {
       again = true;
       return;
     }
+    clearTimeout(retryTimer);
+    retryTimer = undefined;
     fetching = true;
     try {
       do {
         again = false;
-        const res = await fetch(location.href, { headers: { accept: "text/html" } });
-        if (!res.ok) break;
-        adopt(new DOMParser().parseFromString(await res.text(), "text/html"));
+        const res = await fetch(location.href, { headers: { accept: "text/html" }, cache: "no-store" });
+        if (!res.ok) throw new Error(`the server answered ${res.status}`);
+        const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+        if (!doc.querySelector("[data-board]")) throw new Error("No question list in the response");
+        adopt(doc);
       } while (again);
+      cardsStale = false;
+      say(connected);
     } catch {
-      // offline: the stream reconnects and sends the state again
+      // The cards are out of date: say so, and let an identical next state
+      // still repair the list.
+      cardsStale = true;
+      lastQuestions = "";
+      say(false);
+      // One delayed retry per refresh, without waiting for another room change.
+      if (retry) retryTimer = window.setTimeout(() => void refresh(false), 1000);
     } finally {
       fetching = false;
     }
@@ -442,13 +463,21 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   const say = (live: boolean): void => {
     if (!status) return;
     status.hidden = false;
-    status.dataset.liveStatus = live ? "live" : "waiting";
-    status.textContent = live ? "Live" : "Reconnecting";
+    const current = live && !cardsStale;
+    status.dataset.liveStatus = current ? "live" : "waiting";
+    status.textContent = current ? "Live" : "Reconnecting";
   };
 
+  let opened = false;
   function connect(): void {
     const source = new EventSource(url);
-    source.onopen = () => say(true);
+    source.onopen = () => {
+      connected = true;
+      // The public question signature cannot reveal every missed HTML change.
+      if (opened || cardsStale) void refresh();
+      else say(true);
+      opened = true;
+    };
     source.onmessage = (event) => {
       const board = JSON.parse(event.data) as Board;
       // the hand and the hall (src/scripts/hand.ts) take their part of the same state
@@ -460,6 +489,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       if (blank) sent.set(question.id, question);
     });
     source.onerror = () => {
+      connected = false;
+      cardsStale = true;
       say(false);
       // The browser reconnects by itself after a dropped connection, but gives
       // up for good on an error page, which is what a redeploy answers with.
