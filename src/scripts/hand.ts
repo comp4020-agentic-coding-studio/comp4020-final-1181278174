@@ -39,6 +39,8 @@ function watch(line: HTMLElement): void {
   let pressing = false;
   // this person's hand while a press that puts it down is on its way
   let lowered: number | null = null;
+  // what went wrong with the last press, said under the button until the next one
+  let problem = "";
 
   const forms = (): HTMLFormElement[] => [...document.querySelectorAll<HTMLFormElement>("form[data-hand]")];
 
@@ -68,7 +70,7 @@ function watch(line: HTMLElement): void {
       if (field) field.value = mine === null ? "1" : "0";
       form.querySelector("button")?.setAttribute("aria-pressed", String(mine !== null));
       const note = form.querySelector<HTMLElement>("[data-hand-note]");
-      const said = handNote(until);
+      const said = problem ? `${problem} ${handNote(until)}` : handNote(until);
       if (note && note.textContent?.trim() !== said) note.textContent = said;
     }
     const m = minute();
@@ -108,6 +110,20 @@ function watch(line: HTMLElement): void {
     render();
   });
 
+  /** This person's hand as the server has it: when it went up, null if down; undefined if the server can't be reached. */
+  async function askServer(): Promise<number | null | undefined> {
+    try {
+      const res = await fetch(location.href, { headers: { accept: "text/html" } });
+      if (!res.ok) return undefined;
+      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+      const room = JSON.parse(doc.querySelector<HTMLElement>("[data-lost][data-room]")?.dataset.room ?? "null") as { mine?: number | null } | null;
+      if (!room) return undefined;
+      return room.mine === null || room.mine === undefined ? null : performance.now() - room.mine;
+    } catch {
+      return undefined;
+    }
+  }
+
   // The form posts on its own without script. Here it is sent in the
   // background: the hand goes up at once, and the stream confirms it.
   document.addEventListener(
@@ -133,15 +149,18 @@ function watch(line: HTMLElement): void {
         mine = null;
         if (lowered !== null) hands = hands.filter((since) => since !== lowered);
       }
+      problem = "";
       render();
       fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } })
         .then((res) => {
           if (!res.ok) throw new Error(`the server answered ${res.status}`);
         })
-        .catch(() => {
-          // no answer: put it back and send the form the ordinary way
-          mine = before;
-          form.submit();
+        .catch(async () => {
+          // No answer. The press may still have reached the server, so ask it
+          // what this person's hand is now, rather than guess or press again.
+          const real = await askServer();
+          mine = real === undefined ? before : real;
+          if (real === undefined || (mine !== null) !== want) problem = "Couldn't confirm. Retry.";
         })
         .finally(() => {
           pressing = false;
