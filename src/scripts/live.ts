@@ -347,6 +347,27 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     });
   }
 
+  /**
+   * This browser was signed out elsewhere ("Sign out everywhere else", or a
+   * password change): the page's account bar, question box and host buttons
+   * no longer apply. Load it again, unless a question is half written; then
+   * say so and keep the words.
+   */
+  function signedOutElsewhere(): void {
+    const draft = document.querySelector<HTMLTextAreaElement>("form[data-ask] textarea");
+    if (!draft || draft.value.trim() === "") {
+      location.reload();
+      return;
+    }
+    if (document.querySelector("[data-signed-out-note]")) return;
+    const note = document.createElement("p");
+    note.className = "alert";
+    note.setAttribute("role", "alert");
+    note.dataset.signedOutNote = "";
+    note.textContent = "This browser was signed out. Copy your question, then sign in again.";
+    draft.closest("form")?.before(note);
+  }
+
   // One fetch at a time; a change that arrives during one is picked up by another straight after.
   let fetching = false;
   let again = false;
@@ -366,6 +387,10 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         if (!res.ok) throw new Error(`the server answered ${res.status}`);
         const doc = new DOMParser().parseFromString(await res.text(), "text/html");
         if (!doc.querySelector("[data-board]")) throw new Error("No question list in the response");
+        if (document.body.hasAttribute("data-signed-in") && !doc.body.hasAttribute("data-signed-in")) {
+          signedOutElsewhere();
+          return;
+        }
         adopt(doc);
       } while (again);
       cardsStale = false;
