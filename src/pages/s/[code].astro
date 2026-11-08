@@ -81,12 +81,13 @@ const parts = session && hosting ? marksOf(session.id) : [];
 // up is put in their page, never in what the stream sends.
 const inRoom = session ? [...new Set([...people(session.id), ...(hosting ? [] : [person])])] : [];
 const mine = session ? handOf(session.id, person) : undefined;
-// and the last 15 minutes, for the small window's chart
+// and when the session started and its last 16 minutes, for the small window's chart
 const room = {
   here: inRoom.length,
   hands: session ? handsUp(session.id, inRoom) : [],
   mine: mine ?? null,
-  recent: session ? recentLost(session.id) : [],
+  recent: session ? recentLost(session.id, 16) : [],
+  startedAt: session?.createdAt.getTime(),
 };
 const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - mine);
 ---

@@ -1,4 +1,4 @@
-import { GOING_OVER_MESSAGE, GOING_OVER_NOTE, lostLabel, SILENCE_SHORT } from "../lib/words.ts";
+import { clock, GOING_OVER_MESSAGE, GOING_OVER_NOTE, lostLabel, SILENCE_SHORT } from "../lib/words.ts";
 import { goingOverBusy, goingOverLeft } from "./going-over.ts";
 import { type Hall, lastHall } from "./hand.ts";
 
@@ -61,14 +61,14 @@ async function popHall(): Promise<void> {
     <p class="float-going-over" role="status" hidden></p>
     <p class="float-silence" hidden></p>
     <div class="float-chart" aria-hidden="true"></div>
-    <p class="float-axis" aria-hidden="true"><span>15 min ago</span><span>now</span></p>
+    <p class="float-axis" aria-hidden="true"><span></span><span>now</span></p>
   `;
   doc.body.append(box);
   const count = box.querySelector<HTMLElement>(".float-count")!;
   const silence = box.querySelector<HTMLElement>(".float-silence")!;
   silence.textContent = SILENCE_SHORT;
   const chart = box.querySelector<HTMLElement>(".float-chart")!;
-  for (let i = 0; i < 15; i++) chart.append(doc.createElement("span"));
+  const chartStart = box.querySelector<HTMLElement>(".float-axis span")!;
 
   let press: HTMLButtonElement | undefined;
   let goingPress: HTMLButtonElement | undefined;
@@ -131,11 +131,24 @@ async function popHall(): Promise<void> {
     const lost = hall.others.length + (hall.mine === null ? 0 : 1);
     count.textContent = lostLabel(lost, hall.here);
     silence.hidden = lost > 0;
-    const top = Math.max(1, hall.here, ...hall.recent);
-    hall.recent.forEach((n, i) => {
+    const now = Date.now();
+    const from = Math.max(hall.startedAt, now - 15 * 60_000);
+    chartStart.textContent = now - hall.startedAt < 15 * 60_000 ? `since ${clock(new Date(hall.startedAt))}` : "15 min ago";
+    const firstMinute = Math.floor(now / 60_000) - hall.recent.length + 1;
+    // a bar is as wide as the part of its minute the chart covers: the first
+    // and last are cut short, so sixteen minutes make fifteen
+    const shown = hall.recent.map((n, i) => {
+      const at = (firstMinute + i) * 60_000;
+      return { n, duration: Math.min(at + 60_000, now) - Math.max(at, from) };
+    }).filter(({ duration }) => duration > 0);
+    while (chart.children.length < shown.length) chart.append(doc.createElement("span"));
+    while (chart.children.length > shown.length) chart.lastElementChild?.remove();
+    const top = Math.max(1, hall.here, ...shown.map(({ n }) => n));
+    shown.forEach(({ n, duration }, i) => {
       const bar = chart.children[i] as HTMLElement;
       bar.style.height = `${n === 0 ? 0 : Math.max(8, (n / top) * 100)}%`;
-      bar.classList.toggle("now", i === hall.recent.length - 1);
+      bar.style.flexGrow = String(duration);
+      bar.classList.toggle("now", i === shown.length - 1);
     });
     press?.setAttribute("aria-pressed", String(hall.mine !== null));
   };

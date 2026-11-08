@@ -14,9 +14,10 @@ import { handNote, lostLabel } from "../lib/words.ts";
 
 /**
  * Sent on: what the room looks like now. Times are `performance.now()` times.
- * `recent` is how many were lost in each of the last 15 minutes, this one last.
+ * `recent` covers 16 calendar minutes, this one last, so the floating chart can
+ * clip the outer bins to exactly 15 minutes. `startedAt` is epoch milliseconds.
  */
-export type Hall = { here: number; others: number[]; mine: number | null; recent: number[] };
+export type Hall = { here: number; others: number[]; mine: number | null; recent: number[]; startedAt: number };
 
 type Board = { here: number; hands: number[] };
 
@@ -28,8 +29,9 @@ if (line) watch(line);
 
 function watch(line: HTMLElement): void {
   const hosting = line.hasAttribute("data-host");
-  const first = JSON.parse(line.dataset.room ?? "{}") as { here?: number; hands?: number[]; mine?: number | null; recent?: number[] };
-  // the most lost at once in each minute, by minutes since 1970: the server's last 15, then what this page sees
+  const first = JSON.parse(line.dataset.room ?? "{}") as { here?: number; hands?: number[]; mine?: number | null; recent?: number[]; startedAt?: number };
+  const startedAt = first.startedAt ?? Date.now();
+  // the most lost at once in each minute, by minutes since 1970: the server's last 16, then what this page sees
   const minute = (): number => Math.floor(Date.now() / 60_000);
   const history = new Map<number, number>((first.recent ?? []).map((n, i, all) => [minute() - (all.length - 1 - i), n]));
   let here = first.here ?? 0;
@@ -82,8 +84,8 @@ function watch(line: HTMLElement): void {
     }
     const m = minute();
     history.set(m, Math.max(history.get(m) ?? 0, lost));
-    const recent = Array.from({ length: 15 }, (_, i) => history.get(m - 14 + i) ?? 0);
-    lastHall = { here: Math.max(here, lost), others: rest, mine, recent };
+    const recent = Array.from({ length: 16 }, (_, i) => history.get(m - 15 + i) ?? 0);
+    lastHall = { here: Math.max(here, lost), others: rest, mine, recent, startedAt };
     document.dispatchEvent(new CustomEvent<Hall>("hands-up:hall", { detail: lastHall }));
   }
 
