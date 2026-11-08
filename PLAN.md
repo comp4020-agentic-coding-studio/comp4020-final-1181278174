@@ -654,6 +654,20 @@ at the end of an explanation or when they ask for questions.
   a recap when the class ends, a view for a tutor helping in the room. Whether
   the card helps is something to try with a lecturer and a few students.
 
+### A guide for a first visit, then less small text
+
+Decided 9 November, 05:15: the hall had too much small explanatory text.
+
+- A first visit to the hall shows a short guide, five steps for a student and
+  five for the host, after the controls, so it never stands in front of the
+  button. Got it and Skip are plain forms; the app remembers them for the
+  account, or in a cookie while signed out. How it works brings the guide back.
+- After it, the hall drops what the guide taught: where seats are placed, the
+  host's "you teach" note, how long Going over it shows, the projector line.
+  What stays: no one is shown whose hand is up, silence doesn't mean everyone
+  follows, counts with how many are here, when your hand comes down, and why
+  the button is off.
+
 ### Order of work
 
 1. this plan
