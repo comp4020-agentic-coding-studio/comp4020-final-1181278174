@@ -44,9 +44,13 @@ const busiest = (p: Page): string[] =>
 
 const text = (el: Element): string => el.textContent?.replace(/\s+/g, " ").trim() ?? "";
 
-/** A busiest-minute line for that minute with that count; it may go on to say the class started then. */
+/**
+ * A busiest-minute line for that minute with that count. It may go on to say
+ * the class started then, or how far into the recording that minute is.
+ */
 const counted = (line: string, minute: string, count: string): boolean =>
-  line === `${minute} ${count} said they were lost` || line === `${minute} ${count} said they were lost Class started`;
+  /^(?: Class started)?(?: \d+ min into the recording)?$/.test(line.slice(`${minute} ${count} said they were lost`.length))
+  && line.startsWith(`${minute} ${count} said they were lost`);
 
 /** The chart's complete reading, including minutes when nobody raised a hand. */
 const everyMinute = (p: Page): Element[] => [...p.doc.querySelectorAll('details ol[aria-label="Every minute"] > li')];
