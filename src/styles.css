@@ -2120,3 +2120,52 @@ span.me-too:hover {
   min-height: 0;
 }
 
+/* Reports sit beside Me too, with room for both targets on a narrow card. */
+.q-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.q-foot:has(.report) {
+  flex-wrap: wrap;
+}
+
+.report {
+  margin: 0;
+}
+
+.report-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: 600 13px var(--text);
+  cursor: pointer;
+}
+
+.report-button:hover {
+  background: var(--field);
+  color: var(--ink);
+}
+
+.report-button[aria-pressed="true"],
+.report-button[aria-pressed="true"]:hover {
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+
+.report-count {
+  padding: 2px 8px;
+  border: 1px solid #cfc8b4;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+

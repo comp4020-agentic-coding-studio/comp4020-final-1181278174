@@ -1,7 +1,11 @@
+import { and, eq } from "drizzle-orm";
 import { isHost, type Session, setState, setVote, STATES } from "./board.ts";
+import { db } from "./db.ts";
 import { publish } from "./live.ts";
 import { recordGoingOver } from "./going-over.ts";
 import { addMark, atCanberra, MAX_MARK, setRecording } from "./record.ts";
+import { questions, reports } from "./schema.ts";
+import { tagFor } from "./tags.ts";
 
 // What a form sent to either part of a session does, where both parts take the
 // same form: "Me too" is on the questions page and on the hall's three most
@@ -35,6 +39,26 @@ export function vote(session: Session, person: string, form: FormData, log: Log)
   }
   log("refused", { action: "vote", session: session.code, question: Number.isInteger(id) ? id : undefined, reason: done });
   return { ok: false, status: 404 };
+}
+
+/** Report a visible question once per signed-in account; the pages enforce sign-in. */
+export function report(session: Session, person: string, form: FormData, log: Log): Done {
+  const id = Number(form.get("question"));
+  const found = Number.isInteger(id)
+    ? db.select({ state: questions.state }).from(questions)
+      .where(and(eq(questions.id, id), eq(questions.sessionId, session.id))).get()
+    : undefined;
+  const reason = !found ? "no-such-question" : found.state === "hidden" ? "hidden" : undefined;
+  if (reason) {
+    log("refused", { action: "report", session: session.code, question: Number.isInteger(id) ? id : undefined, reason });
+    return { ok: false, status: 404 };
+  }
+  const { changes } = db.insert(reports)
+    .values({ questionId: id, reporter: tagFor("reporter", person), createdAt: new Date() })
+    .onConflictDoNothing().run();
+  log("question_reported", { session: session.code, question: id });
+  if (changes > 0) publish(session.id);
+  return { ok: true, question: id };
 }
 
 /** The host's buttons on a question. Anyone else who sends this is refused. */

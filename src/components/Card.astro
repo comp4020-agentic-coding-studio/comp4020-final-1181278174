@@ -39,23 +39,40 @@ const hostButtons: Record<State, [to: State, label: string][]> = {
       <time datetime={q.createdAt.toISOString()}>{ago(q.createdAt)}</time>
     </p>
     {signedIn ? (
-      <form method="post" class="vote">
-        <input type="hidden" name="intent" value="vote" />
-        <input type="hidden" name="question" value={q.id} />
-        <button
-          class="me-too"
-          type="submit"
-          name="want"
-          value={q.voted ? "0" : "1"}
-          aria-pressed={q.voted ? "true" : "false"}
-          aria-label={votesLabel(q.votes)}
-        >
-          <Icon name="hand" size={18} />
-          <span>Me too</span>
-          {" "}
-          <span class="n">{q.votes}</span>
-        </button>
-      </form>
+      <div class="q-actions">
+        <form method="post" class="vote">
+          <input type="hidden" name="intent" value="vote" />
+          <input type="hidden" name="question" value={q.id} />
+          <button
+            class="me-too"
+            type="submit"
+            name="want"
+            value={q.voted ? "0" : "1"}
+            aria-pressed={q.voted ? "true" : "false"}
+            aria-label={votesLabel(q.votes)}
+          >
+            <Icon name="hand" size={18} />
+            <span>Me too</span>
+            {" "}
+            <span class="n">{q.votes}</span>
+          </button>
+        </form>
+        {!hosting && !q.yours && (
+          <form method="post" class="report">
+            <input type="hidden" name="intent" value="report" />
+            <input type="hidden" name="question" value={q.id} />
+            <button
+              class="report-button"
+              type={q.reported ? "button" : "submit"}
+              aria-label="Report this question to the host"
+              aria-pressed={q.reported ? "true" : "false"}
+              aria-disabled={q.reported ? "true" : undefined}
+            >
+              {q.reported ? "Reported" : "Report"}
+            </button>
+          </form>
+        )}
+      </div>
     ) : (
       <span class="me-too" aria-label={votesLabel(q.votes)}>
         <Icon name="hand" size={18} />
@@ -69,6 +86,7 @@ const hostButtons: Record<State, [to: State, label: string][]> = {
         <input type="hidden" name="intent" value="state" />
         <input type="hidden" name="question" value={q.id} />
         {q.state === "hidden" && <span class="host-note">Only you can see this.</span>}
+        {q.reports > 0 && <span class="report-count">Reported {q.reports}×</span>}
         {hostButtons[q.state].map(([to, label]) => (
           <button class="host-button" type="submit" name="to" value={to}>
             {label}

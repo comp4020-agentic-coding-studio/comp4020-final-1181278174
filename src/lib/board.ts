@@ -7,7 +7,7 @@ import { notePresence } from "./record.ts";
 import { type Hand, setHand } from "./room.ts";
 import { popularOrder, voteCount } from "./order.ts";
 import { AUDIT_KEY_VERSION, seal } from "./escrow.ts";
-import { questions, sealedAuthors, sessions, votes } from "./schema.ts";
+import { questions, reports, sealedAuthors, sessions, votes } from "./schema.ts";
 import { tagFor } from "./tags.ts";
 
 export const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -27,6 +27,8 @@ export type QuestionView = {
   votes: number;
   yours: boolean;
   voted: boolean;
+  reported: boolean;
+  reports: number;
   state: State;
 };
 
@@ -156,7 +158,8 @@ export function setState(session: Session, questionId: number, person: string, t
 /** The questions as one viewer sees them. Only the host is given the hidden ones. */
 export function listQuestions(session: Session, viewer: string, sort: Sort): QuestionView[] {
   const order = sort === "recent" ? [desc(questions.createdAt), desc(questions.id)] : popularOrder;
-  const seen = isHost(session, viewer)
+  const hosting = isHost(session, viewer);
+  const seen = hosting
     ? eq(questions.sessionId, session.id)
     : and(eq(questions.sessionId, session.id), ne(questions.state, "hidden"));
   return db
@@ -168,13 +171,15 @@ export function listQuestions(session: Session, viewer: string, sort: Sort): Que
       // a question asked before tags held the browser's id itself
       yours: sql<number>`${questions.asker} IN (${tagFor("asker", viewer)}, ${viewer})`,
       voted: sql<number>`EXISTS (SELECT 1 FROM ${votes} WHERE ${votes.questionId} = ${questions.id} AND ${votes.person} = ${viewer})`,
+      reported: sql<number>`EXISTS (SELECT 1 FROM ${reports} WHERE ${reports.questionId} = ${questions.id} AND ${reports.reporter} = ${tagFor("reporter", viewer)})`,
+      reports: hosting ? sql<number>`(SELECT count(*) FROM ${reports} WHERE ${reports.questionId} = ${questions.id})` : sql<number>`0`,
       state: questions.state,
     })
     .from(questions)
     .where(seen)
     .orderBy(...order)
     .all()
-    .map((q) => ({ ...q, votes: Number(q.votes), yours: Boolean(q.yours), voted: Boolean(q.voted) }));
+    .map((q) => ({ ...q, votes: Number(q.votes), yours: Boolean(q.yours), voted: Boolean(q.voted), reported: Boolean(q.reported), reports: Number(q.reports) }));
 }
 
 /**

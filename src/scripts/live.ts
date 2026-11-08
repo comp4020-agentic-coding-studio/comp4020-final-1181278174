@@ -10,7 +10,7 @@ import { announceSessionChange, onSessionChange } from "./session-tabs.ts";
 // doesn't know (a question of this person's own, one asked while the page was
 // offline, a change by the host) the page fetches itself and takes the cards
 // from the server's HTML, so "Yours" is always the server's.
-// Asking and voting are still the page's forms; the script sends them in the
+// Asking, voting and reporting are still the page's forms; the script sends them in the
 // background, so the page doesn't reload, and takes the list from the answer.
 // Without this script the page works as plain forms.
 
@@ -360,6 +360,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     // Only explicit desired states are safe to send again after a lost reply.
     const repeatable = !asking && (
       (fields.get("intent") === "vote" && ["0", "1"].includes(fields.get("want") ?? "")) ||
+      fields.get("intent") === "report" ||
       (fields.get("intent") === "state" && ["open", "answered", "hidden"].includes(fields.get("to") ?? ""))
     );
 
@@ -409,13 +410,13 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         reply = await post();
       } catch (error) {
         if (!repeatable) throw error;
-        // Retry the same want/to once, in the background. A plain submission
+        // Retry the same vote, report or state once, in the background. A plain submission
         // could leave the page (and a question draft) on a browser error screen.
         reply = await post();
       }
       const { doc, ok } = reply;
       adopt(doc);
-      if (ok && fields.get("intent") === "vote") announceSessionChange();
+      if (ok && ["vote", "report"].includes(fields.get("intent") ?? "")) announceSessionChange();
       if (asking && text) {
         // a refused question comes back with the reason; an accepted one empties the box
         const reason = doc.querySelector("[data-ask] [role='alert']");
