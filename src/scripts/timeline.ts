@@ -31,6 +31,7 @@ function watch(main: HTMLElement, url: string, sittings: HTMLElement): void {
   // gets another fetch afterwards, so an old response cannot win a race.
   let fetching = false;
   let again = false;
+  let connected = false;
   async function refresh(): Promise<void> {
     if (fetching) {
       again = true;
@@ -41,11 +42,13 @@ function watch(main: HTMLElement, url: string, sittings: HTMLElement): void {
       do {
         again = false;
         const res = await fetch(location.href, { headers: { accept: "text/html" }, cache: "no-store" });
-        if (!res.ok) break;
+        if (!res.ok) throw new Error(`the server answered ${res.status}`);
         adopt(new DOMParser().parseFromString(await res.text(), "text/html"));
       } while (again);
+      say(connected);
     } catch {
-      // The next stream event or minute boundary tries again after an outage.
+      // Out of date until the next stream event or minute boundary tries again.
+      say(false);
     } finally {
       fetching = false;
     }
@@ -104,13 +107,17 @@ function watch(main: HTMLElement, url: string, sittings: HTMLElement): void {
   let stopped = true;
   function connect(): void {
     source = new EventSource(url);
-    source.onopen = () => say(true);
+    source.onopen = () => {
+      connected = true;
+      say(true);
+    };
     source.onmessage = (event) => {
       const board = JSON.parse(event.data) as { questions: unknown[] };
       for (const count of document.querySelectorAll<HTMLElement>("[data-questions-n]")) count.textContent = String(board.questions.length);
       void refresh();
     };
     source.onerror = () => {
+      connected = false;
       say(false);
       if (source?.readyState === EventSource.CLOSED && !stopped) reconnectTimer = setTimeout(connect, 2000);
     };
