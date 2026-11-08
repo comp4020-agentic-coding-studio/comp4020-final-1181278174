@@ -8,7 +8,7 @@ const path = Astro.url.pathname + Astro.url.search;
 <nav class="account-menu" aria-label="Account">
   {account ? (
     <>
-      <span>Signed in as <strong>{account.username}</strong></span>
+      <span>Signed in as <a href="/account"><strong>{account.username}</strong></a></span>
       <form method="post" action="/signout">
         <button class="button" type="submit">Sign out</button>
       </form>

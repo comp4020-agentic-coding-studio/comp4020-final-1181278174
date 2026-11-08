@@ -1,5 +1,5 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, ne } from "drizzle-orm";
 import { db } from "./db.ts";
 import { endStreamsOf } from "./live.ts";
 import { accounts, signIns } from "./schema.ts";
@@ -88,11 +88,8 @@ async function matches(password: string, stored?: string): Promise<boolean> {
   return Boolean(valid && equal);
 }
 
-/** Create a private account; the display spelling stays as its owner typed it. */
-export async function createAccount(username: string, password: string): Promise<AccountResult> {
-  if (!USERNAME.test(username)) {
-    return { ok: false, reason: "username-shape", message: "Use 3 to 30 letters, digits, dots, dashes or underscores." };
-  }
+/** What is wrong with a new password for this username, if anything: the same rules at sign-up and at a change. */
+function passwordProblem(username: string, password: string): { ok: false; reason: string; message: string } | undefined {
   if ([...password].length < 8) {
     return { ok: false, reason: "password-short", message: "Use at least 8 characters for your password." };
   }
@@ -102,6 +99,15 @@ export async function createAccount(username: string, password: string): Promise
   if (COMMON.has(password.toLowerCase()) || password.toLowerCase().includes(username.toLowerCase())) {
     return { ok: false, reason: "password-weak", message: "Choose a password that isn't a common one and doesn't contain your username." };
   }
+}
+
+/** Create a private account; the display spelling stays as its owner typed it. */
+export async function createAccount(username: string, password: string): Promise<AccountResult> {
+  if (!USERNAME.test(username)) {
+    return { ok: false, reason: "username-shape", message: "Use 3 to 30 letters, digits, dots, dashes or underscores." };
+  }
+  const problem = passwordProblem(username, password);
+  if (problem) return problem;
   const usernameKey = username.toLowerCase();
   const passwordHash = await hashPassword(password);
   const account = db.insert(accounts)
@@ -172,6 +178,48 @@ export function findAccount(token?: string): Account | null {
     .innerJoin(accounts, eq(signIns.accountId, accounts.id))
     .where(and(eq(signIns.tokenHash, tokenHash(token)), isNull(signIns.endedAt), gt(signIns.expiresAt, new Date())))
     .get() ?? null;
+}
+
+/**
+ * End every sign-in of this account but the one with `keep` (this browser's
+ * token), and their open pages: someone who left a shared computer signed in,
+ * or whose password was seen, takes the account back. Returns how many ended.
+ */
+export function endOtherSignIns(accountId: string, keep?: string): number {
+  const others = db.select({ tokenHash: signIns.tokenHash }).from(signIns)
+    .where(and(eq(signIns.accountId, accountId), isNull(signIns.endedAt), ne(signIns.tokenHash, keep ? tokenHash(keep) : "")))
+    .all();
+  const now = new Date();
+  for (const { tokenHash: hash } of others) {
+    db.update(signIns).set({ endedAt: now }).where(and(eq(signIns.tokenHash, hash), isNull(signIns.endedAt))).run();
+    endStreamsOf(hash);
+  }
+  return others.length;
+}
+
+/**
+ * Change the password, given the current one. The current one is checked like
+ * a sign-in, wrong-password limits included. Every other sign-in ends; this
+ * browser's (`keep`) stays.
+ */
+export async function changePassword(
+  account: Account,
+  current: string,
+  next: string,
+  from: { browser: string; network: string },
+  keep?: string,
+): Promise<{ ok: true; ended: number } | { ok: false; reason: string; message: string }> {
+  const checked = await verifyPassword(account.username, current, from);
+  if (!checked.ok) {
+    return checked.reason === "sign-in-limit"
+      ? { ok: false, reason: "limit", message: checked.message }
+      : { ok: false, reason: "wrong-password", message: "Your current password is wrong." };
+  }
+  const problem = passwordProblem(account.username, next);
+  if (problem) return problem;
+  if (next === current) return { ok: false, reason: "password-same", message: "Choose a password that's different from your current one." };
+  db.update(accounts).set({ passwordHash: await hashPassword(next) }).where(eq(accounts.id, account.id)).run();
+  return { ok: true, ended: endOtherSignIns(account.id, keep) };
 }
 
 /** End this browser's sign-in; other browsers stay signed in. */

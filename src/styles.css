@@ -2345,3 +2345,15 @@ span.me-too:hover {
   font-weight: 600;
   color: var(--ink);
 }
+
+/* a change that worked, said once (Your account) */
+
+.notice {
+  margin: 0;
+  padding: 8px 12px;
+  border: var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  font-size: 14px;
+  font-weight: 600;
+}
