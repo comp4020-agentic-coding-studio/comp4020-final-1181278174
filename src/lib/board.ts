@@ -149,7 +149,7 @@ export function setVote(session: Session, questionId: number, person: string, wa
 }
 
 /** The host is the account that started the session. A session started before
- * sign-in keeps the browser that started it, and HAND has none. */
+ * sign-in keeps the browser that started it. HAND starts with none. */
 export function isHost(session: Session, person: string): boolean {
   return session.host !== null && session.host === person;
 }

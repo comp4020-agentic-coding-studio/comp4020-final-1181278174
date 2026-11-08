@@ -619,6 +619,9 @@ the account that asked it, by someone allowed to, for a reason.
 - 01:50: signing in no longer moves sessions that browser started before
   sign-in to the account. Those were test sessions; they keep the browser that
   started them, so no one can use their host controls now.
+- 02:35: on the live app HAND's host is my account, so a report there reaches
+  someone and a question there can be hidden. A new database still starts HAND
+  with no host.
 
 ### Order of work
 
