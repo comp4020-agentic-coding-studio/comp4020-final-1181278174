@@ -16,7 +16,7 @@ const title = signup ? "Create account" : "Sign in";
     {signup && <p class="hint" id="username-help">3 to 30 letters, digits, dots, dashes or underscores.</p>}
     <label for="password">Password</label>
     <input id="password" name="password" type="password" required minlength={signup ? 8 : undefined} autocomplete={signup ? "new-password" : "current-password"} aria-describedby={signup ? "password-help" : undefined} />
-    {signup && <p class="hint" id="password-help">At least 8 characters.</p>}
+    {signup && <p class="hint" id="password-help">At least 8 characters. There's no email, so a forgotten password can't be recovered: keep it somewhere safe.</p>}
     {problem && <p class="alert" role="alert">{problem}</p>}
     <button class="button ink" type="submit">{title}</button>
   </form>

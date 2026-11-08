@@ -53,6 +53,13 @@ describe("pages a real site has", () => {
     }
   });
 
+  it("says at sign-up, beside the password, that a forgotten one can't be recovered", async () => {
+    const page = await new Visitor({ signedOut: true }).open("/signup");
+    const described = page.doc.querySelector("#password")?.getAttribute("aria-describedby") ?? "";
+    const notes = described.split(/\s+/).map((id) => text(page.doc.getElementById(id))).join(" ");
+    expect(notes).toContain("a forgotten password can't be recovered");
+  });
+
   it("sets two cookies and no more, as Privacy and rules says", async () => {
     // a browser's whole first visit: the home page, signing up, a session's pages
     const origin = (await new Visitor({ signedOut: true }).open("/")).url.origin;
