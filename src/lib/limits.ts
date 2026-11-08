@@ -113,5 +113,11 @@ export function networkAddress(request: Request, address: () => string): string 
     }
   }
   if (given === "::1" || given.startsWith("127.")) return onFly ? "unknown" : null;
+  // Off Fly, a private address is this machine's own network too: the checks run
+  // the app in a Docker container, whose requests come from the container's bridge.
+  if (!onFly && (PRIVATE_V4.test(given) || /^f[cd][0-9a-f]{0,2}:/i.test(given))) return null;
   return given;
 }
+
+/** 10/8, 172.16/12 and 192.168/16. */
+const PRIVATE_V4 = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;

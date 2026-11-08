@@ -120,6 +120,17 @@ describe("network addresses", () => {
     expect(networkAddress(request("not an address"), () => "127.0.0.1")).toBe("unknown");
   });
 
+  it("counts a private address off Fly as this machine's own network, and not on Fly", () => {
+    // the checks run the app in a Docker container, whose requests come from its bridge
+    vi.stubEnv("FLY_APP_NAME", "");
+    for (const ip of ["172.17.0.1", "10.1.2.3", "192.168.1.20", "::ffff:172.17.0.1", "fd00::1"]) {
+      expect(networkAddress(request(), () => ip), ip).toBeNull();
+    }
+    expect(networkAddress(request(), () => "172.32.0.1")).toBe("172.32.0.1");
+    vi.stubEnv("FLY_APP_NAME", "hands-up");
+    expect(networkAddress(request("10.1.2.3"), () => "127.0.0.1")).toBe("10.1.2.3");
+  });
+
   it("does not exempt missing or loopback proxy addresses on Fly", () => {
     vi.stubEnv("FLY_APP_NAME", "hands-up");
     expect(networkAddress(request(), () => "127.0.0.1")).toBe("unknown");
