@@ -243,8 +243,21 @@ function watch(line: HTMLElement): void {
       render();
       try {
         const res = await fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } });
+        const text = await res.text();
+        const real = readRoom(text);
+        if (!res.ok && res.status < 500) {
+          // A refusal the server explained (too many presses, signed out, the
+          // host's own hand): show its words, and the hand as the server has it.
+          const said = new DOMParser().parseFromString(text, "text/html").querySelector('[role="alert"]')?.textContent?.trim();
+          if (real) takeRoom(real);
+          else {
+            hands = [...confirmedHands];
+            mine = before;
+          }
+          problem = said || "That didn't work. Reload the page and try again.";
+          return;
+        }
         if (!res.ok) throw new Error(`the server answered ${res.status}`);
-        const real = readRoom(await res.text());
         if (!real) throw new Error("No hand state in the response");
         takeRoom(real);
         announceSessionChange();

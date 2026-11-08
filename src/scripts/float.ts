@@ -146,14 +146,22 @@ async function popHall(): Promise<void> {
       const label = input.value;
       const body = new URLSearchParams({ intent: "timeline_mark", label });
       fetch(location.pathname, { method: "POST", body, headers: { accept: "text/html" } })
-        .then((res) => {
+        .then(async (res) => {
+          if (!res.ok && res.status < 500) {
+            // a refusal the server explained: say why, and keep the words
+            const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+            const why = doc.querySelector("#mark-problem, [role='alert']")?.textContent?.trim();
+            said.textContent = why ? `Not marked. ${why}` : "Not marked.";
+            return;
+          }
           if (!res.ok) throw new Error(String(res.status));
           said.textContent = `Marked ${label.trim() || "a new part"} at ${new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
           // clear only the mark just sent, never a new draft typed meanwhile
           if (input.value === label) input.value = "";
         })
         .catch(() => {
-          said.textContent = "Not marked: no answer from the server.";
+          // no answer: the mark may still have been saved, so don't say it wasn't
+          said.textContent = "Couldn't confirm the mark. Check the timeline before marking again.";
         });
     });
   } else if (document.querySelector("form[data-hand]")) {
