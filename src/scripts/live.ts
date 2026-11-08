@@ -40,6 +40,18 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   }
   let focusNotice = 0;
 
+  // The controls in a card the keyboard can reach: its buttons and the report
+  // triangle, but not a button inside a closed "Report to the host?".
+  const controls = (li: HTMLElement): HTMLElement[] =>
+    [...li.querySelectorAll<HTMLElement>("button, summary")].filter((el) => el.tagName === "SUMMARY" || !el.closest("details:not([open])"));
+  // What a control does, so the same one can be found in a redrawn card: the
+  // triangle, or a button by its form's intent (and the host's state it sets).
+  const identity = (el: HTMLElement): string => {
+    if (el.tagName === "SUMMARY") return "triangle";
+    const intent = el.closest("form")?.querySelector<HTMLInputElement>("input[name='intent']")?.value ?? "";
+    return `${intent}|${el instanceof HTMLButtonElement && el.name === "to" ? el.value : ""}`;
+  };
+
   /** Make a change to the list, keep the keyboard where it was, and slide each card to its new place. */
   function move(change: () => void): void {
     const previous = cards();
@@ -48,7 +60,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const card = focused?.closest<HTMLElement>(CARD);
     const place = card ? previous.indexOf(card) : -1;
-    const nth = card && focused ? [...card.querySelectorAll("button")].indexOf(focused as HTMLButtonElement) : -1;
+    const nth = card && focused ? controls(card).indexOf(focused) : -1;
+    const was = focused ? identity(focused) : "";
     const action = focused instanceof HTMLButtonElement && focused.name === "to" && focused.form?.getAttribute("aria-busy") === "true"
       ? focused.value : null;
 
@@ -59,8 +72,13 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       const remaining = cards();
       const same = remaining.find((li) => li.id === card.id);
       if (same) {
-        const buttons = same.querySelectorAll<HTMLElement>("button");
-        const again = focused.isConnected ? focused : (buttons[nth] ?? buttons[buttons.length - 1] ?? same);
+        const reachable = controls(same);
+        // the same control if it is still there; after Undo, the triangle it gave back
+        const again = focused.isConnected && reachable.includes(focused) ? focused
+          : reachable.find((el) => identity(el) === was)
+            ?? (was.startsWith("unreport|") ? reachable.find((el) => el.tagName === "SUMMARY") : undefined)
+            ?? reachable[Math.min(nth, reachable.length - 1)]
+            ?? same;
         if (again === same) same.tabIndex = -1;
         again.focus({ preventScroll: true });
       } else {
