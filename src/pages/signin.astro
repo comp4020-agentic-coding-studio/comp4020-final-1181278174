@@ -12,7 +12,16 @@ if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   username = String(form.get("username") ?? "");
   returnTo = returnPath(form.get("return") ?? returnTo);
-  const result = await verifyPassword(username, String(form.get("password") ?? ""));
+  // Fly's proxy gives the visitor's address in Fly-Client-IP; it is used to count wrong passwords, in memory only
+  let network = Astro.request.headers.get("fly-client-ip") ?? "";
+  if (!network) {
+    try {
+      network = Astro.clientAddress;
+    } catch {
+      network = "";
+    }
+  }
+  const result = await verifyPassword(username, String(form.get("password") ?? ""), { browser: Astro.locals.browser, network });
   if (result.ok) {
     completeSignIn(result.account.id, Astro.locals.browser, Astro.cookies, Astro.url);
     Astro.locals.log("signed_in");

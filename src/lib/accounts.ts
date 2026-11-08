@@ -18,7 +18,10 @@ const KEY_BYTES = 64;
 const SALT_BYTES = 16;
 const MAX_MEMORY = 32 * 1024 * 1024;
 const TEN_MINUTES = 10 * 60 * 1000;
-const MAX_FAILURES = 10;
+// Wrong passwords for one username are counted three ways, so someone else's
+// guesses can't keep the owner out: from one browser, from one network address,
+// and from anywhere. The address is kept in memory only, never logged.
+const LIMITS = { browser: 10, network: 30, anywhere: 100 } as const;
 
 // Pending checks reserve a place too, so concurrent requests cannot all pass
 // the limit before their password checks finish. No names go into the logs.
@@ -84,6 +87,7 @@ export async function createAccount(username: string, password: string): Promise
   if ([...password].length < 8) {
     return { ok: false, reason: "password-short", message: "Use at least 8 characters for your password." };
   }
+
   const usernameKey = username.toLowerCase();
   const passwordHash = await hashPassword(password);
   const account = db.insert(accounts)
@@ -96,23 +100,37 @@ export async function createAccount(username: string, password: string): Promise
     : { ok: false, reason: "username-taken", message: "That username is taken." };
 }
 
-/** Check credentials without revealing which part was wrong. */
-export async function verifyPassword(username: string, password: string): Promise<AccountResult> {
+/**
+ * Check credentials without revealing which part was wrong. `from` is the
+ * browser's id and the network address the request came from.
+ */
+export async function verifyPassword(
+  username: string,
+  password: string,
+  from: { browser: string; network: string } = { browser: "", network: "" },
+): Promise<AccountResult> {
   const key = username.toLowerCase();
-  const entry = recentAttempts(key, Date.now());
-  if (entry.failed.length + entry.pending >= MAX_FAILURES) {
+  const now = Date.now();
+  const counted = [
+    { key: `browser|${key}|${from.network}|${from.browser}`, max: LIMITS.browser },
+    { key: `network|${key}|${from.network}`, max: LIMITS.network },
+    { key: `anywhere|${key}`, max: LIMITS.anywhere },
+  ].map((c) => ({ ...c, entry: recentAttempts(c.key, now) }));
+  if (counted.some((c) => c.entry.failed.length + c.entry.pending >= c.max)) {
     return { ok: false, reason: "sign-in-limit", message: "Too many tries. Try again in 10 minutes." };
   }
-  entry.pending += 1;
+  for (const c of counted) c.entry.pending += 1;
   try {
     const account = db.select().from(accounts).where(eq(accounts.usernameKey, key)).get();
     const valid = await matches(password, account?.passwordHash);
     if (valid && account) return { ok: true, account: { id: account.id, username: account.username } };
-    entry.failed.push(Date.now());
+    for (const c of counted) c.entry.failed.push(Date.now());
     return { ok: false, reason: "wrong-credentials", message: "The username or password is wrong." };
   } finally {
-    entry.pending -= 1;
-    if (entry.pending === 0 && entry.failed.length === 0) attempts.delete(key);
+    for (const c of counted) {
+      c.entry.pending -= 1;
+      if (c.entry.pending === 0 && c.entry.failed.length === 0) attempts.delete(c.key);
+    }
   }
 }
 

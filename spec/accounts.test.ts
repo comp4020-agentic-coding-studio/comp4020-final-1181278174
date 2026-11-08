@@ -30,6 +30,20 @@ async function refused(response: Response, path: string): Promise<void> {
 }
 
 describe("accounts over plain HTTP", () => {
+  it("counts wrong passwords per browser, so someone else's guesses don't keep the owner out", async () => {
+    const owner = new Visitor();
+    await owner.open("/");
+    const guesser = new Visitor({ signedOut: true });
+    let limited = false;
+    for (let i = 0; i < 12; i++) {
+      const response = await guesser.post("/signin", new URLSearchParams({ username: owner.username, password: `wrong-guess-${i}`, return: "/" }));
+      if ((await response.text()).includes("Too many tries")) limited = true;
+    }
+    expect(limited, "twelve wrong guesses from one browser were never limited").toBe(true);
+    const page = await new Visitor({ signedOut: true }).signIn(owner.username, owner.password);
+    expect(words(page)).toContain(`Signed in as ${owner.username}`);
+  });
+
   it("signs up, signs out, and signs in again with a plain form and a safe return path", async () => {
     const who = new Visitor({ signedOut: true });
     const account = credentials();
