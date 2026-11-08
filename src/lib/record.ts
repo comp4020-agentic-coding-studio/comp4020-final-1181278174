@@ -1,7 +1,7 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "./db.ts";
 import { HAND_MS } from "./hall.ts";
-import { hands, presence } from "./schema.ts";
+import { hands, marks, presence, sessions } from "./schema.ts";
 
 // The hall's record: when the room was lost. Every hand is kept with when it
 // went up and came down (src/lib/room.ts), and every minute keeps how many
@@ -99,4 +99,60 @@ export function sittings(sessionId: number, hereNow: number, now = Date.now()): 
       mostLost: Math.max(...minutes.map((m) => m.lost)),
     };
   });
+}
+
+/** The longest a mark's name can be. */
+export const MAX_MARK = 60;
+
+/** A mark on the timeline: when, and the part of the lecture that starts there. */
+export type Mark = { at: Date; label: string };
+
+/** Every mark in a session, oldest first. */
+export function marksOf(sessionId: number): Mark[] {
+  return db
+    .select({ at: marks.at, label: marks.label })
+    .from(marks)
+    .where(eq(marks.sessionId, sessionId))
+    .orderBy(asc(marks.at), asc(marks.id))
+    .all();
+}
+
+/** Add a mark now. An empty name becomes "Part N". */
+export function addMark(sessionId: number, label: string, at = new Date()): Mark {
+  const name = label.trim() || `Part ${marksOf(sessionId).length + 1}`;
+  db.insert(marks).values({ sessionId, at, label: name }).run();
+  return { at, label: name };
+}
+
+/** When the lecture's recording started. */
+export function setRecording(sessionId: number, at: Date): void {
+  db.update(sessions).set({ recordingAt: at }).where(eq(sessions.id, sessionId)).run();
+}
+
+/** The part of the lecture a moment falls in: the last mark at or before it. */
+export const partAt = (all: Mark[], at: Date): Mark | undefined => all.filter((m) => m.at.getTime() <= at.getTime() + MINUTE - 1).at(-1);
+
+/** How far into the recording a moment is, in whole minutes; undefined before it started or with no recording. */
+export function intoRecording(recordingAt: Date | null, at: Date): number | undefined {
+  if (!recordingAt) return undefined;
+  const minutes = Math.floor((at.getTime() - recordingAt.getTime()) / MINUTE);
+  return minutes >= 0 ? minutes : undefined;
+}
+
+/** A time of day typed in the room ("14:02"), on the day `ref` falls on in Canberra, as a moment. */
+export function atCanberra(ref: Date, hhmm: string): Date | undefined {
+  const m = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(hhmm.trim());
+  if (!m) return undefined;
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }).format(ref);
+  const guess = Date.parse(`${date}T${m[1].padStart(2, "0")}:${m[2]}:00Z`);
+  // the zone's offset at that moment, e.g. "GMT+11:00" in summer
+  const offset = (ms: number): number => {
+    const name =
+      new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", timeZoneName: "longOffset" })
+        .formatToParts(new Date(ms))
+        .find((part) => part.type === "timeZoneName")?.value ?? "";
+    const o = /GMT([+-])(\d{2}):?(\d{2})?/.exec(name);
+    return o ? (o[1] === "-" ? -1 : 1) * (Number(o[2]) * 60 + Number(o[3] ?? 0)) : 0;
+  };
+  return new Date(guess - offset(guess) * MINUTE);
 }

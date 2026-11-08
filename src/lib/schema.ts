@@ -16,6 +16,9 @@ export const sessions = sqliteTable(
     host: text("host"),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     closedAt: integer("closed_at", { mode: "timestamp_ms" }),
+    // when the lecture's recording started, as the host gave it, so the
+    // timeline can say how far into the recording each minute is
+    recordingAt: integer("recording_at", { mode: "timestamp_ms" }),
   },
   (t) => [
     // four characters, none of them easy to misread (no 0/O, 1/I/L)
@@ -102,4 +105,19 @@ export const presence = sqliteTable(
     last: integer("last").notNull(),
   },
   (t) => [primaryKey({ columns: [t.sessionId, t.minute] })],
+);
+
+// The host's marks on the timeline: a moment, and the part of the lecture
+// that starts there ("Part 3: proofs"), so the timeline says what was being taught.
+export const marks = sqliteTable(
+  "marks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => sessions.id),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+    label: text("label").notNull(),
+  },
+  (t) => [index("marks_by_session").on(t.sessionId, t.at), check("marks_label_length", sql`length(${t.label}) BETWEEN 1 AND 60`)],
 );

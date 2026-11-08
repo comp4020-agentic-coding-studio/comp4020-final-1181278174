@@ -6,10 +6,11 @@ import SessionBand from "../../components/SessionBand.astro";
 import SessionTabs from "../../components/SessionTabs.astro";
 import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
-import { vote } from "../../lib/actions.ts";
+import { timelineMark, vote } from "../../lib/actions.ts";
 import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
 import { HAND_MS } from "../../lib/hall.ts";
 import { people } from "../../lib/live.ts";
+import { MAX_MARK, marksOf } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
 import { handNote, lostLabel } from "../../lib/words.ts";
 
@@ -43,6 +44,10 @@ if (session && Astro.request.method === "POST") {
     const done = vote(session, person, form, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
     Astro.response.status = done.status;
+  } else if (intent === "timeline_mark") {
+    const done = timelineMark(session, person, form, log);
+    if (done.ok) return Astro.redirect(`/s/${session.code}#hall`, 303);
+    Astro.response.status = done.status;
   }
 }
 if (!session) Astro.response.status = 404;
@@ -51,6 +56,7 @@ const hosting = session !== undefined && isHost(session, person);
 const all = session ? listQuestions(session, person, "popular") : [];
 const listed = all.filter((q) => q.state !== "hidden").length;
 const wanted = all.filter((q) => q.state === "open").slice(0, 3);
+const parts = session && hosting ? marksOf(session.id) : [];
 
 // The hall as this person is about to see it: everyone with the session open,
 // and this person, who will be once the page's stream opens. How long their own
@@ -88,6 +94,18 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
               {handNote(until)}
             </p>
           </form>
+          {hosting && (
+            <form method="post" class="hall-mark" data-plain>
+              <input type="hidden" name="intent" value="timeline_mark" />
+              <label for="mark-label">Starting a new part? Mark it on the timeline</label>
+              <div class="host-row">
+                <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${parts.length + 1}`} />
+                <button class="button ink" type="submit">
+                  Mark
+                </button>
+              </div>
+            </form>
+          )}
           <p class="hall-links">
             <a href={`/s/${session.code}/timeline`}>When the room was lost</a>
           </p>

@@ -1309,3 +1309,93 @@ textarea {
   font-family: var(--display);
   font-size: 18px;
 }
+
+/* the host's marks on the timeline, each where its part starts */
+
+.chart {
+  position: relative;
+}
+
+.chart-mark {
+  position: absolute;
+  top: 0;
+  height: 150px;
+  width: 2px;
+  background: var(--blue);
+}
+
+.chart-mark span {
+  position: absolute;
+  top: -2px;
+  left: 4px;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--blue);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.host-panel {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.host-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.host-form label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.host-row {
+  display: flex;
+  gap: 8px;
+}
+
+.host-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: var(--line);
+  border-radius: 12px;
+  padding: 0 10px;
+  font: inherit;
+  background: var(--ground);
+}
+
+.marks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.marks li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* on the hall, the host's mark for a new part of the lecture */
+.hall-mark {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 2px dashed #e7dcc0;
+}

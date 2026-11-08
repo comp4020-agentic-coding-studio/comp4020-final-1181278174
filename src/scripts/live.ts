@@ -328,7 +328,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   const plain = new WeakSet<HTMLFormElement>();
   main.addEventListener("submit", (event) => {
     const form = event.target;
-    if (!(form instanceof HTMLFormElement) || form.method !== "post" || plain.has(form)) return;
+    // a form marked data-plain posts the ordinary way, and the page reloads
+    if (!(form instanceof HTMLFormElement) || form.method !== "post" || plain.has(form) || form.hasAttribute("data-plain")) return;
     event.preventDefault();
     // a second press while the first is on its way would send the same thing again
     if (form.getAttribute("aria-busy") === "true") return;

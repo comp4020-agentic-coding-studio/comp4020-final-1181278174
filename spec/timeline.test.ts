@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { type Page, startSession, type Stream, Visitor } from "./visitor.ts";
+import { fill, formWithButton, type Page, startSession, type Stream, Visitor } from "./visitor.ts";
 
 // The hall's record: how many hands were up in each minute, out of how many
 // people. These read the timeline page over HTTP. That it is still there after
@@ -70,5 +70,51 @@ describe("the timeline", () => {
     const path = (await startSession(host, `Record ${tag()}`)).url.pathname;
     const page = await timeline(new Visitor(), path);
     expect(page.doc.body.textContent).toMatch(/nobody has had this session open yet/i);
+  });
+});
+
+describe("the host's marks and the recording", () => {
+  it("only the host can mark a new part, and the minutes after it say which part they were in", async () => {
+    const host = new Visitor();
+    const hall = await startSession(host, `Marks ${tag()}`);
+    const path = hall.url.pathname;
+    const part = `Part 2: proofs ${tag()}`;
+
+    const guest = new Visitor();
+    await guest.open(path);
+    const form = formWithButton(await host.open(path), /^mark$/i);
+    fill(form, `Not mine ${tag()}`);
+    const refused = await guest.submit(await host.open(path), form);
+    expect(refused.status).toBe(403);
+    expect(() => formWithButton(refused, /^mark$/i), "a guest is shown the host's mark form").toThrow();
+
+    const mine = formWithButton(await host.open(path), /^mark$/i);
+    fill(mine, part);
+    expect((await host.submit(await host.open(path), mine)).status).toBe(200);
+
+    const lost = await here(path);
+    await press(lost, path);
+    const page = await timeline(new Visitor(), path);
+    expect(page.doc.body.textContent).toContain(part);
+    expect(page.doc.body.textContent).not.toContain("Not mine");
+    expect(busiest(page).some((line) => line.includes(part)), `busiest: ${busiest(page).join(" | ")}`).toBe(true);
+  });
+
+  it("the host can say when the recording started, and each minute says how far into it", async () => {
+    const host = new Visitor();
+    const path = (await startSession(host, `Recording ${tag()}`)).url.pathname;
+    const lost = await here(path);
+    await press(lost, path);
+
+    const started = clock(Date.now() - 10 * 60_000);
+    const guest = new Visitor();
+    const hostView = await timeline(host, path);
+    const form = formWithButton(hostView, /^save$/i);
+    form.querySelector<HTMLInputElement>("input[type='time']")!.value = started;
+    expect((await guest.submit(hostView, form)).status, "a guest set the recording time").toBe(403);
+    expect((await host.submit(hostView, form)).status).toBe(200);
+
+    const page = await timeline(new Visitor(), path);
+    expect(busiest(page).some((line) => /\b(9|10|11) min into the recording\b/.test(line)), `busiest: ${busiest(page).join(" | ")}`).toBe(true);
   });
 });

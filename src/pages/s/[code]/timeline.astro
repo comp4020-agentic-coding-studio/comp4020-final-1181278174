@@ -7,7 +7,8 @@ import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { findSession, isCode, isHost, listQuestions, normaliseCode } from "../../../lib/board.ts";
 import { people } from "../../../lib/live.ts";
-import { type Minute, sittings } from "../../../lib/record.ts";
+import { recordingStart, timelineMark } from "../../../lib/actions.ts";
+import { intoRecording, type Minute, marksOf, MAX_MARK, partAt, sittings } from "../../../lib/record.ts";
 import { clock, day } from "../../../lib/words.ts";
 
 // The hall's record: how many hands were up in each minute, out of how many
@@ -18,13 +19,43 @@ const code = normaliseCode(raw);
 if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
   return Astro.redirect(`/s/${code}/timeline${Astro.url.search}`, 301);
 }
-const session = isCode(code) ? findSession(code) : undefined;
+let session = isCode(code) ? findSession(code) : undefined;
 const person = Astro.locals.person;
+const log = Astro.locals.log;
 if (!session) Astro.response.status = 404;
+
+let shown = session ? sittings(session.id, people(session.id).size) : [];
+
+// The host's two forms: a mark now, and when the recording started. Anyone else is refused.
+if (session && Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const intent = form.get("intent");
+  const done =
+    intent === "timeline_mark"
+      ? timelineMark(session, person, form, log)
+      : intent === "recording"
+        ? // a time of day, on the day of the newest sitting
+          recordingStart(session, person, form, log, shown[0]?.from ?? new Date())
+        : ({ ok: false, status: 422 } as const);
+  if (done.ok) return Astro.redirect(`/s/${session.code}/timeline`, 303);
+  Astro.response.status = done.status;
+  session = findSession(session.code);
+  shown = session ? sittings(session.id, people(session.id).size) : [];
+}
 
 const hosting = session !== undefined && isHost(session, person);
 const listed = session ? listQuestions(session, person, "popular").filter((q) => q.state !== "hidden").length : 0;
-const shown = session ? sittings(session.id, people(session.id).size) : [];
+const all = session ? marksOf(session.id) : [];
+const recordingAt = session?.recordingAt ?? null;
+/** What a minute says in words: when, how many lost, in which part, how far into the recording. */
+const about = (m: Minute): string[] => {
+  const into = intoRecording(recordingAt, m.at);
+  return [
+    `${m.lost} of ${m.here} lost`,
+    partAt(all, m.at)?.label ?? "",
+    into === undefined ? "" : `${into} min into the recording`,
+  ].filter(Boolean);
+};
 
 /** The minutes most people were lost, most first; the earlier one when two tie. */
 const busiest = (minutes: Minute[]): Minute[] =>
@@ -82,10 +113,18 @@ function ticks(minutes: Minute[]): { at: Date; left: number }[] {
                     <span
                       class={m.lost > 0 && m.lost === s.mostLost ? "chart-bar most" : "chart-bar"}
                       style={`height: ${m.lost === 0 ? 0 : Math.max(3, (m.lost / scale) * 100)}%`}
-                      title={`${clock(m.at)}: ${m.lost} of ${m.here} lost`}
+                      title={`${clock(m.at)}: ${about(m).join(", ")}`}
                     />
                   ))}
                 </div>
+                {/* the host's marks, each where its part starts */}
+                {all
+                  .filter((mk) => mk.at >= s.from && mk.at < s.to)
+                  .map((mk) => (
+                    <span class="chart-mark" style={`left: ${((mk.at.getTime() - s.from.getTime()) / (s.to.getTime() - s.from.getTime())) * 100}%`}>
+                      <span>{mk.label}</span>
+                    </span>
+                  ))}
                 <div class="chart-ticks">
                   {ticks(s.minutes).map((t) => (
                     <span style={`left: ${t.left}%`}>{clock(t.at)}</span>
@@ -99,9 +138,11 @@ function ticks(minutes: Minute[]): { at: Date; left: number }[] {
                     {top.map((m) => (
                       <li>
                         <strong>{clock(m.at)}</strong>{" "}
-                        <span>
-                          {m.lost} of {m.here} lost
-                        </span>
+                        {about(m).map((part) => (
+                          <>
+                            <span>{part}</span>{" "}
+                          </>
+                        ))}
                       </li>
                     ))}
                   </ol>
@@ -110,6 +151,45 @@ function ticks(minutes: Minute[]): { at: Date; left: number }[] {
             </section>
           );
         })}
+
+        {hosting && (
+          <section class="card host-panel" aria-labelledby="host-title">
+            <h3 id="host-title">For the host</h3>
+            <form method="post" class="host-form">
+              <input type="hidden" name="intent" value="recording" />
+              <label for="recording-at">The recording started at</label>
+              <div class="host-row">
+                <input id="recording-at" name="at" type="time" required value={recordingAt ? clock(recordingAt) : ""} aria-describedby="recording-help" />
+                <button class="button" type="submit">
+                  Save
+                </button>
+              </div>
+              <p class="hint" id="recording-help">
+                Then every minute also says how far into the Echo360 recording it is. A link that starts there is made in Echo360 by the
+                video's owner.
+              </p>
+            </form>
+            <form method="post" class="host-form">
+              <input type="hidden" name="intent" value="timeline_mark" />
+              <label for="mark-label">A mark now, where a new part starts</label>
+              <div class="host-row">
+                <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${all.length + 1}`} />
+                <button class="button ink" type="submit">
+                  Mark
+                </button>
+              </div>
+            </form>
+            {all.length > 0 && (
+              <ul class="marks" aria-label="Marks">
+                {all.map((mk) => (
+                  <li>
+                    <span>{mk.label}</span> <span class="hint">{clock(mk.at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         <p class="foot session-foot">
           <a href={`/s/${session.code}`}>Back to the hall</a> <span>Where anyone can raise a hand.</span>
