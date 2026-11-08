@@ -34,4 +34,23 @@ describe("privacy", () => {
     expect(watching.last?.here, "the count dropped the moment their page closed").toBe(2);
     expect(watching.last?.hands.length, "their hand went down with their page").toBe(1);
   });
+
+  it("refuses a hand from the host, so no host hand reaches a count or the timeline", async () => {
+    const host = new Visitor();
+    const hall = await startSession(host, `Host hand ${tag()}`);
+    const path = hall.url.pathname;
+    const watcher = new Visitor();
+    const watching = await watcher.listen(await watcher.open(path));
+    open.push(watching);
+
+    // the host's page has no button, so send the form a student's page has
+    const student = await new Visitor().open(path);
+    const button = handButton(student)!;
+    const refused = await host.submit(student, button.closest("form")!, button);
+    expect(refused.status).toBe(403);
+    await settle();
+    expect(watching.last?.hands.length ?? 0).toBe(0);
+    const timeline = await new Visitor().open(`${path}/timeline`);
+    expect(timeline.doc.querySelectorAll('[aria-label="The minutes most people were lost"] > li')).toHaveLength(0);
+  });
 });

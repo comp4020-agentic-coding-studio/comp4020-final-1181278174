@@ -33,7 +33,11 @@ let goingOverProblem = "";
 if (session && Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   const intent = form.get("intent");
-  if (intent === "hand") {
+  if (intent === "hand" && isHost(session, person)) {
+    // the host teaches and has no hand: a press sent by hand is refused, so no host hand reaches a count or the record
+    Astro.response.status = 403;
+    log("refused", { action: "hand", session: session.code, reason: "host" });
+  } else if (intent === "hand") {
     // "I'm lost": one press, no words. Like a vote, it sends up (1) or down (0).
     const up = form.get("up");
     if (up === "1" || up === "0") {

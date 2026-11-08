@@ -18,6 +18,10 @@ const GAP_MINUTES = 20;
 // how many sittings the timeline shows, newest first
 const SHOWN = 5;
 
+/** Who started a session: the host, whose hands the record never counts. */
+const hostOf = (sessionId: number): string | null =>
+  db.select({ host: sessions.host }).from(sessions).where(eq(sessions.id, sessionId)).get()?.host ?? null;
+
 /** Count the people here now in this minute's row. */
 export function notePresence(sessionId: number, here: number, at = Date.now()): void {
   const minute = Math.floor(at / MINUTE);
@@ -91,6 +95,8 @@ export function sittings(sessionId: number, hereNow: number, now = Date.now()): 
     .from(hands)
     .where(sql`${hands.sessionId} = ${sessionId} AND ${hands.raisedAt} >= ${from - HAND_MS}`)
     .all()
+    // the host teaches and has no hand: a row of theirs, however it got there, is not counted
+    .filter((h) => h.person !== hostOf(sessionId))
     .map((h) => ({
       person: h.person,
       up: h.raisedAt.getTime(),
@@ -184,6 +190,8 @@ export function recentLost(sessionId: number, minutes = 15, now = Date.now()): n
     .from(hands)
     .where(sql`${hands.sessionId} = ${sessionId} AND ${hands.raisedAt} >= ${start * MINUTE - HAND_MS}`)
     .all()
+    // the host teaches and has no hand: a row of theirs, however it got there, is not counted
+    .filter((h) => h.person !== hostOf(sessionId))
     .map((h) => ({
       person: h.person,
       up: h.raisedAt.getTime(),
