@@ -167,8 +167,6 @@ export function intoRecording(recordingAt: Date | null, at: Date): number | unde
 export function atCanberra(ref: Date, hhmm: string): Date | undefined {
   const m = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(hhmm.trim());
   if (!m) return undefined;
-  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }).format(ref);
-  const guess = Date.parse(`${date}T${m[1].padStart(2, "0")}:${m[2]}:00Z`);
   // the zone's offset at that moment, e.g. "GMT+11:00" in summer
   const offset = (ms: number): number => {
     const name =
@@ -178,7 +176,16 @@ export function atCanberra(ref: Date, hhmm: string): Date | undefined {
     const o = /GMT([+-])(\d{2}):?(\d{2})?/.exec(name);
     return o ? (o[1] === "-" ? -1 : 1) * (Number(o[2]) * 60 + Number(o[3] ?? 0)) : 0;
   };
-  return new Date(guess - offset(guess) * MINUTE);
+  /** That time of day on the day `day` falls on, in Canberra. */
+  const on = (day: Date): Date => {
+    const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }).format(day);
+    const guess = Date.parse(`${date}T${m[1].padStart(2, "0")}:${m[2]}:00Z`);
+    return new Date(guess - offset(guess) * MINUTE);
+  };
+  // A recording can't start later than now: a time still to come today is
+  // yesterday's, as when "23:55" is given at five past midnight.
+  const today = on(ref);
+  return today.getTime() > ref.getTime() + 5 * MINUTE ? on(new Date(ref.getTime() - 24 * 60 * MINUTE)) : today;
 }
 
 /** How many people had a hand up in each of the last `minutes` minutes, oldest first, this minute last. */
