@@ -164,6 +164,19 @@ export function publish(sessionId: number): void {
   );
 }
 
+/**
+ * A report, or a report taken back. Only the host's pages show the count and
+ * only the reporter's own pages show "You reported", so only those are told,
+ * and each fetches its own page again. Everyone else hears nothing, not even
+ * that something happened.
+ */
+export function nudge(sessionId: number, person: string): void {
+  const told = new Set([hostOf(sessionId), person]);
+  for (const listener of listeners.get(sessionId) ?? []) {
+    if (listener.person !== null && told.has(listener.person)) listener.send("event: refresh\ndata: {}\n\n");
+  }
+}
+
 /** Tell every open page again after `ms`: when a hand runs out, the pages are told it is down. */
 export function publishAfter(sessionId: number, ms: number): void {
   setTimeout(() => publish(sessionId), ms);

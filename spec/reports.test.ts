@@ -131,11 +131,30 @@ describe("reports over plain HTTP", () => {
     const body = `Reported by mistake ${tag()}`;
     const id = question(await ask(new Visitor(), path, body), body)!.id;
     const student = new Visitor();
+    const hostStream = await watch(host, path);
+    const ownStream = await watch(student, path);
+    const otherStream = await watch(new Visitor(), path);
+    const streamsHere = [hostStream, ownStream, otherStream];
+    // every page has taken in the last arrival, including the state gathered
+    // just after a connection, before anything is counted
+    for (const stream of streamsHere) await stream.until((board) => board.here === 2);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    for (const stream of streamsHere) stream.forget();
     const reported = await report(student, await student.open(path), id);
     expect(hostCount(await host.open(path), id)).toBe("Reported 1 time");
+    // the host's pages and the reporter's own are nudged; nobody else's
+    await hostStream.untilRefresh();
+    await ownStream.untilRefresh();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(otherStream.heard, "another student's page heard about a report").toBe(0);
+    for (const stream of streamsHere) stream.forget();
     const undo = [...card(reported, id).querySelectorAll("button")].find((button) => button.textContent?.trim() === "Undo")!;
     const back = await student.submit(reported, undo.closest("form")!, undo);
     expect(back.status).toBe(200);
+    await hostStream.untilRefresh();
+    await ownStream.untilRefresh();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(otherStream.heard, "another student's page heard a report taken back").toBe(0);
     expect(reportFlag(back, id), "the triangle didn't come back").toBeDefined();
     expect(hostCount(await host.open(path), id)).toBeUndefined();
     // taking back what is no longer there is refused
@@ -211,12 +230,12 @@ describe("reports over plain HTTP", () => {
     for (const reporter of [first, second]) {
       for (const stream of [hostStream, studentStream]) stream.forget();
       await report(reporter, await reporter.open(path), id);
-      for (const stream of [hostStream, studentStream]) {
-        const sent = await stream.until(() => true);
-        // The shared stream has no report counts or reporter-specific state.
-        expect(sent.board.questions).toEqual([[id, 0, "open"]]);
-        expect(sent.board).not.toHaveProperty("reports");
-      }
+      // Only the host's page is told, and only to fetch its own page again: a
+      // student's page hears nothing, not even that something happened.
+      await hostStream.untilRefresh();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(studentStream.heard, "a student's page heard about a report").toBe(0);
+      expect(hostStream.heard, "the host was sent more than a nudge").toBe(1);
     }
 
     const privateValues = [asker, first, second].flatMap((who) => [who.username, ...who.secrets]);

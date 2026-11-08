@@ -146,10 +146,20 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   let fingers = 0;
   let mouse = false;
   let waiting: Board | undefined;
+  // a nudge to fetch the page that came while a finger was down
+  let nudged = false;
   const down = (): boolean => fingers > 0 || mouse;
   const released = (): void => {
     setTimeout(() => {
-      if (down() || !waiting) return;
+      if (down()) return;
+      if (nudged) {
+        // the page it fetches is newer than any state that waited
+        nudged = false;
+        waiting = undefined;
+        void refresh();
+        return;
+      }
+      if (!waiting) return;
       const board = waiting;
       waiting = undefined;
       redraw(board);
@@ -500,6 +510,12 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     source.addEventListener("question", (event) => {
       const question = JSON.parse((event as MessageEvent<string>).data) as Added;
       if (blank) sent.set(question.id, question);
+    });
+    // A report, or one taken back: only the host's pages and the reporter's own
+    // are told (src/lib/live.ts `nudge`), and each fetches its own page again.
+    source.addEventListener("refresh", () => {
+      if (down()) nudged = true;
+      else void refresh();
     });
     source.onerror = () => {
       connected = false;

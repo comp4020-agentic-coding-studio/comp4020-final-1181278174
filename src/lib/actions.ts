@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { isHost, type Session, setState, setVote, STATES, UNSHOWABLE } from "./board.ts";
 import { db } from "./db.ts";
-import { publish } from "./live.ts";
+import { nudge, publish } from "./live.ts";
 import { recordGoingOver } from "./going-over.ts";
 import { addMark, atCanberra, MAX_MARK, setRecording } from "./record.ts";
 import { questions, reports } from "./schema.ts";
@@ -63,7 +63,7 @@ export function report(session: Session, person: string, form: FormData, log: Lo
     .values({ questionId: id, reporter: tagFor("reporter", person), createdAt: new Date() })
     .onConflictDoNothing().run();
   log("question_reported", { session: session.code, question: id });
-  if (changes > 0) publish(session.id);
+  if (changes > 0) nudge(session.id, person);
   return { ok: true, question: id };
 }
 
@@ -88,7 +88,7 @@ export function unreport(session: Session, person: string, form: FormData, log: 
   }
   db.delete(reports).where(and(eq(reports.questionId, id), eq(reports.reporter, reporter))).run();
   log("report_taken_back", { session: session.code, question: id });
-  publish(session.id);
+  nudge(session.id, person);
   return { ok: true, question: id };
 }
 

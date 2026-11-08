@@ -39,6 +39,8 @@ export class Stream {
   /** The new questions sent on this stream, and when each arrived. */
   added: { question: Added; at: number }[] = [];
   private events: { board: Board; at: number }[] = [];
+  /** When each "refresh" came: a nudge to fetch this person's own page again, sent only to some pages. */
+  private refreshes: number[] = [];
   private waiting: (() => void)[] = [];
   private abort = new AbortController();
 
@@ -60,7 +62,8 @@ export class Stream {
         this.raw += text;
         rest += text;
         // Events are separated by a blank line; an event's data lines carry JSON.
-        // An event with no name is the state; one named "question" is a new question.
+        // An event with no name is the state; one named "question" is a new question;
+        // one named "refresh" asks this page to fetch itself again.
         for (let end = rest.indexOf("\n\n"); end >= 0; end = rest.indexOf("\n\n")) {
           const lines = rest.slice(0, end).split("\n");
           const data = lines
@@ -71,6 +74,7 @@ export class Stream {
           rest = rest.slice(end + 2);
           if (!data) continue;
           if (name === "question") this.added.push({ question: JSON.parse(data) as Added, at: Date.now() });
+          else if (name === "refresh") this.refreshes.push(Date.now());
           else if (!name) this.events.push({ board: JSON.parse(data) as Board, at: Date.now() });
         }
         for (const wake of this.waiting.splice(0)) wake();
@@ -112,6 +116,20 @@ export class Stream {
     }
   }
 
+  /** Waits for a "refresh" since the last `forget`; throws after `within` ms. */
+  async untilRefresh(within = 1000): Promise<void> {
+    const deadline = Date.now() + within;
+    while (this.refreshes.length === 0) {
+      if (Date.now() >= deadline) throw new Error(`the stream sent no refresh within ${within} ms`);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+
+  /** How many states and refreshes came since the last `forget`. */
+  get heard(): number {
+    return this.events.length + this.refreshes.length;
+  }
+
   /** The state most recently sent. */
   get last(): Board | undefined {
     return this.events.at(-1)?.board;
@@ -120,6 +138,7 @@ export class Stream {
   /** Forget what has been sent so far, so `until` only sees what comes next. */
   forget(): void {
     this.events = [];
+    this.refreshes = [];
   }
 
   close(): void {
