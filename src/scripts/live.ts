@@ -508,7 +508,6 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         reply = await post();
       }
       const { doc, ok } = reply;
-      adopt(doc);
       if (ok && ["vote", "report"].includes(fields.get("intent") ?? "")) announceSessionChange();
       if (asking && text) {
         // a refused question comes back with the reason; an accepted one empties the box
@@ -527,6 +526,9 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         problem(doc.querySelector("[role='alert']")?.textContent?.trim()
           || "Could not save that change. Check the list before trying again.");
       }
+      // The list itself comes from a fetch made after this reply: a slow reply
+      // must not put back an older list over a newer one.
+      await refresh();
     } catch {
       if (button && pressed) button.setAttribute("aria-pressed", pressed);
       problem(asking
