@@ -2273,3 +2273,51 @@ span.me-too:hover {
   font-weight: 700;
 }
 
+
+/* How it works, Privacy and rules, Nothing here: one column of cards */
+
+.info {
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 20px;
+  padding-bottom: 40px;
+}
+
+.info h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.info .lead {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.info ol {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.info .panel p {
+  line-height: 1.4;
+}
+
+.info a {
+  color: var(--ink);
+}
+
+.card.info-sun {
+  background: var(--sun);
+  box-shadow: none;
+}

@@ -1,0 +1,47 @@
+---
+// How it works: what a student and a host do, and what no one is shown.
+// Drawn on the design canvas first ("How it works · phone", 9 November).
+import SlimHeader from "../components/SlimHeader.astro";
+import Layout from "../layouts/Layout.astro";
+import { GOING_OVER_MS, HAND_MS } from "../lib/hall.ts";
+
+const minutes = (ms: number): string => `${Math.round(ms / 60_000)} minutes`;
+---
+
+<Layout title="How it works · Hands Up">
+  <SlimHeader />
+  <main id="main" class="wrap info">
+    <h1>How it works</h1>
+    <p class="lead">One room, one code. A hand needs no words, and the whole room sees how many are up.</p>
+
+    <section class="card panel" aria-labelledby="in-the-room">
+      <h2 id="in-the-room">In the room</h2>
+      <ol>
+        <li>Join with the code or the QR code on the screen at the front.</li>
+        <li>Anyone can look. To take part, <a href="/signup">create an account</a>: a username and a password, nothing else.</li>
+        <li>Lost? Press <strong>I'm lost</strong>. No words. Your hand comes down by itself after {minutes(HAND_MS)}.</li>
+        <li>Every screen shows how many of the people here say they're lost, never whose hand it is.</li>
+        <li>Ask a question without your name, or press <strong>Me too</strong> on one you share.</li>
+        <li>A question that shouldn't be there? The small triangle tells the host.</li>
+      </ol>
+    </section>
+
+    <section class="card panel" aria-labelledby="teaching">
+      <h2 id="teaching">Teaching</h2>
+      <ol>
+        <li>Start a session and put its projector page up.</li>
+        <li>You teach: you have no hand, and you aren't counted.</li>
+        <li><strong>Going over it</strong> tells every screen you're explaining again, for {minutes(GOING_OVER_MS)}.</li>
+        <li>Mark the parts of the lecture and when the recording started. The timeline keeps how many were lost in each minute, so you can find the moment in the recording.</li>
+        <li><strong>Pop out</strong> keeps the count in a small window over your slides, in browsers that can open one.</li>
+        <li>Hide a question, or mark it answered. You see how many reported it, not who.</li>
+      </ol>
+    </section>
+
+    <section class="card panel info-sun" aria-labelledby="not-shown">
+      <h2 id="not-shown">What no one is shown</h2>
+      <p>Who raised a hand, who asked, who pressed Me too, who reported. Not the host, not other students.</p>
+      <a class="go" href="/privacy">What is kept, and who can see it</a>
+    </section>
+  </main>
+</Layout>
