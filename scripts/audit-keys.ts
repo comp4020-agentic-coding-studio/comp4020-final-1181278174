@@ -17,5 +17,6 @@ if (existsSync(path)) {
   process.exit(1);
 }
 const { publicKey, privateKeyPem } = newAuditKeys();
-writeFileSync(path, privateKeyPem, { mode: 0o600 });
+// "wx": fail rather than write over a file that appeared after the check above
+writeFileSync(path, privateKeyPem, { mode: 0o600, flag: "wx" });
 console.log(publicKey);
