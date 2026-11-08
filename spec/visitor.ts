@@ -127,7 +127,16 @@ export class Stream {
 }
 
 export class Visitor {
-  private cookies = new Map<string, string>();
+  private cookies: Map<string, string>;
+
+  constructor(cookies: Record<string, string> = {}) {
+    this.cookies = new Map(Object.entries(cookies));
+  }
+
+  /** The value this browser keeps for a named cookie. */
+  cookie(name: string): string | undefined {
+    return this.cookies.get(name);
+  }
 
   /** The cookie values the app has given this person: what identifies them. */
   get secrets(): string[] {
