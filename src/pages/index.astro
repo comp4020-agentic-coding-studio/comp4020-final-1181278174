@@ -36,15 +36,33 @@ const hosted = Astro.locals.account ? sessionsHostedBy(Astro.locals.person) : []
 ---
 
 <Layout title="Hands Up" sunny>
-  <main id="main" class="wrap">
+  <main id="main" class="wrap home-layout">
     <div class="hero">
       <span class="hero-mark"><Icon name="hand" size={36} /></span>
       <h1>Hands Up</h1>
       <p>Lost in a lecture? Put your hand up with one press and see how many others are lost too. No one, the lecturer included, is shown whose hand is up.</p>
+      <svg class="hero-room" width="432" height="172" viewBox="0 0 432 172" fill="none" aria-hidden="true" focusable="false">
+        <path class="room-row" d="M20 80Q216 224 412 80M50 55Q216 177 382 55M83 30Q216 127 349 30" />
+        <g class="room-seat">
+          <rect x="69" y="100" width="27" height="23" rx="7" transform="rotate(28 82 111)" />
+          <rect x="132" y="130" width="27" height="23" rx="7" transform="rotate(14 145 141)" />
+          <rect x="202" y="141" width="27" height="23" rx="7" />
+          <rect x="272" y="130" width="27" height="23" rx="7" transform="rotate(-14 285 141)" />
+          <rect x="335" y="100" width="27" height="23" rx="7" transform="rotate(-28 348 111)" />
+          <rect x="111" y="69" width="27" height="23" rx="7" transform="rotate(22 124 80)" />
+          <rect x="171" y="90" width="27" height="23" rx="7" transform="rotate(7 184 101)" />
+          <rect x="232" y="90" width="27" height="23" rx="7" transform="rotate(-7 245 101)" />
+          <rect x="292" y="69" width="27" height="23" rx="7" transform="rotate(-22 305 80)" />
+          <rect x="143" y="37" width="27" height="23" rx="7" transform="rotate(18 156 48)" />
+          <rect x="202" y="49" width="27" height="23" rx="7" />
+          <rect x="261" y="37" width="27" height="23" rx="7" transform="rotate(-18 274 48)" />
+        </g>
+        <rect class="room-seat-you" x="202" y="141" width="27" height="23" rx="7" />
+      </svg>
     </div>
 
     <div class="stack">
-      <section class="card panel" aria-labelledby="join-heading">
+      <section class="card panel join-panel" aria-labelledby="join-heading">
         <h2 id="join-heading">Join a session</h2>
         <p>Type the code on the screen at the front of the room.</p>
         <JoinForm />

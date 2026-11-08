@@ -99,7 +99,7 @@ const room = {
         <SessionTabs code={session.code} at="questions" count={listed} />
       </SessionBand>
 
-      <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
+      <main id="main" class="wrap question-layout" data-live={`/s/${session.code}/events`}>
         {signedIn ? (
           <form method="post" class="card ask" data-ask>
             <input type="hidden" name="intent" value="ask" />
