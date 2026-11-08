@@ -119,12 +119,14 @@ async function popHall(): Promise<void> {
       event.preventDefault();
       const input = form.querySelector("input")!;
       const said = form.querySelector<HTMLElement>(".float-said")!;
-      const body = new URLSearchParams({ intent: "timeline_mark", label: input.value });
+      const label = input.value;
+      const body = new URLSearchParams({ intent: "timeline_mark", label });
       fetch(location.pathname, { method: "POST", body, headers: { accept: "text/html" } })
         .then((res) => {
           if (!res.ok) throw new Error(String(res.status));
-          said.textContent = `Marked ${input.value.trim() || "a new part"} at ${new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
-          input.value = "";
+          said.textContent = `Marked ${label.trim() || "a new part"} at ${new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+          // clear only the mark just sent, never a new draft typed meanwhile
+          if (input.value === label) input.value = "";
         })
         .catch(() => {
           said.textContent = "Not marked: no answer from the server.";
