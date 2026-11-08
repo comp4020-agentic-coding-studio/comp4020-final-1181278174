@@ -147,12 +147,14 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
           <div class="hall-view" data-hall data-view={hosting ? "front" : "seat"} aria-hidden="true" />
           <div class="hall-meta">
             <p class="hint hall-caption">Seats and hands are placed at random on each screen.</p>
+          </div>
+          <div class="hall-status">
+            <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-host={hosting ? "" : undefined} data-room={JSON.stringify(room)}>
+              {hosting && room.here === 0 ? "Waiting for students to join." : lostLabel(room.hands.length, room.here)}
+            </p>
             {/* shown by the page's script once its stream is open */}
             <p class="live" role="status" data-live-status hidden />
           </div>
-          <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-host={hosting ? "" : undefined} data-room={JSON.stringify(room)}>
-            {hosting && room.here === 0 ? "Waiting for students to join." : lostLabel(room.hands.length, room.here)}
-          </p>
           {hosting && (
             <a class="button ink hall-projector" href={`/s/${session.code}/present`}>Open projector page</a>
           )}

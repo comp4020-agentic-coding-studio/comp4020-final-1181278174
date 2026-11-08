@@ -47,8 +47,6 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
                 <span data-here hidden />
                 <span data-count>{howMany(all.length)}</span>
               </p>
-              {/* "Live", or "Reconnecting" when the count on this screen may be old (src/scripts/live.ts) */}
-              <p class="live present-live" role="status" data-live-status hidden />
             </div>
           </div>
 
@@ -62,6 +60,8 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
                 <p class="stage-silence" data-silence hidden={room.hands.length > 0}>
                   {SILENCE_SHORT}
                 </p>
+                {/* The connection qualifies the count beside it (src/scripts/live.ts). */}
+                <p class="live present-live" role="status" data-live-status hidden />
               </div>
               {/* drawn by src/scripts/hall.ts from the front of the room; the sentence beside it says the same in words */}
               <div class="hall-view" data-hall data-view="front" aria-hidden="true" />

@@ -193,7 +193,8 @@ const room = {
         <div data-board data-sort={sort}>
           {/* shown while the list is empty; the script hides it when the first question arrives */}
           <p class="card empty" data-empty hidden={list.length > 0}>
-            <Icon name="hand" size={22} /> No questions yet. Be the first to ask.
+            <Icon name="hand" size={22} /> <span>No questions yet.</span>{" "}
+            <a href={signedIn ? "#body" : authLink("signin", returnTo)}>Be the first to ask.</a>
           </p>
           <ol aria-label="Questions" class="questions">
             {list.map((q) => (

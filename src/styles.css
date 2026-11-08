@@ -46,6 +46,7 @@
   --color-strong-hover: #314c40;
   --color-strong-active: #13231e;
   --color-on-strong: var(--palette-white);
+  --color-strong-border: var(--palette-ink);
   --color-action: var(--palette-sunflower);
   --color-action-hover: #f9dd86;
   --color-action-active: #fae6a5;
@@ -150,10 +151,7 @@
     --color-accent-active: #e2eaff;
     --color-on-accent: #162d63;
     --color-accent-soft: #21395c;
-    --color-strong: #f5f7f4;
-    --color-strong-hover: #dce5dc;
-    --color-strong-active: #becfc3;
-    --color-on-strong: var(--palette-ink);
+    --color-strong-border: var(--color-control-border);
     --color-action-border: var(--palette-sunflower);
     --color-action-soft: #3d3823;
     --color-action-text: var(--palette-sunflower);
@@ -374,8 +372,8 @@ h4 {
   padding: var(--space-1) var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
-  background: var(--color-surface-subtle);
-  color: var(--ink);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
   font: 700 var(--text-xl) / 1 var(--display);
   letter-spacing: 0.12em;
 }
@@ -412,18 +410,20 @@ h4 {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   text-decoration: none;
-  transition:
-    color var(--motion-fast),
-    background-color var(--motion-fast);
 }
 .tabs a:hover {
   color: var(--ink);
   background: var(--color-surface-hover);
 }
 .tabs a[aria-current="page"] {
-  color: var(--ink);
-  background: var(--card);
-  box-shadow: var(--elevation-1);
+  color: var(--color-on-strong);
+  background: var(--color-strong);
+  box-shadow: inset 0 0 0 1px var(--color-strong-border);
+}
+.tabs:not(.parts) a[aria-current="page"]:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--color-strong-border),
+    0 0 0 6px var(--color-focus-halo) !important;
 }
 .band .parts {
   margin-top: var(--space-5);
@@ -445,12 +445,12 @@ h4 {
 }
 .parts a:hover {
   background: transparent;
-  color: var(--blue);
+  color: var(--ink);
 }
 .parts a[aria-current="page"] {
-  color: var(--blue);
+  color: var(--ink);
   background: transparent;
-  border-bottom-color: var(--blue);
+  border-bottom-color: var(--ink);
   box-shadow: none;
 }
 .parts-n {
@@ -464,8 +464,8 @@ h4 {
   font-variant-numeric: tabular-nums;
 }
 .parts a[aria-current="page"] .parts-n {
-  color: var(--blue);
-  background: var(--color-accent-soft);
+  color: var(--color-action-text);
+  background: var(--color-action-soft);
 }
 
 /* Cards are surfaces, never implied controls. */
@@ -577,10 +577,6 @@ textarea:disabled {
   font: 600 var(--text-md) / 1.3 var(--text);
   cursor: pointer;
   text-decoration: none;
-  transition:
-    background-color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard),
-    color var(--motion-fast) var(--ease-standard);
 }
 .button:hover,
 .host-button:hover,
@@ -592,6 +588,10 @@ textarea:disabled {
 .host-button:active,
 .me-too:active {
   background: var(--color-surface-hover);
+}
+/* A held press is temporary; the saved state still comes from aria-pressed. */
+:is(.button, .host-button, button.me-too, .report-yes):active:not(:disabled) {
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 .button.blue {
   background: var(--blue);
@@ -609,15 +609,13 @@ textarea:disabled {
 .button.ink {
   background: var(--color-strong);
   color: var(--color-on-strong);
-  border-color: var(--color-strong);
+  border-color: var(--color-strong-border);
 }
 .button.ink:hover {
   background: var(--color-strong-hover);
-  border-color: var(--color-strong-hover);
 }
 .button.ink:active {
   background: var(--color-strong-active);
-  border-color: var(--color-strong-active);
 }
 .button.tomato {
   background: var(--color-action);
@@ -708,11 +706,17 @@ textarea:disabled {
   display: inline-flex;
   align-items: center;
   min-height: var(--target-min);
+  font-weight: var(--weight-semibold);
 }
 .live {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 9em;
+  min-height: 1.5rem;
+  padding-inline: var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
   margin: 0;
   color: var(--color-success);
   font-size: var(--text-xs);
@@ -728,7 +732,9 @@ textarea:disabled {
   background: currentColor;
 }
 .live[data-live-status="waiting"] {
-  color: var(--muted);
+  color: var(--color-error);
+  background: var(--color-error-soft);
+  border-color: var(--color-error);
 }
 .live[data-live-status="waiting"]::before {
   background: transparent;
@@ -736,13 +742,21 @@ textarea:disabled {
 .going-over {
   margin: 0 0 var(--space-4);
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-success);
+  border: 1px solid var(--color-control-border);
   border-left-width: 4px;
   border-radius: var(--radius-control);
-  background: var(--color-success-soft);
-  color: var(--color-success);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
   font-weight: var(--weight-semibold);
   animation: going-over-expire 1ms step-end var(--going-over-left, 0ms) forwards;
+}
+/* The confirmed sentence is never delayed, cloned or counted through. */
+.count-changed {
+  animation: count-confirmed var(--motion-fast) ease-out;
+}
+@keyframes count-confirmed {
+  from { opacity: 0.8; }
+  to { opacity: 1; }
 }
 /* These animations expire real state, including without JS / reduced motion. */
 @keyframes going-over-expire {
@@ -940,8 +954,19 @@ textarea:disabled {
   grid-column: 1;
   grid-row: 1 / span 2;
 }
-.hall-count {
+.hall-status {
   order: -1;
+  display: grid;
+  grid-template-rows: auto 1.5rem;
+  justify-items: start;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid transparent;
+}
+.hall-status:has([data-live-status="waiting"]) {
+  border-bottom-color: var(--color-error);
+}
+.hall-count {
   margin: 0;
   font: 650 clamp(1.5rem, 2.2vw, 2rem) / 1.17 var(--display);
   letter-spacing: -0.03em;
@@ -1001,17 +1026,20 @@ textarea:disabled {
   font: 650 var(--text-xl) / 1.3 var(--display);
 }
 .lost-button[aria-pressed="true"] {
-  background: var(--color-action-soft);
-  color: var(--color-action-text);
+  background: var(--color-strong);
+  color: var(--color-on-strong);
   border: 2px solid var(--color-action-border);
 }
 .lost-button[aria-pressed="true"]:hover {
-  background: var(--color-action-soft);
-  border-color: var(--color-action-text);
+  background: var(--color-strong-hover);
+  border-color: var(--color-action-border);
+}
+.lost-button[aria-pressed="true"]:active {
+  background: var(--color-strong-active);
 }
 .lost-button[aria-pressed="true"] svg {
-  fill: currentColor;
-  stroke: var(--color-action-soft);
+  fill: var(--sun);
+  stroke: var(--color-strong);
   stroke-width: 1.4;
 }
 .hand-note {
@@ -1262,8 +1290,8 @@ a.count-label {
   font-weight: var(--weight-semibold);
 }
 .yours {
-  background: var(--color-accent-soft);
-  color: var(--blue);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
 }
 .vote {
   margin: 0;
@@ -1288,19 +1316,23 @@ a.count-label {
   font-weight: var(--weight-bold);
 }
 .me-too[aria-pressed="true"] {
-  background: var(--color-accent-soft);
+  background: var(--blue);
   border-color: var(--blue);
-  color: var(--blue);
+  color: var(--color-on-accent);
   box-shadow: inset 0 0 0 1px var(--blue);
 }
 .me-too[aria-pressed="true"] svg {
   fill: currentColor;
-  stroke: var(--color-accent-soft);
+  stroke: var(--blue);
   stroke-width: 1.4;
 }
 .me-too[aria-pressed="true"]:hover {
-  background: var(--color-accent-soft);
+  background: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
+}
+.me-too[aria-pressed="true"]:active {
+  background: var(--color-accent-active);
+  border-color: var(--color-accent-active);
 }
 span.me-too,
 span.me-too:hover {
@@ -1378,6 +1410,10 @@ span.me-too:hover {
   flex-basis: 100%;
   font-weight: var(--weight-normal);
 }
+main:has([data-live-status="waiting"]) .question-room {
+  border-color: var(--color-error);
+  background: var(--color-error-soft);
+}
 
 /* Report: deliberately small icon, full-size native disclosure hit target. */
 .report {
@@ -1419,7 +1455,7 @@ span.me-too:hover {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
-  border: 1px solid var(--color-control-border);
+  border: 1px solid var(--color-error);
   border-radius: var(--radius-card);
   background: var(--card);
   box-shadow: var(--elevation-2);
@@ -1954,6 +1990,9 @@ span.me-too:hover {
   gap: clamp(0.75rem, 1.5vh, 1rem);
   min-width: 0;
 }
+.stage-message .present-live {
+  align-self: flex-start;
+}
 .stage-lost {
   margin: 0;
   font: 750 clamp(4rem, 5.5vw, 7rem) / 1.04 var(--display);
@@ -2253,7 +2292,11 @@ span.me-too:hover {
 }
 .float-going-over {
   margin: 0;
-  color: var(--color-success);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
 }
@@ -2467,6 +2510,36 @@ button:disabled,
   .hall-caption {
     max-width: 30ch;
   }
+  .q-actions:has(details.report) {
+    position: relative;
+    flex-basis: 100%;
+    align-items: flex-start;
+    justify-content: flex-end;
+  }
+  .q-actions:has(details.report) .vote {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: calc(var(--target-min) + var(--space-1));
+  }
+  details.report {
+    width: 100%;
+  }
+  details.report > .report-flag {
+    display: flex;
+    width: var(--target-min);
+    margin-left: auto;
+  }
+  .report-confirm {
+    position: static;
+    width: 100%;
+    margin-top: var(--space-2);
+    padding: var(--space-3);
+    justify-content: space-between;
+    flex-wrap: wrap;
+    white-space: normal;
+    box-shadow: none;
+  }
   .hall .hint {
     font-size: var(--text-xs);
   }
@@ -2665,15 +2738,14 @@ button:disabled,
   .hero h1 {
     font-size: 3.25rem;
   }
-  .report-confirm {
-    white-space: normal;
-    width: 16rem;
-  }
   .question-layout .bar {
     align-items: flex-start;
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .count-changed {
+    animation: none;
+  }
   *,
   *::before,
   *::after {
@@ -2682,7 +2754,8 @@ button:disabled,
   }
 }
 @media (forced-colors: active) {
-  :focus-visible {
+  :focus-visible,
+  .tabs:not(.parts) a[aria-current="page"]:focus-visible {
     outline: 3px solid Highlight;
     box-shadow: none !important;
   }
@@ -2690,6 +2763,10 @@ button:disabled,
   .me-too[aria-pressed="true"],
   .lost-button[aria-pressed="true"] {
     border: 2px solid Highlight;
+  }
+  .tabs a[aria-current="page"] {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
   }
   .live::before {
     background: CanvasText;

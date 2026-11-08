@@ -1,6 +1,7 @@
 import { clock, GOING_OVER_MESSAGE, GOING_OVER_NOTE, lostLabel, SILENCE_SHORT } from "../lib/words.ts";
 import { goingOverBusy, goingOverLeft } from "./going-over.ts";
 import { type Hall, lastHall } from "./hand.ts";
+import { acknowledgeCount } from "./count-feedback.ts";
 
 // A small window that stays above every other window (Chrome and Edge on a
 // computer: Document Picture-in-Picture), so the hall is in view while
@@ -63,6 +64,7 @@ function tell(button: HTMLButtonElement, text: string): void {
 
 /** Copy the page's styles into the window, so it looks like the page. */
 function styled(win: Window): void {
+  win.document.documentElement.lang = document.documentElement.lang;
   for (const sheet of document.styleSheets) {
     try {
       const style = win.document.createElement("style");
@@ -209,7 +211,9 @@ async function popHall(): Promise<void> {
 
   const draw = (hall: Hall): void => {
     const lost = hall.others.length + (hall.mine === null ? 0 : 1);
-    count.textContent = lostLabel(lost, hall.here);
+    const text = lostLabel(lost, hall.here);
+    if (count.textContent !== text) count.textContent = text;
+    acknowledgeCount(count, !document.querySelector("form[data-hand][aria-busy]"));
     silence.hidden = lost > 0;
     const now = Date.now();
     const from = Math.max(hall.startedAt, now - 15 * 60_000);

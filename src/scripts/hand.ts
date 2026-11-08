@@ -1,6 +1,7 @@
 import { HAND_MS } from "../lib/hall.ts";
 import { handNote, lostLabel } from "../lib/words.ts";
 import { announceSessionChange, onSessionChange } from "./session-tabs.ts";
+import { acknowledgeCount } from "./count-feedback.ts";
 
 // "I'm lost" on an open page: the button, its note, and the sentence that says
 // how many of the people here are lost. The server sends how many hands are up
@@ -80,6 +81,7 @@ function watch(line: HTMLElement): void {
     const text = waiting ? "Waiting for students to join." : lostLabel(lost, Math.max(here, lost));
     for (const el of document.querySelectorAll<HTMLElement>("[data-lost]")) {
       if (el.textContent?.trim() !== text) el.textContent = text;
+      acknowledgeCount(el, !pressing && !optimistic);
     }
     // what silence does not show, while no hand is up
     for (const el of document.querySelectorAll<HTMLElement>("[data-silence]")) el.hidden = lost > 0 || waiting;
