@@ -1,4 +1,5 @@
 import { isHost, type Session, setState, setVote, STATES } from "./board.ts";
+import { publish } from "./live.ts";
 import { addMark, atCanberra, MAX_MARK, setRecording } from "./record.ts";
 
 // What a form sent to either part of a session does, where both parts take the
@@ -49,6 +50,7 @@ export function timelineMark(session: Session, person: string, form: FormData, l
   }
   addMark(session.id, label);
   log("timeline_marked", { session: session.code });
+  publish(session.id);
   return { ok: true };
 }
 
@@ -65,5 +67,6 @@ export function recordingStart(session: Session, person: string, form: FormData,
   }
   setRecording(session.id, at);
   log("recording_set", { session: session.code });
+  publish(session.id);
   return { ok: true };
 }

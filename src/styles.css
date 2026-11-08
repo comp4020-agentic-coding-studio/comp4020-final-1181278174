@@ -1248,22 +1248,52 @@ textarea {
 }
 
 .chart {
+  padding: calc(var(--mark-rows, 0) * 30px + 12px) 0 0 32px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+}
+
+.chart-plot {
+  position: relative;
+  height: 150px;
+  border-bottom: var(--line);
+  border-top: 1px solid #e7dcc0;
+}
+
+.chart-guide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e7dcc0;
+}
+
+.chart-scale {
+  position: absolute;
+  inset: 0 calc(100% + 8px) 0 auto;
+  width: 28px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.chart-scale span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
 }
 
 .chart-bars {
-  height: 150px;
+  position: relative;
+  height: 100%;
   display: flex;
   align-items: flex-end;
-  gap: 2px;
-  border-bottom: var(--line);
 }
 
 .chart-bar {
   flex: 1 1 0;
-  min-width: 1px;
+  min-width: 0;
   border-radius: 3px 3px 0 0;
   background: #cdbf9c;
 }
@@ -1286,7 +1316,18 @@ textarea {
   white-space: nowrap;
 }
 
-.busiest {
+.chart-ticks .chart-start {
+  left: 0;
+  transform: none;
+}
+
+.chart-ticks .chart-end {
+  right: 0;
+  transform: none;
+}
+
+.busiest,
+.minute-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1295,49 +1336,94 @@ textarea {
   gap: 6px;
 }
 
-.busiest li {
+.busiest li,
+.minute-list li {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   align-items: baseline;
   padding: 8px 12px;
   border: var(--line);
   border-radius: 12px;
   background: var(--card);
+  overflow-wrap: anywhere;
 }
 
-.busiest strong {
+.busiest strong,
+.minute-list strong {
   font-family: var(--display);
   font-size: 18px;
 }
 
-/* the host's marks on the timeline, each where its part starts */
-
-.chart {
-  position: relative;
-}
+/* Only numbers go on the chart. Nearby marks use separate rows. */
 
 .chart-mark {
   position: absolute;
-  top: 0;
-  height: 150px;
+  top: calc((var(--lane) + 1) * -30px);
+  bottom: 0;
   width: 2px;
   background: var(--blue);
 }
 
-.chart-mark span {
-  position: absolute;
-  top: -2px;
-  left: 4px;
-  white-space: nowrap;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 1px 6px;
-  border-radius: 6px;
+.chart-mark span,
+.mark-number {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-radius: 50%;
   background: var(--blue);
   color: #ffffff;
   font-size: 12px;
   font-weight: 700;
+}
+
+.chart-mark span {
+  position: absolute;
+  top: 0;
+  left: 1px;
+  transform: translateX(-50%);
+}
+
+.chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.chart-legend li {
+  display: grid;
+  grid-template-columns: 28px auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+}
+
+.chart-legend li > span:last-child {
+  overflow-wrap: anywhere;
+}
+
+.minute-details summary {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 12px 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.minute-details summary:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
+.minute-list {
+  padding-bottom: 4px;
 }
 
 .host-panel {
@@ -1391,6 +1477,10 @@ textarea {
   gap: 10px;
 }
 
+.marks[hidden] {
+  display: none;
+}
+
 /* on the hall, the host's mark for a new part of the lecture */
 .hall-mark {
   display: flex;
@@ -1411,6 +1501,7 @@ textarea {
 
 .timeline-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;

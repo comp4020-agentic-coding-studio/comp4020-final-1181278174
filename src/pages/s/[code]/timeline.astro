@@ -25,11 +25,16 @@ const log = Astro.locals.log;
 if (!session) Astro.response.status = 404;
 
 let shown = session ? sittings(session.id, people(session.id).size) : [];
+let refused = "";
+let markValue = "";
+let recordingValue: string | undefined;
 
 // The host's two forms: a mark now, and when the recording started. Anyone else is refused.
 if (session && Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   const intent = form.get("intent");
+  if (intent === "timeline_mark") markValue = String(form.get("label") ?? "");
+  if (intent === "recording") recordingValue = String(form.get("at") ?? "");
   const done =
     intent === "timeline_mark"
       ? timelineMark(session, person, form, log)
@@ -39,6 +44,10 @@ if (session && Astro.request.method === "POST") {
         : ({ ok: false, status: 422 } as const);
   if (done.ok) return Astro.redirect(`/s/${session.code}/timeline`, 303);
   Astro.response.status = done.status;
+  refused = done.status === 403 ? "Only the host can save a mark or recording time."
+    : intent === "timeline_mark" ? `Use at most ${MAX_MARK} characters for a mark.`
+    : intent === "recording" ? "Enter the recording start as a time, such as 14:02."
+    : "Choose a mark or a recording time to save.";
   session = findSession(session.code);
   shown = session ? sittings(session.id, people(session.id).size) : [];
 }
@@ -51,7 +60,7 @@ const recordingAt = session?.recordingAt ?? null;
 const about = (m: Minute): string[] => {
   const into = intoRecording(recordingAt, m.at);
   return [
-    `${m.lost} of ${m.here} lost`,
+    `${m.lost} of ${m.here} said they were lost`,
     partAt(all, m.at)?.label ?? "",
     into === undefined ? "" : `${into} min into the recording`,
   ].filter(Boolean);
@@ -64,13 +73,6 @@ const busiest = (minutes: Minute[]): Minute[] =>
     .sort((a, b) => b.lost - a.lost || b.lost / b.here - a.lost / a.here || a.at.getTime() - b.at.getTime())
     .slice(0, 3);
 
-/** Clock times under the chart: every 5, 10 or 30 minutes, as the sitting is long. */
-function ticks(minutes: Minute[]): { at: Date; left: number }[] {
-  const every = minutes.length <= 60 ? 5 : minutes.length <= 180 ? 10 : 30;
-  return minutes
-    .map((m, i) => ({ at: m.at, left: ((i + 0.5) / minutes.length) * 100 }))
-    .filter((t) => Math.round(t.at.getTime() / 60_000) % every === 0);
-}
 ---
 
 {
@@ -80,10 +82,11 @@ function ticks(minutes: Minute[]): { at: Date; left: number }[] {
         <SessionTabs code={session.code} at="timeline" count={listed} />
       </SessionBand>
 
-      <main id="main" class="wrap timeline">
+      <main id="main" class="wrap timeline" data-live={`/s/${session.code}/events`}>
         <section class="card timeline-head" aria-labelledby="timeline-title">
           <div class="timeline-title">
             <h2 id="timeline-title">When the room was lost</h2>
+            <span class="live" data-live-status hidden />
             {shown.length > 0 && (
               <button class="button pop" type="button" data-pop="timeline" hidden>
                 <Icon name="pop" size={16} /> Pop out
@@ -95,56 +98,86 @@ function ticks(minutes: Minute[]): { at: Date; left: number }[] {
           </p>
         </section>
 
+        <div data-sittings>
         {shown.length === 0 && (
           <p class="card empty">
             <Icon name="hand" size={22} /> Nobody has had this session open yet.
           </p>
         )}
 
-        {shown.map((s, n) => {
+        {shown.map((s) => {
           const scale = Math.max(1, s.most);
           const top = busiest(s.minutes);
+          const id = `sitting-${s.from.getTime()}`;
+          const lanes: number[] = [];
+          const marked = all.filter((mk) => mk.at >= s.from && mk.at < s.to).map((mk, i) => {
+            const left = ((mk.at.getTime() - s.from.getTime()) / (s.to.getTime() - s.from.getTime())) * 100;
+            // At phone width, nearby badges need separate rows. Labels live in the legend.
+            let lane = lanes.findIndex((previous) => left - previous >= 18);
+            if (lane < 0) lane = lanes.length;
+            lanes[lane] = left;
+            return { ...mk, number: i + 1, left, lane };
+          });
+          const middle = Math.floor(s.minutes.length / 2);
           return (
-            <section class="card sitting" aria-labelledby={`sitting-${n}`}>
-              <h3 id={`sitting-${n}`}>
-                {day(s.from)}, {clock(s.from)} to {clock(s.to)}
+            <section class="card sitting" aria-labelledby={id}>
+              <h3 id={id}>
+                {day(s.from)},{" "}<time datetime={s.from.toISOString()}>{clock(s.from)}</time>{" to "}
+                <time datetime={s.to.toISOString()}>{clock(s.to)}</time>
               </h3>
               <p class="hint">
                 {s.most} here at most{" · "}
-                {s.mostLost === 0 ? "nobody raised a hand" : `${s.mostLost} lost at most`}
+                {s.mostLost === 0 ? "nobody said they were lost" : `at most ${s.mostLost} said they were lost in a minute`}
               </p>
-              {/* the chart says what the list under it says, so screen readers skip it */}
-              <div class="chart" aria-hidden="true">
-                <div class="chart-bars">
+              <p class="hint">Each bar is one minute. Height: how many said they were lost.</p>
+              {/* Every minute is also written below, so screen readers can skip the drawing. */}
+              <div class="chart" aria-hidden="true" style={`--mark-rows: ${lanes.length}`}>
+                <div class="chart-plot">
+                  {scale > 1 && <span class="chart-guide" style={`bottom: ${Math.floor(scale / 2) / scale * 100}%`} />}
+                  <div class="chart-scale">
+                    <span style="bottom: 100%">{scale}</span>
+                    {scale > 1 && <span style={`bottom: ${Math.floor(scale / 2) / scale * 100}%`}>{Math.floor(scale / 2)}</span>}
+                    <span style="bottom: 0">0</span>
+                  </div>
+                  <div class="chart-bars" style={`gap: ${s.minutes.length > 120 ? 0 : s.minutes.length > 60 ? 1 : 2}px`}>
                   {s.minutes.map((m) => (
                     <span
                       class={m.lost > 0 && m.lost === s.mostLost ? "chart-bar most" : "chart-bar"}
-                      style={`height: ${m.lost === 0 ? 0 : Math.max(3, (m.lost / scale) * 100)}%`}
+                      style={`height: ${(m.lost / scale) * 100}%`}
                       title={`${clock(m.at)}: ${about(m).join(", ")}`}
                     />
                   ))}
-                </div>
-                {/* the host's marks, each where its part starts */}
-                {all
-                  .filter((mk) => mk.at >= s.from && mk.at < s.to)
-                  .map((mk) => (
-                    <span class="chart-mark" style={`left: ${((mk.at.getTime() - s.from.getTime()) / (s.to.getTime() - s.from.getTime())) * 100}%`}>
-                      <span>{mk.label}</span>
+                  </div>
+                  {marked.map((mk) => (
+                    <span class="chart-mark" title={`Mark ${mk.number}: ${mk.label}`} style={`left: clamp(1rem, ${mk.left}%, calc(100% - 1rem)); --lane: ${mk.lane}`}>
+                      <span>{mk.number}</span>
                     </span>
                   ))}
+                </div>
                 <div class="chart-ticks">
-                  {ticks(s.minutes).map((t) => (
-                    <span style={`left: ${t.left}%`}>{clock(t.at)}</span>
-                  ))}
+                  <span class="chart-start">{clock(s.from)}</span>
+                  {s.minutes.length >= 4 && <span style={`left: ${middle / s.minutes.length * 100}%`}>{clock(s.minutes[middle].at)}</span>}
+                  <span class="chart-end">{clock(s.to)}</span>
                 </div>
               </div>
+              {marked.length > 0 && (
+                <ol class="chart-legend" aria-label="Chart marks">
+                  {marked.map((mk) => (
+                    <li value={mk.number}>
+                      <span class="mark-number">{mk.number}</span>{" "}
+                      <time datetime={mk.at.toISOString()}>{clock(mk.at)}</time>{" "}
+                      <span>{mk.label}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
               {top.length > 0 && (
                 <>
                   <h4>The minutes most people were lost</h4>
                   <ol class="busiest" aria-label="The minutes most people were lost">
                     {top.map((m) => (
                       <li>
-                        <strong>{clock(m.at)}</strong>{" "}
+                        <strong><time datetime={m.at.toISOString()}>{clock(m.at)}</time></strong>{" "}
                         {about(m).map((part) => (
                           <>
                             <span>{part}</span>{" "}
@@ -155,18 +188,32 @@ function ticks(minutes: Minute[]): { at: Date; left: number }[] {
                   </ol>
                 </>
               )}
+              <details id={`${id}-minutes`} class="minute-details">
+                <summary id={`${id}-summary`}>Every minute ({s.minutes.length})</summary>
+                <ol class="minute-list" aria-label="Every minute">
+                  {s.minutes.map((m) => (
+                    <li>
+                      <strong><time datetime={m.at.toISOString()}>{clock(m.at)}</time></strong>{" "}
+                      {about(m).map((part) => <><span>{part}</span>{" "}</>)}
+                    </li>
+                  ))}
+                </ol>
+              </details>
             </section>
           );
         })}
+        </div>
+
+        <p data-timeline-status role="status" hidden={!refused}>{refused}</p>
 
         {hosting && (
           <section class="card host-panel" aria-labelledby="host-title">
             <h3 id="host-title">For the host</h3>
-            <form method="post" class="host-form">
+            <form method="post" class="host-form" data-timeline-form>
               <input type="hidden" name="intent" value="recording" />
               <label for="recording-at">The recording started at</label>
               <div class="host-row">
-                <input id="recording-at" name="at" type="time" required value={recordingAt ? clock(recordingAt) : ""} aria-describedby="recording-help" />
+                <input id="recording-at" name="at" type="time" required value={recordingValue ?? (recordingAt ? clock(recordingAt) : "")} aria-describedby="recording-help" />
                 <button class="button" type="submit">
                   Save
                 </button>
@@ -176,25 +223,23 @@ function ticks(minutes: Minute[]): { at: Date; left: number }[] {
                 video's owner.
               </p>
             </form>
-            <form method="post" class="host-form">
+            <form method="post" class="host-form" data-timeline-form>
               <input type="hidden" name="intent" value="timeline_mark" />
               <label for="mark-label">A mark now, where a new part starts</label>
               <div class="host-row">
-                <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} placeholder={`Part ${all.length + 1}`} />
+                <input id="mark-label" name="label" type="text" maxlength={MAX_MARK} value={markValue} placeholder={`Part ${all.length + 1}`} />
                 <button class="button ink" type="submit">
                   Mark
                 </button>
               </div>
             </form>
-            {all.length > 0 && (
-              <ul class="marks" aria-label="Marks">
+              <ul class="marks" aria-label="Marks" data-marks hidden={all.length === 0}>
                 {all.map((mk) => (
                   <li>
                     <span>{mk.label}</span> <span class="hint">{clock(mk.at)}</span>
                   </li>
                 ))}
               </ul>
-            )}
           </section>
         )}
 
@@ -203,6 +248,7 @@ function ticks(minutes: Minute[]): { at: Date; left: number }[] {
         </p>
       </main>
       <script>
+        import "../../../scripts/timeline.ts";
         import "../../../scripts/float.ts";
       </script>
     </Layout>
