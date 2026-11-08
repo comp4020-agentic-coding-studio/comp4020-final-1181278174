@@ -1,0 +1,29 @@
+---
+import type { TutorialState } from "../lib/tutorial.ts";
+import { clock } from "../lib/words.ts";
+import "../tutorial.css";
+
+type Props = { state: TutorialState; compact?: boolean };
+const { state, compact = false } = Astro.props;
+const now = Date.now();
+const remaining = state.endsAt === null ? 0 : Math.max(0, Math.ceil((state.endsAt - now) / 1000));
+const display = `${Math.floor(remaining / 60).toString().padStart(2, "0")}:${(remaining % 60).toString().padStart(2, "0")}`;
+---
+
+<section class:list={["tutorial-timer", { "tutorial-timer-compact": compact }]} aria-label="Current exercise" data-tutorial-timer data-ends-at={state.endsAt ?? ""} data-server-now={now}>
+  <div>
+    <p class="tutorial-eyebrow">Current exercise</p>
+    <h2 data-exercise-label>{state.label ?? "Room to work together"}</h2>
+    <p class="hint" data-exercise-note>{state.label ? "Keep working with your group. The timer is a guide to when to regroup." : "The tutor can set an exercise and a time to regroup."}</p>
+  </div>
+  <div class="tutorial-clock-wrap" hidden={state.endsAt === null} data-exercise-clock>
+    <p class="tutorial-clock" role="timer" aria-label="Time remaining" data-exercise-remaining>{display}</p>
+    <p class="hint" data-exercise-deadline>Regroup at <time datetime={state.endsAt === null ? undefined : new Date(state.endsAt).toISOString()}>{state.endsAt === null ? "" : clock(new Date(state.endsAt))}</time> (Canberra time)</p>
+  </div>
+  <p class="tutorial-time-up" role="status" data-exercise-expired hidden={state.endsAt === null || remaining > 0}>Time to regroup. The tutor decides what happens next.</p>
+  <noscript><p class="hint">This shows the time when you opened the page. Refresh for changes; the regroup time stays the same.</p></noscript>
+</section>
+
+<script>
+  import "../scripts/tutorial.ts";
+</script>

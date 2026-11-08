@@ -250,3 +250,43 @@ export const secrets = sqliteTable("secrets", {
   name: text("name").primaryKey(),
   value: text("value").notNull(),
 });
+
+// A row opts one session into tutorial mode. Lecture sessions have no row,
+// so their state, routes and live payload stay as they were.
+export const tutorialSessions = sqliteTable(
+  "tutorial_sessions",
+  {
+    sessionId: integer("session_id").primaryKey().references(() => sessions.id),
+    exercise: text("exercise"),
+    endsAt: integer("ends_at", { mode: "timestamp_ms" }),
+    // A change asks each browser to fetch its own view; no queue details go
+    // in the shared stream, including the ticket currently being called.
+    revision: integer("revision").notNull().default(0),
+  },
+  (t) => [
+    check("tutorial_exercise_pair", sql`(${t.exercise} IS NULL AND ${t.endsAt} IS NULL) OR (${t.exercise} IS NOT NULL AND length(${t.exercise}) BETWEEN 1 AND 80 AND ${t.endsAt} IS NOT NULL)`),
+    check("tutorial_revision_nonnegative", sql`${t.revision} >= 0`),
+  ],
+);
+
+// Only requests still waiting or being helped are kept. Person ids stay on
+// the server. Students see their own ticket; the host sees one called ticket,
+// never a list of people or an account beside a ticket.
+export const tutorialRequests = sqliteTable(
+  "tutorial_requests",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sessionId: integer("session_id").notNull().references(() => tutorialSessions.sessionId),
+    person: text("person").notNull(),
+    ticket: text("ticket").notNull(),
+    requestedAt: integer("requested_at", { mode: "timestamp_ms" }).notNull(),
+    calledAt: integer("called_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    uniqueIndex("tutorial_one_request").on(t.sessionId, t.person),
+    uniqueIndex("tutorial_ticket_unique").on(t.sessionId, t.ticket),
+    uniqueIndex("tutorial_one_called").on(t.sessionId).where(sql`called_at IS NOT NULL`),
+    index("tutorial_queue_order").on(t.sessionId, t.id),
+    check("tutorial_ticket_shape", sql`${t.ticket} GLOB '[1-9][0-9][0-9][0-9]'`),
+  ],
+);

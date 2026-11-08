@@ -14,6 +14,7 @@ import { authLink } from "../../../lib/auth.ts";
 import type { Refused } from "../../../lib/abuse.ts";
 import { intoRecording, type Minute, marksOf, MAX_MARK, partAt, sittings } from "../../../lib/record.ts";
 import { clock, day, tooFast } from "../../../lib/words.ts";
+import { tutorialFor } from "../../../lib/tutorial.ts";
 
 // The hall's record: how many hands were up in each minute, out of how many
 // people, for the last few sittings. Counts only, so anyone with the code may
@@ -30,6 +31,14 @@ const signedIn = Astro.locals.account !== null;
 const returnTo = Astro.url.pathname + Astro.url.search;
 const log = Astro.locals.log;
 if (!session) Astro.response.status = 404;
+if (session && tutorialFor(session.id)) {
+  if (Astro.request.method === "POST") {
+    const status = signedIn && isHost(session, person) ? 422 : 403;
+    log("refused", { session: session.code, action: "tutorial-timeline", reason: "no-tutorial-timeline" });
+    return new Response("Tutorials use Questions for later. Open /s/" + session.code + "/questions to revisit this class's questions.", { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  }
+  return Astro.redirect(`/s/${session.code}/questions?from=timeline`, 303);
+}
 
 let shown = session ? sittings(session.id, people(session.id).size) : [];
 let refused = "";

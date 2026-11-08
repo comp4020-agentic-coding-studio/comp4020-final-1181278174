@@ -14,6 +14,7 @@ import { authLink } from "../../lib/auth.ts";
 import { accountRefusal } from "../../lib/abuse.ts";
 import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
 import { classState, latestClass } from "../../lib/classes.ts";
+import { tutorialFor } from "../../lib/tutorial.ts";
 import { HAND_MS } from "../../lib/hall.ts";
 import { goingOverAge } from "../../lib/going-over.ts";
 import { guideDone, handleGuide } from "../../lib/guide.ts";
@@ -32,6 +33,7 @@ if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
   return Astro.redirect(`/s/${code}${Astro.url.search}`, 301);
 }
 const session = isCode(code) ? findSession(code) : undefined;
+if (session && tutorialFor(session.id)) return Astro.rewrite(`/s/${code}/tutorial${Astro.url.search}`);
 const person = Astro.locals.person;
 const signedIn = Astro.locals.account !== null;
 const returnTo = Astro.url.pathname + Astro.url.search;

@@ -1,0 +1,135 @@
+/* Tutorial composition uses main's semantic tokens and shared controls.
+   Its surfaces, colors, focus states and disabled controls follow light/dark
+   mode in styles.css; no tutorial palette or lecture UI overrides. */
+.wrap.tutorial-room {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-12);
+}
+.tutorial-room > * { min-width: 0; }
+.tutorial-wide { grid-column: 1 / -1; }
+.tutorial-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.tutorial-status-row .live { margin: 0; }
+.tutorial-refresh {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.tutorial-class {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+.tutorial-class p { margin: var(--space-1) 0; }
+.tutorial-class form { flex: none; }
+.tutorial-room h2,
+.tutorial-timer h2 {
+  margin: var(--space-2) 0 var(--space-4);
+  font: var(--weight-bold) var(--text-2xl) / var(--leading-heading) var(--display);
+  letter-spacing: var(--tracking-heading);
+  overflow-wrap: anywhere;
+}
+.tutorial-eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.tutorial-room .hint,
+.tutorial-timer .hint { display: block; }
+.tutorial-queue-count {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+.tutorial-ticket {
+  margin: var(--space-6) 0;
+  padding: var(--space-6);
+  border: var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-subtle);
+}
+.tutorial-ticket.called {
+  border-color: var(--blue);
+  background: var(--color-accent-soft);
+}
+.tutorial-ticket > p:first-child { margin: 0; font-weight: var(--weight-semibold); }
+.tutorial-ticket strong {
+  font: var(--weight-bold) clamp(3rem, 5vw, 4rem) / var(--leading-heading) var(--display);
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+}
+.tutorial-ticket .tutorial-position { font-size: var(--text-xl); font-weight: var(--weight-semibold); }
+.tutorial-ticket form { margin-top: var(--space-5); }
+.tutorial-ticket p:last-child { margin-bottom: 0; }
+.tutorial-ticket form + .hint { margin-top: var(--space-3); }
+.tutorial-queue-empty { padding: var(--space-6) 0; }
+.tutorial-divider { border-top: var(--line); padding-top: var(--space-4); }
+.tutorial-join { margin: var(--space-6) 0 var(--space-4); }
+.tutorial-join .button { width: 100%; }
+.tutorial-clock {
+  margin: var(--space-6) 0 var(--space-2);
+  font: var(--weight-bold) clamp(3rem, 6vw, 5rem) / 1 var(--display);
+  letter-spacing: var(--tracking-heading);
+  font-variant-numeric: tabular-nums;
+}
+.tutorial-timer .hint { margin: var(--space-2) 0; }
+.tutorial-time-up {
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--space-1) solid var(--color-action-border);
+  border-radius: var(--radius-control);
+  color: var(--color-action-text);
+  background: var(--color-action-soft);
+  font-weight: var(--weight-semibold);
+}
+.tutorial-exercise-controls {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: var(--line);
+}
+.tutorial-exercise-form { margin-top: var(--space-5); }
+.tutorial-exercise-form .button { margin-top: var(--space-2); }
+.tutorial-later { display: flex; align-items: center; gap: var(--space-8); }
+.tutorial-later p { margin: var(--space-2) 0; }
+.tutorial-later .button { flex: none; }
+.tutorial-link-button { text-align: center; }
+.tutorial-footnote { color: var(--muted); font-size: var(--text-sm); }
+.tutorial-footnote p { margin-top: 0; }
+.tutorial-footnote a { display: inline-flex; align-items: center; min-height: var(--target-min); }
+.tutorial-timer-compact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+  padding: var(--space-5);
+  border: var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-subtle);
+}
+.tutorial-timer-compact > div:first-child { flex: 1; min-width: 0; }
+.tutorial-timer-compact h2 { font-size: var(--text-xl); margin-bottom: var(--space-2); }
+.tutorial-timer-compact .tutorial-clock { font-size: var(--text-4xl); margin-top: var(--space-2); }
+.tutorial-timer-compact .tutorial-time-up { flex-basis: 100%; }
+@media (max-width: 760px) {
+  .wrap.tutorial-room { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); padding-top: var(--space-5); }
+  .tutorial-class,
+  .tutorial-later,
+  .tutorial-timer-compact { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+  .tutorial-class .button,
+  .tutorial-ticket .button { width: 100%; }
+  .tutorial-ticket { margin: var(--space-5) 0; padding: var(--space-4); }
+}

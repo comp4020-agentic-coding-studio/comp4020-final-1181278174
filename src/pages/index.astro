@@ -11,6 +11,7 @@ import { guideDone } from "../lib/guide.ts";
 // Starting a session posts back here: on success it goes to the new
 // session, otherwise this page comes back with the name kept and the reason.
 let title = "";
+let mode: "lecture" | "tutorial" = "lecture";
 let problem: string | undefined;
 const signedOut = !Astro.locals.account;
 const signin = authLink("signin", Astro.url.pathname + Astro.url.search);
@@ -22,7 +23,9 @@ if (Astro.request.method === "POST" && signedOut) {
 } else if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   title = String(form.get("title") ?? "").trim();
-  problem = checkTitle(title);
+  const chosen = form.get("mode") ?? "lecture";
+  mode = chosen === "tutorial" ? "tutorial" : "lecture";
+  problem = chosen !== "lecture" && chosen !== "tutorial" ? "Choose Lecture or Tutorial for this session." : checkTitle(title);
   if (!problem) {
     const limited = accountRefusal(Astro.locals.person, "start", Astro.locals.log);
     if (limited) {
@@ -30,13 +33,13 @@ if (Astro.request.method === "POST" && signedOut) {
       Astro.response.headers.set("Retry-After", String(limited.retryAfter));
       problem = tooFast(limited.retryAfter);
     } else {
-      const code = startSession(title, Astro.locals.person);
+      const code = startSession(title, Astro.locals.person, mode);
       Astro.locals.log("session_started", { session: code });
       return Astro.redirect(`/s/${code}`, 303);
     }
   } else {
     Astro.response.status = 422;
-    const reason = title.length === 0 ? "empty" : "too-long";
+    const reason = chosen !== "lecture" && chosen !== "tutorial" ? "no-such-mode" : title.length === 0 ? "empty" : "too-long";
     Astro.locals.log("refused", { action: "start", reason, length: length(title) });
   }
 }
@@ -98,6 +101,12 @@ const hostGuideComplete = guideDone({ account: Astro.locals.account, cookies: As
               placeholder="COMP4020 week 9 lecture"
               value={title}
             />
+            <label for="mode">Session mode</label>
+            <select id="mode" name="mode" aria-describedby="mode-help">
+              <option value="lecture" selected={mode === "lecture"}>Lecture</option>
+              <option value="tutorial" selected={mode === "tutorial"}>Tutorial</option>
+            </select>
+            <p class="hint" id="mode-help">Lecture: hands and questions. Tutorial: tutor visits, a shared exercise timer and questions for later.</p>
             <button class="button ink" type="submit">Start a session</button>
           </form>
         )}
@@ -114,8 +123,8 @@ const hostGuideComplete = guideDone({ account: Astro.locals.account, cookies: As
                   {day(h.createdAt)}, {clock(h.createdAt)} · Code {h.code}
                 </p>
                 <p class="hosted-links">
-                  <a href={`/s/${h.code}`}>Hall</a>
-                  <a href={`/s/${h.code}/timeline`}>When the room was lost</a>
+                  <a href={`/s/${h.code}`}>{h.mode === "tutorial" ? "Tutorial room" : "Hall"}</a>
+                  <a href={`/s/${h.code}/${h.mode === "tutorial" ? "questions" : "timeline"}`}>{h.mode === "tutorial" ? "Questions for later" : "When the room was lost"}</a>
                 </p>
               </li>
             ))}

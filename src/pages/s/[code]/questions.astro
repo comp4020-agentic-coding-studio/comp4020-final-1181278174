@@ -7,6 +7,7 @@ import JoinForm from "../../../components/JoinForm.astro";
 import SessionBand from "../../../components/SessionBand.astro";
 import SessionTabs from "../../../components/SessionTabs.astro";
 import SlimHeader from "../../../components/SlimHeader.astro";
+import TutorialTimer from "../../../components/TutorialTimer.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { mark, report, unreport, vote } from "../../../lib/actions.ts";
 import { authLink } from "../../../lib/auth.ts";
@@ -28,6 +29,7 @@ import { goingOverAge } from "../../../lib/going-over.ts";
 import { guideDone } from "../../../lib/guide.ts";
 import { people } from "../../../lib/live.ts";
 import { handsUp } from "../../../lib/room.ts";
+import { tutorialFor } from "../../../lib/tutorial.ts";
 
 // The questions, the second part of a session: asking, "Me too", and the
 // host's buttons. The hall, at /s/CODE, is the first.
@@ -37,6 +39,7 @@ if (Astro.request.method === "GET" && code !== raw && isCode(code)) {
   return Astro.redirect(`/s/${code}/questions${Astro.url.search}`, 301);
 }
 const session = isCode(code) ? findSession(code) : undefined;
+const tutorial = session ? tutorialFor(session.id) : undefined;
 const sort: Sort = Astro.url.searchParams.get("sort") === "recent" ? "recent" : "popular";
 const base = `/s/${code}/questions`;
 const here = sort === "recent" ? `${base}?sort=recent` : base;
@@ -111,12 +114,21 @@ const room = {
 
 {
   session ? (
-    <Layout title={`Questions · ${session.title} · Hands Up`}>
+    <Layout title={`${tutorial ? "Questions for later" : "Questions"} · ${session.title} · Hands Up`}>
       <SessionBand code={session.code} title={session.title} hosting={hosting} guideComplete={guideComplete}>
-        <SessionTabs code={session.code} at="questions" count={listed} />
+        <SessionTabs code={session.code} at="questions" count={listed} mode={tutorial ? "tutorial" : "lecture"} />
       </SessionBand>
 
       <main id="main" class="wrap question-layout" data-live={`/s/${session.code}/events`}>
+        {tutorial && (
+          <section class="tutorial-questions" aria-labelledby="later-title">
+            <h2 id="later-title">Questions for the next lecture</h2>
+            <p>Keep unresolved questions for the next lecture. They stay on this board after class; they are not copied to another session.</p>
+            <p class="hint">No author names are shown. Wording or timing may identify you in this small room. Leave out names and identifying details. <a href="/privacy">Privacy and rules</a></p>
+            {Astro.url.searchParams.get("from") === "timeline" && <p class="hint">Tutorials do not show a personal help history. Keep the questions you want to revisit here.</p>}
+            <TutorialTimer state={tutorial} compact />
+          </section>
+        )}
         {refused && (
           <p class="alert" role="alert">
             {refused}
@@ -134,7 +146,7 @@ const room = {
             )}
             <div class="ask-row">
               <p class="hint" id="body-help">
-                <Icon name="lock" size={14} /> Anonymous, even to the host
+                <Icon name="lock" size={14} /> {tutorial ? "No author names on this board" : "Anonymous, even to the host"}
               </p>
               <button class="button tomato" type="submit">
                 Ask
@@ -157,12 +169,12 @@ const room = {
           {posted && (
             <>
               Question posted. <a href={`#q-${posted.id}`}>View your question</a>{" "}
-              <a href={`/s/${session.code}#hall`}>Back to the hall</a>
+              <a href={`/s/${session.code}${tutorial ? "" : "#hall"}`}>{tutorial ? "Back to the tutorial room" : "Back to the hall"}</a>
             </>
           )}
         </p>
 
-        {hosting && (
+        {hosting && !tutorial && (
           <div class="question-room">
             <p aria-live="polite" data-lost data-host data-room={JSON.stringify(room)}>
               {room.here === 0 ? "Waiting for students to join." : lostLabel(room.hands.length, room.here)}
@@ -186,12 +198,12 @@ const room = {
           <div class="bar-end">
             {/* shown by the page's script once its stream is open */}
             <p class="live" role="status" data-live-status hidden />
-            <p class="count-label" data-here hidden />
+            {!tutorial && <p class="count-label" data-here hidden />}
             <p class="count-label" data-count>{howMany(listed)}</p>
           </div>
         </div>
 
-        <GoingOver age={goingOverAge(session.id)} />
+        {!tutorial && <GoingOver age={goingOverAge(session.id)} />}
         {/* the page's script (src/scripts/live.ts) keeps what is in here up to date */}
         <div data-board data-sort={sort}>
           <ReportedNotice list={list} hosting={hosting} link={(id) => `#q-${id}`} />
@@ -238,3 +250,11 @@ const room = {
     </Layout>
   )
 }
+
+<style>
+  .tutorial-questions { display: grid; gap: var(--space-4); }
+  .tutorial-questions h2 { margin: 0; font: var(--weight-bold) var(--text-2xl) / var(--leading-heading) var(--display); }
+  .tutorial-questions p { margin: 0; max-width: 68ch; }
+  .tutorial-questions .hint { display: block; }
+  .tutorial-questions .hint a { display: inline-flex; align-items: center; min-height: var(--target-min); }
+</style>

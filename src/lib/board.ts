@@ -7,7 +7,7 @@ import { notePresence } from "./record.ts";
 import { type Hand, setHand } from "./room.ts";
 import { popularOrder, voteCount } from "./order.ts";
 import { AUDIT_KEY_VERSION, seal } from "./escrow.ts";
-import { questions, reports, sealedAuthors, sessions, votes } from "./schema.ts";
+import { questions, reports, sealedAuthors, sessions, tutorialSessions, votes } from "./schema.ts";
 import { tagFor } from "./tags.ts";
 
 export const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -54,10 +54,16 @@ const HOSTED_SHOWN = 10;
  * The sessions this account started, newest first, so a lecturer can find
  * last week's timeline from any browser they sign in on.
  */
-export function sessionsHostedBy(person: string): Pick<Session, "code" | "title" | "createdAt">[] {
+export function sessionsHostedBy(person: string): (Pick<Session, "code" | "title" | "createdAt"> & { mode: "lecture" | "tutorial" })[] {
   return db
-    .select({ code: sessions.code, title: sessions.title, createdAt: sessions.createdAt })
+    .select({
+      code: sessions.code,
+      title: sessions.title,
+      createdAt: sessions.createdAt,
+      mode: sql<"lecture" | "tutorial">`case when ${tutorialSessions.sessionId} is null then 'lecture' else 'tutorial' end`,
+    })
     .from(sessions)
+    .leftJoin(tutorialSessions, eq(tutorialSessions.sessionId, sessions.id))
     .where(eq(sessions.host, person))
     .orderBy(desc(sessions.createdAt), desc(sessions.id))
     .limit(HOSTED_SHOWN)
@@ -76,15 +82,19 @@ export function checkTitle(title: string): string | undefined {
   if (length(title) > MAX_TITLE) return `A name can be up to ${MAX_TITLE} characters; this one is ${length(title)}.`;
 }
 
-export function startSession(title: string, host: string): string {
+export function startSession(title: string, host: string, mode: "lecture" | "tutorial" = "lecture"): string {
   for (;;) {
     const code = Array.from({ length: 4 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
-    const made = db
-      .insert(sessions)
-      .values({ code, title, host, createdAt: new Date() })
-      .onConflictDoNothing({ target: sessions.code })
-      .run();
-    if (made.changes === 1) return code;
+    const made = db.transaction((tx) => {
+      const session = tx.insert(sessions)
+        .values({ code, title, host, createdAt: new Date() })
+        .onConflictDoNothing({ target: sessions.code })
+        .returning({ id: sessions.id }).get();
+      if (!session) return false;
+      if (mode === "tutorial") tx.insert(tutorialSessions).values({ sessionId: session.id }).run();
+      return true;
+    });
+    if (made) return code;
   }
 }
 

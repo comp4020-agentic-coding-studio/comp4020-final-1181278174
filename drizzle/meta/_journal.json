@@ -64,6 +64,13 @@
       "when": 1794162081870,
       "tag": "0008_guide",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1794175783590,
+      "tag": "0009_tutorial-mode",
+      "breakpoints": true
     }
   ]
 }
