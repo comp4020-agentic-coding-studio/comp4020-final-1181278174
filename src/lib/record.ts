@@ -10,6 +10,8 @@ import { hands, marks, presence, sessions } from "./schema.ts";
 // nothing here says whose hand, and nothing leaves here but numbers.
 
 const MINUTE = 60_000;
+// A dropped stream or a restart must not leave its last count here all night.
+const CARRY_MINUTES = 2;
 // a quiet spell longer than this starts a new sitting: the next lecture, or the marker's second visit
 const GAP_MINUTES = 20;
 // how many sittings the timeline shows, newest first
@@ -27,6 +29,16 @@ export function notePresence(sessionId: number, here: number, at = Date.now()): 
     .run();
 }
 
+/** Keep a row each minute even when an open session has no changes. Returns a way to stop the heartbeat. */
+export function startPresenceHeartbeat(current: () => Iterable<readonly [sessionId: number, here: number]>): () => void {
+  const timer = setInterval(() => {
+    const at = Date.now();
+    for (const [sessionId, here] of current()) notePresence(sessionId, here, at);
+  }, MINUTE);
+  timer.unref();
+  return () => clearInterval(timer);
+}
+
 /** One minute of the timeline: when it starts, how many were here, and how many of them had a hand up. */
 export type Minute = { at: Date; here: number; lost: number };
 /** A stretch of time with someone in the session, with no quiet spell longer than GAP_MINUTES. */
@@ -36,22 +48,21 @@ export type Sitting = { from: Date; to: Date; minutes: Minute[]; most: number; m
 export function sittings(sessionId: number, hereNow: number, now = Date.now()): Sitting[] {
   const rows = db.select().from(presence).where(eq(presence.sessionId, sessionId)).orderBy(asc(presence.minute)).all();
   if (rows.length === 0) return [];
-  const byMinute = new Map(rows.map((row) => [row.minute, row]));
   const nowMinute = Math.floor(now / MINUTE);
   const lastRow = rows[rows.length - 1];
   const end = hereNow > 0 ? nowMinute : lastRow.minute;
 
-  // every minute from the first row on, with the count carried over a minute that has no row
+  // A missing row gets at most two minutes of grace. Longer gaps are quiet,
+  // including after a restart that never got to write a final zero.
   const counted: { minute: number; here: number }[] = [];
-  let carry = 0;
   // a long quiet spell is skipped over rather than walked minute by minute
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const next = i + 1 < rows.length ? rows[i + 1].minute : end + 1;
     counted.push({ minute: row.minute, here: row.most });
-    carry = row.last;
-    if (carry > 0) {
-      for (let m = row.minute + 1; m < next && m <= end; m++) counted.push({ minute: m, here: carry });
+    if (row.last > 0) {
+      const carriedTo = Math.min(next - 1, end, row.minute + CARRY_MINUTES);
+      for (let m = row.minute + 1; m <= carriedTo; m++) counted.push({ minute: m, here: row.last });
     }
   }
   const occupied = counted.filter((c) => c.here > 0);

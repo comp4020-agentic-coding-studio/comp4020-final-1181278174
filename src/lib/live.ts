@@ -1,7 +1,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "./db.ts";
 import { popularOrder, voteCount } from "./order.ts";
-import { notePresence } from "./record.ts";
+import { notePresence, startPresenceHeartbeat } from "./record.ts";
 import { handsUp } from "./room.ts";
 import { questions, sessions } from "./schema.ts";
 
@@ -29,6 +29,7 @@ type Listener = { person: string | null; send: (event: string) => void };
 
 const listeners = new Map<number, Set<Listener>>();
 const waiting = new Map<number, ReturnType<typeof setTimeout>>();
+startPresenceHeartbeat(() => [...listeners.keys()].map((id) => [id, here(id)] as const));
 
 // Changes this close together go out as one event.
 const GATHER_MS = 100;
