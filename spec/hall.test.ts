@@ -164,6 +164,40 @@ describe("the two parts of a session", () => {
 });
 
 describe("the host and the empty hall", () => {
+  it("waits for students and offers the projector prominently, without inviting the host to raise a hand", async () => {
+    const host = new Visitor();
+    const page = await startSession(host, `Waiting ${tag()}`);
+    const hall = page.doc.querySelector('section[aria-labelledby="hall-count"]')!;
+    expect(hall.textContent).toContain("Waiting for students to join.");
+    expect(hall.textContent).not.toContain("0 here. No hands up right now.");
+    expect(page.doc.body.textContent).not.toContain("Lost? Raise yours");
+    const silence = [...hall.querySelectorAll("p")].find((p) => p.textContent?.trim() === "That doesn't mean everyone follows.");
+    expect(silence?.hidden).toBe(true);
+    const projector = [...hall.querySelectorAll("a")].find((a) => a.textContent?.trim() === "Open projector page");
+    expect(projector, "the empty hall needs its own projector link").toBeDefined();
+    expect(new URL(projector!.getAttribute("href")!, page.url).pathname).toBe(`${page.url.pathname}/present`);
+  });
+
+  it("shows the host the students' count and short silence line once students join", async () => {
+    const host = new Visitor();
+    const hallPage = await startSession(host, `Joined ${tag()}`);
+    const path = hallPage.url.pathname;
+    const { watcher, stream } = await here(path);
+    await stream.until((board) => board.here === 1);
+
+    const page = await host.open(path);
+    expect(page.doc.body.textContent).toContain("1 here. No hands up right now.");
+    expect(page.doc.body.textContent).not.toContain("Waiting for students to join.");
+    expect(page.doc.body.textContent).not.toContain("Lost? Raise yours");
+    const silence = [...page.doc.querySelectorAll("p")].find((p) => p.textContent?.trim() === "That doesn't mean everyone follows.");
+    expect(silence?.hidden).toBe(false);
+
+    await press(watcher, path);
+    const raised = await host.open(path);
+    expect(raised.doc.body.textContent).toContain("1 of 1 here says they're lost");
+    expect(raised.doc.body.textContent).not.toContain("Lost? Raise yours");
+  });
+
   it("the host teaches: no hand on their hall, and not counted among those here", async () => {
     const host = new Visitor();
     const hallPage = await startSession(host, `Host ${tag()}`);
@@ -184,6 +218,7 @@ describe("the host and the empty hall", () => {
     const text = (await watcher.open(path)).doc.body.textContent ?? "";
     expect(text).toContain("No hands up right now");
     expect(text).toContain("doesn't mean everyone follows");
+    expect(text).toContain("Lost? Raise yours, no words needed.");
   });
 
   it("the host can mark one of the most wanted answered from the hall", async () => {

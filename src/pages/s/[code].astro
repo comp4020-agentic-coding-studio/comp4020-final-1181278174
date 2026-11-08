@@ -14,7 +14,7 @@ import { goingOverAge } from "../../lib/going-over.ts";
 import { people } from "../../lib/live.ts";
 import { MAX_MARK, marksOf, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
-import { GOING_OVER_NOTE, handNote, lostLabel, SILENCE } from "../../lib/words.ts";
+import { GOING_OVER_NOTE, handNote, lostLabel, SILENCE, SILENCE_SHORT } from "../../lib/words.ts";
 
 // The hall, the first part of a session: "I'm lost", and how many of the
 // people here have pressed it. Under it, the three open questions the room
@@ -103,13 +103,16 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
             {/* shown by the page's script once its stream is open */}
             <p class="live" role="status" data-live-status hidden />
           </div>
-          <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
-            {lostLabel(room.hands.length, room.here)}
+          <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-host={hosting ? "" : undefined} data-room={JSON.stringify(room)}>
+            {hosting && room.here === 0 ? "Waiting for students to join." : lostLabel(room.hands.length, room.here)}
           </p>
+          {hosting && (
+            <a class="button ink hall-projector" href={`/s/${session.code}/present`}>Open projector page</a>
+          )}
           <GoingOver age={goingOverAge(session.id)} />
           {goingOverProblem && <p class="alert" role="alert">{goingOverProblem}</p>}
-          <p class="hint hall-silence" data-silence hidden={room.hands.length > 0}>
-            {SILENCE}
+          <p class="hint hall-silence" data-silence hidden={room.hands.length > 0 || (hosting && room.here === 0)}>
+            {hosting ? SILENCE_SHORT : SILENCE}
           </p>
           <p class="hint">
             <Icon name="lock" size={14} /> Nobody, the host included, can see whose hands they are.
@@ -207,3 +210,12 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
     </Layout>
   )
 }
+
+<style>
+  .hall-projector {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+  }
+</style>
