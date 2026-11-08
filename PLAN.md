@@ -503,7 +503,9 @@ hand, an export.
 - a raised hand reaches another open page within a second
 - no page and no event ties a hand to a person or a seat
 - two raises from one person at once make one hand
-- a hand comes down by itself after its time (shortened for the tests)
+- the person whose hand is up is told when it comes down by itself, 3 minutes
+  on. The coming down itself is checked by hand: the checks in CI run the
+  same image that deploys, so the 3 minutes cannot be shortened for them.
 - the timeline lists hands that have come down
 - only the host can add a mark or set the recording time
 - the board's checks move to `/s/CODE/questions`

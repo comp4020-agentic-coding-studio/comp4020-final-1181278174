@@ -14,12 +14,16 @@ import {
   listQuestions,
   MAX_QUESTION,
   normaliseCode,
+  raiseHand,
   setState,
   setVote,
   type Sort,
   STATES,
 } from "../../lib/board.ts";
-import { howMany } from "../../lib/words.ts";
+import { people } from "../../lib/live.ts";
+import { HAND_MS } from "../../lib/hall.ts";
+import { handOf, handsUp } from "../../lib/room.ts";
+import { handNote, howMany, lostLabel } from "../../lib/words.ts";
 
 const raw = Astro.params.code ?? "";
 const code = normaliseCode(raw);
@@ -61,6 +65,16 @@ if (session && Astro.request.method === "POST") {
     }
     Astro.response.status = 404;
     log("refused", { action: "vote", session: session.code, question: Number.isInteger(id) ? id : undefined, reason: vote });
+  } else if (form.get("intent") === "hand") {
+    // "I'm lost": one press, no words. Like a vote, it sends up (1) or down (0).
+    const up = form.get("up");
+    if (up === "1" || up === "0") {
+      const done = raiseHand(session, person, up === "1");
+      log(done === "unchanged" ? "hand_unchanged" : `hand_${done}`, { session: session.code });
+      return Astro.redirect(`${here}#hall`, 303);
+    }
+    Astro.response.status = 422;
+    log("refused", { action: "hand", session: session.code, reason: "no-such-value" });
   } else if (form.get("intent") === "state") {
     // the host's buttons. Anyone else who sends this is refused, and shown the page as it is.
     const id = Number(form.get("question"));
@@ -79,6 +93,14 @@ if (!session) Astro.response.status = 404;
 const list = session ? listQuestions(session, person, sort) : [];
 const hosting = session !== undefined && isHost(session, person);
 const listed = list.filter((q) => q.state !== "hidden").length;
+
+// The hall as this person is about to see it: everyone with the session open,
+// and this person, who will be once the page's stream opens. How long their own
+// hand has been up is put in their page, never in what the stream sends.
+const inRoom = session ? [...new Set([...people(session.id), person])] : [];
+const mine = session ? handOf(session.id, person) : undefined;
+const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom) : [], mine: mine ?? null };
+const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - mine);
 ---
 
 {
@@ -106,6 +128,22 @@ const listed = list.filter((q) => q.state !== "hidden").length;
       </header>
 
       <main id="main" class="wrap" data-live={`/s/${session.code}/events`}>
+        <section class="card hall" id="hall" aria-labelledby="hall-count">
+          <p class="hall-count" id="hall-count" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
+            {lostLabel(room.hands.length, room.here)}
+          </p>
+          <form method="post" class="hall-hand" data-hand>
+            <input type="hidden" name="intent" value="hand" />
+            <input type="hidden" name="up" value={mine === undefined ? "1" : "0"} />
+            <button class="button tomato lost-button" type="submit" aria-pressed={mine === undefined ? "false" : "true"} aria-describedby="hand-note">
+              <Icon name="hand" size={22} /> I'm lost
+            </button>
+            <p class="hint hand-note" id="hand-note" data-hand-note>
+              {handNote(until)}
+            </p>
+          </form>
+        </section>
+
         <form method="post" class="card ask" data-ask>
           <input type="hidden" name="intent" value="ask" />
           <label for="body">Your question</label>
@@ -169,6 +207,7 @@ const listed = list.filter((q) => q.state !== "hidden").length;
       </main>
       <script>
         import "../../scripts/live.ts";
+        import "../../scripts/hand.ts";
       </script>
     </Layout>
   ) : (

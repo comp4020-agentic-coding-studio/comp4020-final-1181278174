@@ -1,7 +1,9 @@
 import { randomInt } from "node:crypto";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "./db.ts";
-import { announce, publish } from "./live.ts";
+import { HAND_MS } from "./hall.ts";
+import { announce, publish, publishAfter } from "./live.ts";
+import { type Hand, setHand } from "./room.ts";
 import { popularOrder, voteCount } from "./order.ts";
 import { questions, sessions, votes } from "./schema.ts";
 
@@ -141,4 +143,16 @@ export function listQuestions(session: Session, viewer: string, sort: Sort): Que
     .orderBy(...order)
     .all()
     .map((q) => ({ ...q, votes: Number(q.votes), yours: Boolean(q.yours), voted: Boolean(q.voted) }));
+}
+
+/**
+ * "I'm lost": put this person's hand up (want) or down, and tell the room. A
+ * raised hand comes down by itself after HAND_MS, so the room is told again
+ * then. Like a vote, the page sends up or down, never "toggle".
+ */
+export function raiseHand(session: Session, person: string, want: boolean): Hand {
+  const done = setHand(session.id, person, want);
+  if (done === "raised") publishAfter(session.id, HAND_MS + 100);
+  publish(session.id);
+  return done;
 }

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // The smallest schema that carries the core of it: a session, the questions
 // asked in it, and who said "me too" to which. A person is not a table: it
@@ -62,4 +62,27 @@ export const votes = sqliteTable(
   // the key is what holds one vote per person per question: a second insert
   // from the same person, however close in time, has nowhere to go
   (t) => [primaryKey({ columns: [t.questionId, t.person] })],
+);
+
+// Every hand raised in a session: by whom, when, and when it came down. A hand
+// with no `lowered_at` that is younger than HAND_MS is up. Kept after it comes
+// down, so the session has a record of when the room was lost.
+export const hands = sqliteTable(
+  "hands",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => sessions.id),
+    person: text("person").notNull(),
+    raisedAt: integer("raised_at", { mode: "timestamp_ms" }).notNull(),
+    loweredAt: integer("lowered_at", { mode: "timestamp_ms" }),
+    // put down by the person, or down by itself after HAND_MS
+    ended: text("ended", { enum: ["lowered", "expired"] }),
+  },
+  (t) => [
+    index("hands_by_session").on(t.sessionId, t.raisedAt),
+    // one hand up per person: a second raise, however close in time, has nowhere to go
+    uniqueIndex("hands_one_up").on(t.sessionId, t.person).where(sql`lowered_at IS NULL`),
+  ],
 );

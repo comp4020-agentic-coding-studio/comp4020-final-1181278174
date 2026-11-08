@@ -261,7 +261,7 @@ textarea {
 /* asking */
 
 .ask {
-  margin-top: -42px;
+  margin-top: 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -961,6 +961,110 @@ textarea {
   height: 1.1em;
 }
 
+/* the hall: everyone here as a figure, and a red hand for everyone lost */
+
+.hall {
+  margin-top: -42px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hall-view {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  margin: -4px -4px 0;
+  border: var(--line);
+  border-radius: 12px;
+  background: var(--ground);
+  overflow: hidden;
+}
+
+.hall-view canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hall-you {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: 1px 7px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--blue);
+  color: #ffffff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1.3;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.hall-count {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.hall-hand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lost-button {
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 21px;
+}
+
+/* a hand that is up stays pressed in, and says so in words too */
+.lost-button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--sun);
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+.hand-note {
+  font-size: 14px;
+}
+
+.present .stage-hall {
+  flex: 2.6;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+.present .hall-view {
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: auto;
+  margin: 0;
+  border-width: 0.19em;
+  border-radius: 1.1em;
+  box-shadow: 0.3em 0.3em 0 var(--ink);
+}
+
+.stage-lost {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 3.4em;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
 /* opened on a phone or a narrow window: the rail goes on top, and the page scrolls */
 @media (max-width: 760px) {
   .present {
@@ -1045,6 +1149,18 @@ textarea {
 
   .stage-foot {
     font-size: 13px;
+  }
+
+  .present .hall-view {
+    flex: none;
+    aspect-ratio: 16 / 10;
+    border-width: 2px;
+    border-radius: 18px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .stage-lost {
+    font-size: 30px;
   }
 }
 

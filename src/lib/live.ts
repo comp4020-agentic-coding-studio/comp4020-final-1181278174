@@ -1,6 +1,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "./db.ts";
 import { popularOrder, voteCount } from "./order.ts";
+import { handsUp } from "./room.ts";
 import { questions } from "./schema.ts";
 
 // Live updates: every open page holds one server-sent events stream
@@ -13,8 +14,14 @@ import { questions } from "./schema.ts";
  * What every open page of a session is sent: how many people have it open,
  * and each question's id, vote count and state, in Popular order. A hidden
  * question is left out, for the host too: the host's own page lists those.
+ * Then the hall: the hands up among the people here, each as how many ms it
+ * has been up. Never whose hand it is: each screen places its own figures.
  */
-export type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][] };
+export type Board = {
+  here: number;
+  questions: [id: number, votes: number, state: "open" | "answered"][];
+  hands: number[];
+};
 
 /** One open stream. `person` is null for a screen nobody is asking from (the projector page). */
 type Listener = { person: string | null; send: (event: string) => void };
@@ -33,17 +40,24 @@ export function board(sessionId: number): Board {
     .where(and(eq(questions.sessionId, sessionId), ne(questions.state, "hidden")))
     .orderBy(...popularOrder)
     .all();
+  const present = [...people(sessionId)];
   return {
-    here: here(sessionId),
+    here: present.length,
     questions: rows.map((q) => [q.id, Number(q.votes), q.state === "answered" ? "answered" : "open"]),
+    hands: handsUp(sessionId, present),
   };
+}
+
+/** Everyone with the session open. Never sent anywhere: only how many. */
+export function people(sessionId: number): Set<string> {
+  const found = new Set<string>();
+  for (const { person } of listeners.get(sessionId) ?? []) if (person) found.add(person);
+  return found;
 }
 
 /** How many people have the session open. People, not tabs; only the number ever leaves here. */
 export function here(sessionId: number): number {
-  const people = new Set<string>();
-  for (const { person } of listeners.get(sessionId) ?? []) if (person) people.add(person);
-  return people.size;
+  return people(sessionId).size;
 }
 
 /** A new question as the open pages are sent it: enough to draw the card, and no person. */
@@ -92,4 +106,9 @@ export function publish(sessionId: number): void {
       for (const listener of room) listener.send(event);
     }, GATHER_MS),
   );
+}
+
+/** Tell every open page again after `ms`: when a hand runs out, the pages are told it is down. */
+export function publishAfter(sessionId: number, ms: number): void {
+  setTimeout(() => publish(sessionId), ms);
 }

@@ -15,6 +15,13 @@
       "when": 1791896464846,
       "tag": "0001_question_state",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794122222533,
+      "tag": "0002_hands",
+      "breakpoints": true
     }
   ]
 }

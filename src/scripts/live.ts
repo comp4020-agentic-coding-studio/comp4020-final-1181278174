@@ -13,7 +13,7 @@ import { ago, hereLabel, howMany, votesLabel } from "../lib/words.ts";
 // background, so the page doesn't reload, and takes the list from the answer.
 // Without this script the page works as plain forms.
 
-type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][] };
+type Board = { here: number; questions: [id: number, votes: number, state: "open" | "answered"][]; hands: number[] };
 type Added = { id: number; body: string; at: number };
 
 const CARD = "li[id^='q-']";
@@ -145,6 +145,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     mouseUp();
   });
 
+  let lastQuestions = "";
   /** The state the server sent. The labels change at once; the list waits for a finger to lift. */
   function show(board: Board): void {
     const here = document.querySelector<HTMLElement>("[data-here]");
@@ -154,6 +155,10 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     }
     const count = document.querySelector("[data-count]");
     if (count && holder.dataset.refresh === undefined) count.textContent = howMany(board.questions.length);
+    // a state sent because a hand went up or down leaves the questions as they were
+    const questions = JSON.stringify(board.questions);
+    if (questions === lastQuestions) return;
+    lastQuestions = questions;
     if (down()) {
       waiting = board;
     } else {
@@ -348,7 +353,12 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   function connect(): void {
     const source = new EventSource(url);
     source.onopen = () => say(true);
-    source.onmessage = (event) => show(JSON.parse(event.data) as Board);
+    source.onmessage = (event) => {
+      const board = JSON.parse(event.data) as Board;
+      // the hand and the hall (src/scripts/hand.ts) take their part of the same state
+      document.dispatchEvent(new CustomEvent("hands-up:board", { detail: board }));
+      show(board);
+    };
     source.addEventListener("question", (event) => {
       const question = JSON.parse((event as MessageEvent<string>).data) as Added;
       if (blank) sent.set(question.id, question);
