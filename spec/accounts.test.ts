@@ -44,6 +44,12 @@ describe("accounts over plain HTTP", () => {
     expect(words(page)).toContain(`Signed in as ${owner.username}`);
   });
 
+  it("refuses a password longer than 200 characters", async () => {
+    const response = await new Visitor({ signedOut: true }).post("/signup", new URLSearchParams({ username: `t${tag()}`, password: "x".repeat(201), return: "/" }));
+    expect(response.status).toBe(422);
+    await response.text();
+  });
+
   it("signs up, signs out, and signs in again with a plain form and a safe return path", async () => {
     const who = new Visitor({ signedOut: true });
     const account = credentials();

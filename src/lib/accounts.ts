@@ -18,6 +18,7 @@ const KEY_BYTES = 64;
 const SALT_BYTES = 16;
 const MAX_MEMORY = 32 * 1024 * 1024;
 const TEN_MINUTES = 10 * 60 * 1000;
+const MAX_PASSWORD = 200;
 // Wrong passwords for one username are counted three ways, so someone else's
 // guesses can't keep the owner out: from one browser, from one network address,
 // and from anywhere. The address is kept in memory only, never logged.
@@ -87,7 +88,9 @@ export async function createAccount(username: string, password: string): Promise
   if ([...password].length < 8) {
     return { ok: false, reason: "password-short", message: "Use at least 8 characters for your password." };
   }
-
+  if ([...password].length > MAX_PASSWORD) {
+    return { ok: false, reason: "password-long", message: `Use at most ${MAX_PASSWORD} characters for your password.` };
+  }
   const usernameKey = username.toLowerCase();
   const passwordHash = await hashPassword(password);
   const account = db.insert(accounts)
@@ -122,7 +125,8 @@ export async function verifyPassword(
   for (const c of counted) c.entry.pending += 1;
   try {
     const account = db.select().from(accounts).where(eq(accounts.usernameKey, key)).get();
-    const valid = await matches(password, account?.passwordHash);
+    // an over-long password is wrong without being hashed
+    const valid = [...password].length <= MAX_PASSWORD && (await matches(password, account?.passwordHash));
     if (valid && account) return { ok: true, account: { id: account.id, username: account.username } };
     for (const c of counted) c.entry.failed.push(Date.now());
     return { ok: false, reason: "wrong-credentials", message: "The username or password is wrong." };
