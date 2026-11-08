@@ -1039,7 +1039,7 @@ textarea {
 }
 
 .present .stage-hall {
-  flex: 1.25;
+  flex: 1.3;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -1617,7 +1617,7 @@ body.float {
 /* the projector: the three questions must fit, in type the back row reads */
 
 .present .stage-list {
-  flex: 1.35;
+  flex: 1.5;
 }
 
 .present .top {
@@ -1796,4 +1796,20 @@ body.float {
 .float-going-over[hidden],
 [data-going-over-problem][hidden] {
   display: none;
+}
+
+/* the projector's top question: its count sits beside the hand, so the card is one line taller than the others, not three */
+.present .top > li:first-child {
+  padding: 0.75em 1.2em;
+}
+
+.present .top > li:first-child .votes {
+  flex-direction: row;
+  gap: 0.2em;
+  padding: 0.12em 0.35em;
+  font-size: 2.1em;
+}
+
+.present .stage-lost {
+  font-size: 3em;
 }
