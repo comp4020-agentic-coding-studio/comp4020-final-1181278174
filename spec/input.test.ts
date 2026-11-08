@@ -26,3 +26,14 @@ describe("a POST that is not a form", () => {
     for (const path of pages) expect(await send(path, "multipart/form-data; boundary=x", "--x\r\nnot a part"), path).toBe(400);
   });
 });
+
+describe("another site", () => {
+  it("can't show a page in a frame, so nobody is tricked into pressing on it", async () => {
+    for (const path of ["/", "/s/HAND", "/s/HAND/questions", "/signin"]) {
+      const response = await fetch(new URL(path, baseUrl));
+      await response.text();
+      expect(response.headers.get("x-frame-options"), path).toBe("DENY");
+      expect(response.headers.get("content-security-policy"), path).toContain("frame-ancestors 'none'");
+    }
+  });
+});

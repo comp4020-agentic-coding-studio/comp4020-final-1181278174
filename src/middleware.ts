@@ -64,6 +64,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (!response.headers.get("content-type")?.includes("text/event-stream")) {
       response.headers.set("cache-control", "private, no-store");
     }
+    // No other site may show these pages in a frame, so nobody can be tricked
+    // into pressing "I'm lost" or "Report" on a page laid under something else.
+    response.headers.set("x-frame-options", "DENY");
+    response.headers.set("content-security-policy", "frame-ancestors 'none'");
+    response.headers.set("x-content-type-options", "nosniff");
+    response.headers.set("referrer-policy", "same-origin");
     line(response.status);
     return response;
   } catch (error) {
