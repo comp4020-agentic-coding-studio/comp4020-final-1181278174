@@ -67,12 +67,13 @@ const HAND = {
 };
 const GLOW_RADIUS = 0.25;
 const SHADOW = { radius: 0.3, y: 0.01, z: -0.1 };
-const LABEL = { x: -0.05, y: 1.85 };
+// the "You" label sits just to the side of this person's head, at its height
+const LABEL = { y: 1.34, gap: 0.3 };
 const CAMERA = {
   fov: 40, near: 0.3, far: 80, fogNear: 14, fogFar: 30,
-  frontHeight: 4.2, frontRise: 0.6, frontZ: -4.6,
+  frontHeight: 4.8, frontRise: 0.7, frontZ: -4.4,
   frontLookRise: 0.45, frontLookY: 0.7, frontLookRadius: 0.55,
-  eyeHeight: 3.5, behind: 2.9, lookY: 1.0, lookZ: 1.1,
+  eyeHeight: 4.4, behind: 3.3, lookY: 0.7, lookZ: 1.3,
 };
 // An arm passes through horizontal on its way down, so the frame needs its full reach.
 const FIT = { padding: 1.10, side: 1.0, bottom: 0.15, top: 2.15, frontArc: 0.8 };
@@ -465,6 +466,7 @@ function draw(view: HTMLElement): void {
     if (!frameId && document.visibilityState === "visible") frameId = requestAnimationFrame(tick);
   }
   const top = new THREE.Vector3();
+  const side = new THREE.Vector3();
   function tick(time: number): void {
     frameId = 0;
     const dt = Math.min((time - last) / 1000, 1 / 30);
@@ -503,7 +505,9 @@ function draw(view: HTMLElement): void {
     // keep the "You" label over this person's head
     const f = mySeat === undefined ? undefined : figures.get(mySeat);
     if (f && f.pop.x > 0.5) {
-      top.set(LABEL.x, LABEL.y * f.pop.x, 0).applyMatrix4(seatAt[f.seat]).project(camera);
+      // the head's right edge on screen: its centre, moved right by the head's radius and a gap
+      top.set(0, LABEL.y * f.pop.x, 0).applyMatrix4(seatAt[f.seat]);
+      top.addScaledVector(side.setFromMatrixColumn(camera.matrixWorld, 0), HEAD.radius + LABEL.gap).project(camera);
       label.hidden = false;
       label.style.left = `${((top.x + 1) / 2) * view.clientWidth}px`;
       label.style.top = `${((1 - top.y) / 2) * view.clientHeight}px`;

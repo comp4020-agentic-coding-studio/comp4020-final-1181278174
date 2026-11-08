@@ -988,7 +988,7 @@ textarea {
 
 .hall-you {
   position: absolute;
-  transform: translate(-50%, -100%);
+  transform: translate(0, -50%);
   padding: 1px 7px;
   border: 2px solid var(--ink);
   border-radius: 999px;
