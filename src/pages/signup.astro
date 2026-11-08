@@ -14,7 +14,7 @@ if (Astro.request.method === "POST") {
   returnTo = returnPath(form.get("return") ?? returnTo);
   const result = await createAccount(username, String(form.get("password") ?? ""));
   if (result.ok) {
-    completeSignIn(result.account.id, Astro.locals.browser, Astro.cookies, Astro.url);
+    completeSignIn(result.account.id, Astro.cookies, Astro.url);
     Astro.locals.log("account_created");
     return Astro.redirect(returnTo, 303);
   }

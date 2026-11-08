@@ -2,7 +2,7 @@ declare namespace App {
   interface Locals {
     /** The signed-in account id, or this browser's id: never sent back in a page. */
     person: string;
-    /** The original browser cookie, retained to claim sessions started before sign-in. */
+    /** This browser's own id: wrong passwords are limited per browser, and it is the person while nobody is signed in. */
     browser: string;
     /** Only the owner is shown this username. */
     account: import("./lib/accounts.ts").Account | null;

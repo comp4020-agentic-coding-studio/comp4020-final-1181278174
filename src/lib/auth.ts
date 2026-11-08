@@ -1,5 +1,5 @@
 import type { AstroCookies } from "astro";
-import { claimSessions, endSignIn, SIGNIN_COOKIE, SIGNIN_SECONDS, startSignIn } from "./accounts.ts";
+import { endSignIn, SIGNIN_COOKIE, SIGNIN_SECONDS, startSignIn } from "./accounts.ts";
 
 /** A return address stays on this site, including when a browser normalises it. */
 export function returnPath(value: unknown): string {
@@ -16,11 +16,10 @@ export function authLink(action: "signin" | "signup", path: string): string {
   return `/${action}?return=${encodeURIComponent(returnPath(path))}`;
 }
 
-/** Rotate this browser's sign-in and recover sessions it hosted before accounts. */
-export function completeSignIn(accountId: string, browser: string, cookies: AstroCookies, url: URL): void {
+/** Rotate this browser's sign-in: end the one it had, start a new one. */
+export function completeSignIn(accountId: string, cookies: AstroCookies, url: URL): void {
   endSignIn(cookies.get(SIGNIN_COOKIE)?.value);
   const token = startSignIn(accountId);
-  claimSessions(browser, accountId);
   cookies.set(SIGNIN_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",

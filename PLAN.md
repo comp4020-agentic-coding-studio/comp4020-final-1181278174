@@ -616,6 +616,9 @@ the account that asked it, by someone allowed to, for a reason.
 - 01:30: reporting is a small triangle beside Me too. Pressing it asks "Report
   to the host?" before anything is sent, and a report can be taken back for a
   minute (Undo). The host sees the triangle with how many reported it.
+- 01:50: signing in no longer moves sessions that browser started before
+  sign-in to the account. Those were test sessions; they keep the browser that
+  started them, so no one can use their host controls now.
 
 ### Order of work
 

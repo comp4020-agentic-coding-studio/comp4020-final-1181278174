@@ -3,8 +3,8 @@ import { defineMiddleware } from "astro:middleware";
 import { findAccount, SIGNIN_COOKIE } from "./lib/accounts.ts";
 import { requestId, tag, write } from "./lib/log.ts";
 
-// Keep the original browser id so sessions hosted before sign-in can be
-// claimed. Signed-in activity belongs to the account, across browsers.
+// Every browser keeps an id of its own. Signed in, the person is the account,
+// across browsers; signed out, it is this browser, which can only look.
 const COOKIE = "hands_up_person";
 const SHAPE = /^[A-Za-z0-9_-]{22}$/;
 const YEAR = 60 * 60 * 24 * 365;

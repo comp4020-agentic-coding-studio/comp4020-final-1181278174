@@ -2,7 +2,7 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "./db.ts";
 import { endStreamsOf } from "./live.ts";
-import { accounts, sessions, signIns } from "./schema.ts";
+import { accounts, signIns } from "./schema.ts";
 
 export const SIGNIN_COOKIE = "hands_up_signin";
 export const SIGNIN_SECONDS = 60 * 60 * 24 * 30;
@@ -180,11 +180,4 @@ export function endSignIn(token?: string): void {
   db.update(signIns).set({ endedAt: new Date() })
     .where(and(eq(signIns.tokenHash, tokenHash(token)), isNull(signIns.endedAt))).run();
   endStreamsOf(tokenHash(token));
-}
-
-/** Keep sessions hosted before accounts existed attached to their lecturer. */
-export function claimSessions(browserId: string, accountId: string): void {
-  // an account's id copied into a browser cookie must not hand its sessions to someone else
-  if (db.select({ id: accounts.id }).from(accounts).where(eq(accounts.id, browserId)).get()) return;
-  db.update(sessions).set({ host: accountId }).where(eq(sessions.host, browserId)).run();
 }
