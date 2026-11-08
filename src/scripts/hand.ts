@@ -274,12 +274,19 @@ function watch(line: HTMLElement): void {
           return;
         }
         const was = mine;
-        mine = room.mine;
-        if (was !== null && mine === null && !confirmedHands.includes(was)) {
-          const at = hands.indexOf(was);
-          if (at >= 0) hands.splice(at, 1);
+        if (room.mine === null) {
+          mine = null;
+          if (was !== null && !confirmedHands.includes(was)) {
+            const at = hands.indexOf(was);
+            if (at >= 0) hands.splice(at, 1);
+          }
+          return;
         }
-        if (mine !== null && !hands.some((h) => Math.abs(h - mine!) < 3000)) hands.push(mine);
+        // The hand is up: keep the time this page already has for it (a slow
+        // answer's time is later), or the one it had before a refused lowering.
+        const own = was ?? lowered ?? room.mine;
+        mine = own;
+        if (!hands.some((h) => Math.abs(h - own) < 3000)) hands.push(own);
       };
       try {
         const res = await fetch(form.action || location.href, { method: "POST", body, headers: { accept: "text/html" } });

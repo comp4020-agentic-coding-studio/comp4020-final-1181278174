@@ -72,3 +72,15 @@ it("keeps the stream's newer hands when the press got no answer and the check af
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(count(window)).toBe("3 of 3 here say they're lost");
 });
+
+it("counts this person's hand once when a slow answer comes after the stream confirmed it", async () => {
+  let release!: (res: Response) => void;
+  const window = await start(() => new Promise<Response>((resolve) => { release = resolve; }));
+  window.document.querySelector("form")!.dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(count(window)).toBe("1 of 1 here says they're lost"));
+  // the stream confirms the hand at once; the answer was held up for four seconds
+  stream(window, 1, [0]);
+  release(new Response(answer({ here: 1, hands: [4000], mine: 4000 }), { status: 200 }));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(count(window)).toBe("1 of 1 here says they're lost");
+});
