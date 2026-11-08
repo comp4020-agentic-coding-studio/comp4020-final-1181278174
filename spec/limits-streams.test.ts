@@ -29,6 +29,21 @@ async function refused(who: Visitor, url: URL): Promise<void> {
 }
 
 describe("limits on open streams", () => {
+  it("doesn't let HEAD requests use up an account's stream allowance", async () => {
+    // a HEAD request gets the headers and no stream, so it holds no place
+    const who = new Visitor();
+    const page = await who.open("/s/HAND");
+    const cookie = ["hands_up_person", "hands_up_signin"].map((name) => `${name}=${who.cookie(name)}`).join("; ");
+    for (let i = 0; i < 11; i++) {
+      const head = await fetch(new URL("/s/HAND/events", page.url), { method: "HEAD", headers: { cookie } });
+      expect(head.status).toBe(200);
+      await head.text();
+    }
+    const stream = await who.listen(page);
+    expect(stream.status, "a real stream after eleven HEAD requests").toBe(200);
+    stream.close();
+  });
+
   it("shares ten slots across an account's browsers, sessions and projector tabs, then frees a closed slot", async () => {
     const host = new Visitor();
     const hall = await startSession(host, "Stream limits");

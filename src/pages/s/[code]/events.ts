@@ -9,6 +9,16 @@ import { connections, networkAddress } from "../../../lib/limits.ts";
 // goes out now and then so Fly's proxy doesn't close a quiet connection.
 const BEAT_MS = 20_000;
 
+// A HEAD request gets the stream's headers and nothing else: no place in the
+// room and none of the allowance. Without this, Astro runs GET for it and
+// drops the body without closing the stream, so the place is never given back.
+export const HEAD: APIRoute = ({ params }) => {
+  const code = normaliseCode(params.code ?? "");
+  const session = isCode(code) ? findSession(code) : undefined;
+  if (!session) return new Response(null, { status: 404 });
+  return new Response(null, { status: 200, headers: { "content-type": "text/event-stream", "cache-control": "no-cache, no-transform" } });
+};
+
 export const GET: APIRoute = (context) => {
   const { params, request, url, locals, cookies } = context;
   const code = normaliseCode(params.code ?? "");
