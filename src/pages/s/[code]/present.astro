@@ -39,49 +39,45 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
   session ? (
     <Layout title={`${session.title} · Hands Up`} account={false} footer={false}>
       <div class="present" data-live={`/s/${session.code}/events?screen`}>
-        <aside class="rail" aria-label="How to join">
-          <a class="brand" href="/">
-            <span class="brand-mark">
-              <Icon name="hand" />
-            </span>
-            Hands Up
-          </a>
-          {/* "Live", or "Reconnecting" when the count on this screen may be old (src/scripts/live.ts) */}
-          <p class="live present-live" role="status" data-live-status hidden />
-          <div class="rail-step">
-            <p>Scan, or go to</p>
-            <p class="rail-where">{Astro.url.host}</p>
-          </div>
-          <div class="qr" role="img" aria-label={`QR code for ${address}`} set:html={qr} />
-          {/* for someone who opened this page on their own device and wants to ask */}
-          <a class="rail-ask" href={`/s/${session.code}`}>
-            Ask from this device <Icon name="arrow" size={18} />
-          </a>
-          <div class="rail-step rail-code">
-            <p>and type the code</p>
-            <p class="big-code">{session.code}</p>
-          </div>
-        </aside>
-
         <main id="main" class="stage">
           <div class="stage-top">
             <h1>{session.title}</h1>
-            <p class="count-label">
-              <span data-here hidden />
-              <span data-count>{howMany(all.length)}</span>
-            </p>
+            <div class="stage-context">
+              <p class="count-label">
+                <span data-here hidden />
+                <span data-count>{howMany(all.length)}</span>
+              </p>
+              {/* "Live", or "Reconnecting" when the count on this screen may be old (src/scripts/live.ts) */}
+              <p class="live present-live" role="status" data-live-status hidden />
+            </div>
           </div>
 
-          <div class="stage-hall">
-            {/* drawn by src/scripts/hall.ts from the front of the room; the sentence under it says the same in words */}
-            <div class="hall-view" data-hall data-view="front" aria-hidden="true" />
-            <p class="stage-lost" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
-              {lostLabel(room.hands.length, room.here)}
-            </p>
-            <GoingOver age={goingOverAge(session.id)} />
-            <p class="stage-silence" data-silence hidden={room.hands.length > 0}>
-              {SILENCE_SHORT}
-            </p>
+          <div class="present-room">
+            <div class="stage-hall">
+              <div class="stage-message">
+                <p class="stage-lost" aria-live="polite" data-lost data-room={JSON.stringify(room)}>
+                  {lostLabel(room.hands.length, room.here)}
+                </p>
+                <GoingOver age={goingOverAge(session.id)} />
+                <p class="stage-silence" data-silence hidden={room.hands.length > 0}>
+                  {SILENCE_SHORT}
+                </p>
+              </div>
+              {/* drawn by src/scripts/hall.ts from the front of the room; the sentence beside it says the same in words */}
+              <div class="hall-view" data-hall data-view="front" aria-hidden="true" />
+            </div>
+
+            <aside class="rail" aria-label="How to join">
+              <div class="rail-step rail-address">
+                <p>Scan, or go to</p>
+                <p class="rail-where">{Astro.url.host}</p>
+              </div>
+              <div class="qr" role="img" aria-label={`QR code for ${address}`} set:html={qr} />
+              <div class="rail-step rail-code">
+                <p>and type the code</p>
+                <p class="big-code">{session.code}</p>
+              </div>
+            </aside>
           </div>
 
           {/* the page's script (src/scripts/live.ts) redraws what is in here after every change */}
@@ -109,9 +105,21 @@ const room = { here: inRoom.length, hands: session ? handsUp(session.id, inRoom)
             )}
           </div>
 
-          <p class="stage-foot">
-            <Icon name="lock" size={18} /> Anonymous: no one, the host included, is shown who asked or whose hand is up.
-          </p>
+          <div class="present-foot">
+            <a class="brand" href="/">
+              <span class="brand-mark">
+                <Icon name="hand" />
+              </span>
+              Hands Up
+            </a>
+            <p class="stage-foot">
+              <Icon name="lock" size={18} /> Anonymous: no one, the host included, is shown who asked or whose hand is up.
+            </p>
+            {/* for someone who opened this page on their own device and wants to ask */}
+            <a class="rail-ask" href={`/s/${session.code}`}>
+              Ask from this device <Icon name="arrow" size={18} />
+            </a>
+          </div>
         </main>
       </div>
       <script>
