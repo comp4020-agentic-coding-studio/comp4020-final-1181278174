@@ -20,8 +20,10 @@ import {
   normaliseCode,
   type Sort,
 } from "../../../lib/board.ts";
-import { howMany } from "../../../lib/words.ts";
+import { howMany, lostLabel } from "../../../lib/words.ts";
 import { goingOverAge } from "../../../lib/going-over.ts";
+import { people } from "../../../lib/live.ts";
+import { handsUp } from "../../../lib/room.ts";
 
 // The questions, the second part of a session: asking, "Me too", and the
 // host's buttons. The hall, at /s/CODE, is the first.
@@ -70,6 +72,13 @@ const listed = list.filter((q) => q.state !== "hidden").length;
 const posted = Astro.request.method === "GET"
   ? list.find((q) => q.id === Number(Astro.url.searchParams.get("posted")) && q.yours)
   : undefined;
+const inRoom = session && hosting ? [...people(session.id)] : [];
+const room = {
+  here: inRoom.length,
+  hands: session && hosting ? handsUp(session.id, inRoom) : [],
+  mine: null,
+  startedAt: session?.createdAt.getTime(),
+};
 ---
 
 {
@@ -107,6 +116,15 @@ const posted = Astro.request.method === "GET"
             </>
           )}
         </p>
+
+        {hosting && (
+          <div class="question-room">
+            <p aria-live="polite" data-lost data-host data-room={JSON.stringify(room)}>
+              {room.here === 0 ? "Waiting for students to join." : lostLabel(room.hands.length, room.here)}
+            </p>
+            <a href={`/s/${session.code}#hall`}>Going over it is on the hall</a>
+          </div>
+        )}
 
         <div class="bar">
           <nav class="tabs" aria-label="Order">
@@ -153,6 +171,7 @@ const posted = Astro.request.method === "GET"
       </main>
       <script>
         import "../../../scripts/live.ts";
+        import "../../../scripts/hand.ts";
       </script>
     </Layout>
   ) : (

@@ -1917,3 +1917,24 @@ body.float {
 .question-posted[hidden] {
   display: none;
 }
+
+/* the host's count of the room, above the questions */
+.question-room {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5em 1em;
+  margin-top: 20px;
+}
+
+.question-room p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.question-room a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
