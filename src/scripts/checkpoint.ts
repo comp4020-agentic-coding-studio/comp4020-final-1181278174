@@ -40,7 +40,12 @@ if (card) {
   };
 
   const soon = (now = false): void => {
-    if (timer !== undefined) return;
+    if (timer !== undefined) {
+      // a refresh waiting for the gap gives way to one that can't wait
+      if (!now) return;
+      window.clearTimeout(timer);
+      timer = undefined;
+    }
     const wait = now ? 0 : Math.max(0, last + GAP - Date.now());
     timer = window.setTimeout(() => {
       timer = undefined;
