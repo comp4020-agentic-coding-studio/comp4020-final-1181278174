@@ -1,7 +1,8 @@
 ---
 // The two parts of a session: the hall, where anyone can raise a hand, and
 // the questions. The number of questions is kept up to date by the page's script.
-type Props = { code: string; at: "hall" | "questions"; count: number };
+// On the hall's timeline neither tab is the page itself.
+type Props = { code: string; at: "hall" | "questions" | "timeline"; count: number };
 const { code, at, count } = Astro.props;
 ---
 

@@ -30,3 +30,7 @@ export const handNote = (until: Date | undefined): string =>
   until
     ? `Your hand is up. It comes down by itself at ${clock(until)}, or press again once you've caught up.`
     : "One press, no words.";
+
+/** A day as the room says it: "Monday 9 November". */
+export const day = (when: Date): string =>
+  when.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", timeZone: "Australia/Sydney" });

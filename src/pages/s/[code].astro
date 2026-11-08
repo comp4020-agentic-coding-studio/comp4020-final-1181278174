@@ -88,6 +88,9 @@ const until = mine === undefined ? undefined : new Date(Date.now() + HAND_MS - m
               {handNote(until)}
             </p>
           </form>
+          <p class="hall-links">
+            <a href={`/s/${session.code}/timeline`}>When the room was lost</a>
+          </p>
         </section>
 
         <section class="wanted" aria-labelledby="wanted-title">

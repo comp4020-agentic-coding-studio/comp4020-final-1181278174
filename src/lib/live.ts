@@ -1,6 +1,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "./db.ts";
 import { popularOrder, voteCount } from "./order.ts";
+import { notePresence } from "./record.ts";
 import { handsUp } from "./room.ts";
 import { questions } from "./schema.ts";
 
@@ -85,10 +86,13 @@ export function listen(sessionId: number, listener: Listener): () => void {
   let room = listeners.get(sessionId);
   if (!room) listeners.set(sessionId, (room = new Set()));
   room.add(listener);
+  // the timeline's "out of how many" (src/lib/record.ts)
+  notePresence(sessionId, here(sessionId));
   publish(sessionId);
   return () => {
     if (!room.delete(listener)) return;
     if (room.size === 0) listeners.delete(sessionId);
+    notePresence(sessionId, here(sessionId));
     publish(sessionId);
   };
 }

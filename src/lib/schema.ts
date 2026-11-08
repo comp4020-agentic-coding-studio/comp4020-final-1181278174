@@ -86,3 +86,20 @@ export const hands = sqliteTable(
     uniqueIndex("hands_one_up").on(t.sessionId, t.person).where(sql`lowered_at IS NULL`),
   ],
 );
+
+// How many people had a session open in each minute: the most at once, and how
+// many were left after the minute's last change. A count, never who: the
+// timeline's "out of how many". A minute with no row kept the last count.
+export const presence = sqliteTable(
+  "presence",
+  {
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => sessions.id),
+    // minutes since 1970, UTC
+    minute: integer("minute").notNull(),
+    most: integer("most").notNull(),
+    last: integer("last").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.sessionId, t.minute] })],
+);
