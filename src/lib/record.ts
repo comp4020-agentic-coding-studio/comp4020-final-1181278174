@@ -51,7 +51,7 @@ export type Minute = { at: Date; here: number; lost: number };
 export type Sitting = { from: Date; to: Date; minutes: Minute[]; most: number; mostLost: number };
 
 /** The newest sittings first, each minute by minute. `hereNow` is how many have it open at this moment. */
-export function sittings(sessionId: number, hereNow: number, now = Date.now()): Sitting[] {
+export function sittings(sessionId: number, hereNow: number, now = Date.now(), limit = SHOWN): Sitting[] {
   const rows = db.select().from(presence).where(eq(presence.sessionId, sessionId)).orderBy(asc(presence.minute)).all();
   // the host's own moments: Going over it, and each class's start and end
   const eventMinutes = [
@@ -92,7 +92,7 @@ export function sittings(sessionId: number, hereNow: number, now = Date.now()): 
     if (group && c.minute - group[group.length - 1].minute <= GAP_MINUTES) group.push(c);
     else groups.push([c]);
   }
-  const shown = groups.slice(-SHOWN).reverse();
+  const shown = groups.slice(-limit).reverse();
 
   // the hands that could fall in these sittings, each as the stretch it was up
   const from = shown.at(-1)![0].minute * MINUTE;
@@ -232,7 +232,7 @@ export function partSoFar(sessionId: number, hereNow: number, now = Date.now()):
   const from = mark?.at ?? lesson.startedAt;
   const start = Math.floor(from.getTime() / MINUTE) * MINUTE;
   // every sitting in the part, not only the newest: the room may have been empty a while
-  const minutes = sittings(sessionId, hereNow, now)
+  const minutes = sittings(sessionId, hereNow, now, Infinity)
     .flatMap((s) => s.minutes)
     .filter((m) => m.at.getTime() >= start)
     .sort((a, b) => a.at.getTime() - b.at.getTime())
@@ -271,7 +271,7 @@ export function classRecap(sessionId: number, hereNow: number, now = Date.now())
   if (!lesson?.endedAt) return null;
   const from = Math.floor(lesson.startedAt.getTime() / MINUTE) * MINUTE;
   const to = lesson.endedAt.getTime();
-  const minutes = sittings(sessionId, hereNow, now)
+  const minutes = sittings(sessionId, hereNow, now, Infinity)
     .flatMap((s) => s.minutes)
     .filter((m) => m.at.getTime() >= from && m.at.getTime() < to && m.lost > 0);
   const busiest = minutes.sort((a, b) => b.lost - a.lost || a.at.getTime() - b.at.getTime()).slice(0, 3);
