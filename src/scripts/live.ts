@@ -20,11 +20,15 @@ type Added = { id: number; body: string; at: number };
 const CARD = "li[id^='q-']";
 const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+// a question half written when this tab's sign-in changed, kept across the load (see `accountChanged`)
+const KEPT = `hands-up:kept-question:${location.pathname}`;
+
 const main = document.querySelector<HTMLElement>("[data-live]");
 const holder = main?.querySelector<HTMLElement>("[data-board]");
 if (main?.dataset.live && holder && "EventSource" in window) watch(main, main.dataset.live, holder);
 
 function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
+  showKept(holder);
   const cards = (): HTMLElement[] => [...holder.querySelectorAll<HTMLElement>(CARD)];
 
   // how long a card that moved can't be pressed: the slide, and a little more
@@ -348,24 +352,22 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   }
 
   /**
-   * This browser was signed out elsewhere ("Sign out everywhere else", or a
-   * password change): the page's account bar, question box and host buttons
-   * no longer apply. Load it again, unless a question is half written; then
-   * say so and keep the words.
+   * This browser's sign-in changed elsewhere: signed out ("Sign out everywhere
+   * else", a password change) or signed in as someone else in another tab. The
+   * page's account bar, question box and host-only parts no longer apply, so it
+   * loads again, at once: a host's page must not keep what only the host may
+   * see. A half-written question is kept for this tab, to copy after the load.
    */
-  function signedOutElsewhere(): void {
-    const draft = document.querySelector<HTMLTextAreaElement>("form[data-ask] textarea");
-    if (!draft || draft.value.trim() === "") {
-      location.reload();
-      return;
+  function accountChanged(): void {
+    const draft = document.querySelector<HTMLTextAreaElement>("form[data-ask] textarea")?.value.trim();
+    if (draft) {
+      try {
+        sessionStorage.setItem(KEPT, draft);
+      } catch {
+        // storage refused: the page still loads again
+      }
     }
-    if (document.querySelector("[data-signed-out-note]")) return;
-    const note = document.createElement("p");
-    note.className = "alert";
-    note.setAttribute("role", "alert");
-    note.dataset.signedOutNote = "";
-    note.textContent = "This browser was signed out. Copy your question, then sign in again.";
-    draft.closest("form")?.before(note);
+    location.reload();
   }
 
   // One fetch at a time; a change that arrives during one is picked up by another straight after.
@@ -387,8 +389,9 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         if (!res.ok) throw new Error(`the server answered ${res.status}`);
         const doc = new DOMParser().parseFromString(await res.text(), "text/html");
         if (!doc.querySelector("[data-board]")) throw new Error("No question list in the response");
-        if (document.body.hasAttribute("data-signed-in") && !doc.body.hasAttribute("data-signed-in")) {
-          signedOutElsewhere();
+        // which sign-in the page was made for (src/layouts/Layout.astro)
+        if (document.body.dataset.signedIn !== doc.body.dataset.signedIn) {
+          accountChanged();
           return;
         }
         adopt(doc);
@@ -587,4 +590,29 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
     };
   }
   connect();
+}
+
+/** After a load caused by a change of sign-in: the question that wasn't sent, to copy. */
+function showKept(holder: HTMLElement): void {
+  let kept: string | null = null;
+  try {
+    kept = sessionStorage.getItem(KEPT);
+    sessionStorage.removeItem(KEPT);
+  } catch {
+    return;
+  }
+  if (!kept) return;
+  const note = document.createElement("div");
+  note.className = "alert kept-question";
+  note.setAttribute("role", "alert");
+  note.dataset.keptQuestion = "";
+  const said = document.createElement("p");
+  said.textContent = "This browser's sign-in changed before your question was sent. Here it is, to copy:";
+  const words = document.createElement("textarea");
+  words.readOnly = true;
+  words.rows = 3;
+  words.value = kept;
+  words.setAttribute("aria-label", "Your question, not sent");
+  note.append(said, words);
+  (document.querySelector("form[data-ask]") ?? holder).before(note);
 }

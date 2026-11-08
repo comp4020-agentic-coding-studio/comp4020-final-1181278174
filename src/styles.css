@@ -2540,3 +2540,19 @@ span.me-too:hover {
 .present-live {
   align-self: flex-start;
 }
+
+/* a question not sent when this tab's sign-in changed, kept to copy (src/scripts/live.ts) */
+.kept-question p {
+  margin: 0;
+}
+
+.kept-question textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  border: var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font: inherit;
+  background: var(--card);
+}
