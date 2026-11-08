@@ -134,7 +134,8 @@ for (const view of document.querySelectorAll<HTMLElement>("[data-hall]")) {
 function draw(view: HTMLElement): void {
   const front = view.dataset.view === "front";
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // 1.5 is sharp enough for flat shapes and ink lines, and a phone draws 44% fewer pixels than at 2
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   view.append(renderer.domElement);
 
   const color = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -180,10 +181,15 @@ function draw(view: HTMLElement): void {
       .multiply(new THREE.Matrix4().makeRotationY(angle + Math.PI));
   });
 
+  /** Every instanced mesh, so the number of seats sent to be drawn can be cut to those in use. */
+  const instanced: THREE.InstancedMesh[] = [];
+
   /** A shape for every seat, and a slightly bigger ink shell behind it that draws its outline. */
   function shapes(make: (grow: number) => THREE.BufferGeometry, fill: THREE.Material, outline = LOOK.outline): THREE.InstancedMesh[] {
     const meshes = [new THREE.InstancedMesh(make(0), fill, SEATS)];
+    instanced.push(meshes[0]);
     if (outline) meshes.push(new THREE.InstancedMesh(make(outline), ink, SEATS));
+    if (outline) instanced.push(meshes[1]);
     for (const mesh of meshes) {
       mesh.frustumCulled = false;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -201,7 +207,7 @@ function draw(view: HTMLElement): void {
     toon(LOOK.chair),
   );
   const bodies = shapes((g) => new THREE.CapsuleGeometry(BODY.radius + g, BODY.length, 6, 16).translate(0, BODY.y, 0), toon());
-  const heads = shapes((g) => new THREE.SphereGeometry(HEAD.radius + g, 24, 16).translate(0, HEAD.y, 0), toon());
+  const heads = shapes((g) => new THREE.SphereGeometry(HEAD.radius + g, 16, 12).translate(0, HEAD.y, 0), toon());
   const arms = shapes((g) => new THREE.CapsuleGeometry(ARM.radius + g, ARM.length, 4, 10).translate(0, ARM.y, 0), toon());
   const palms = shapes(handGeometry, toon(LOOK.hand), LOOK.handOutline);
   // a soft light round each raised hand, turned to face the camera
@@ -501,6 +507,9 @@ function draw(view: HTMLElement): void {
       pose(f);
     }
     if (expired) scheduleExpiry();
+    // only the seats up to the highest one in use are sent to be drawn: an empty seat still costs its vertices
+    const used = Math.max(0, ...[...figures.keys()].map((seat) => seat + 1), ...(mySeat === undefined ? [] : [mySeat + 1]));
+    for (const mesh of instanced) mesh.count = used;
     renderer.render(scene, camera);
     // keep the "You" label over this person's head
     const f = mySeat === undefined ? undefined : figures.get(mySeat);
@@ -579,16 +588,16 @@ function draw(view: HTMLElement): void {
 /** Overlapping parts keep the small hand solid, with a notch above the sideways thumb. */
 function handGeometry(grow: number): THREE.BufferGeometry {
   const fingerRadius = HAND.fingerWidth / 2;
-  const parts: THREE.BufferGeometry[] = [new THREE.SphereGeometry(1, 16, 12).scale(
+  const parts: THREE.BufferGeometry[] = [new THREE.SphereGeometry(1, 12, 8).scale(
     HAND.palmWidth / 2 + grow, HAND.palmHeight / 2 + grow, HAND.depth / 2 + grow,
   )];
   for (const [i, length] of HAND.fingers.entries()) {
-    parts.push(new THREE.CapsuleGeometry(fingerRadius + grow, length, 4, 10).translate(
+    parts.push(new THREE.CapsuleGeometry(fingerRadius + grow, length, 3, 6).translate(
       (i - (HAND.fingers.length - 1) / 2) * HAND.fingerWidth,
       HAND.palmHeight / 2 + length / 2 - fingerRadius, 0,
     ));
   }
-  parts.push(new THREE.CapsuleGeometry(fingerRadius + grow, HAND.thumbLength, 4, 10)
+  parts.push(new THREE.CapsuleGeometry(fingerRadius + grow, HAND.thumbLength, 3, 6)
     .rotateZ(HAND.thumbAngle).translate(HAND.thumbX, HAND.thumbY, 0));
   const hand = mergeGeometries(parts)!;
   for (const part of parts) part.dispose();
