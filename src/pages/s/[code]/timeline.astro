@@ -10,8 +10,9 @@ import { goingOversOf } from "../../../lib/going-over.ts";
 import { people } from "../../../lib/live.ts";
 import { recordingStart, timelineMark } from "../../../lib/actions.ts";
 import { authLink } from "../../../lib/auth.ts";
+import type { Refused } from "../../../lib/abuse.ts";
 import { intoRecording, type Minute, marksOf, MAX_MARK, partAt, sittings } from "../../../lib/record.ts";
-import { clock, day } from "../../../lib/words.ts";
+import { clock, day, tooFast } from "../../../lib/words.ts";
 
 // The hall's record: how many hands were up in each minute, out of how many
 // people, for the last few sittings. Counts only, so anyone with the code may
@@ -44,16 +45,19 @@ if (session && signedOutPost) {
   const intent = form.get("intent");
   if (intent === "timeline_mark") markValue = String(form.get("label") ?? "");
   if (intent === "recording") recordingValue = String(form.get("at") ?? "");
+  if (intent !== "timeline_mark" && intent !== "recording") log("refused", { session: session.code, reason: "no-such-intent" });
   const done =
     intent === "timeline_mark"
       ? timelineMark(session, person, form, log)
       : intent === "recording"
         ? // a time of day, on the day of the newest sitting
           recordingStart(session, person, form, log, shown[0]?.from ?? new Date())
-        : ({ ok: false, status: 422 } as const);
+        : ({ ok: false, status: 422 } as Refused);
   if (done.ok) return Astro.redirect(`/s/${session.code}/timeline`, 303);
   Astro.response.status = done.status;
-  refused = done.status === 403 ? "Only the host can save a mark or recording time."
+  if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
+  refused = done.status === 429 ? tooFast(done.retryAfter)
+    : done.status === 403 ? "Only the host can save a mark or recording time."
     : intent === "timeline_mark" ? `Use at most ${MAX_MARK} characters for a mark.`
     : intent === "recording" ? "Enter the recording start as a time, such as 14:02."
     : "Choose a mark or a recording time to save.";

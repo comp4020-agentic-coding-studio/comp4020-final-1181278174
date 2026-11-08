@@ -2,32 +2,52 @@ import type { APIRoute } from "astro";
 import { findSession, isCode, normaliseCode } from "../../../lib/board.ts";
 import { SIGNIN_COOKIE, tokenHash } from "../../../lib/accounts.ts";
 import { asEvent, board, here, listen } from "../../../lib/live.ts";
+import { connections, networkAddress } from "../../../lib/limits.ts";
 
 // The live stream of one session, as server-sent events. It opens with the
 // current state and sends the state again after every change. A comment line
 // goes out now and then so Fly's proxy doesn't close a quiet connection.
 const BEAT_MS = 20_000;
 
-export const GET: APIRoute = ({ params, request, url, locals, cookies }) => {
+export const GET: APIRoute = (context) => {
+  const { params, request, url, locals, cookies } = context;
   const code = normaliseCode(params.code ?? "");
   const session = isCode(code) ? findSession(code) : undefined;
-  if (!session) return new Response("No such session.\n", { status: 404 });
+  if (!session) {
+    locals.log("refused", { action: "stream", reason: "no-such-session" });
+    return new Response("No such session.\n", { status: 404 });
+  }
+
+  // The account's tabs share one allowance, including its projector tabs.
+  // The whole process also has a ceiling, even when browsers change ids.
+  const limits = [{ key: "streams:anywhere", max: 2000 }];
+  if (locals.account) limits.push({ key: `streams:account:${locals.account.id}`, max: 10 });
+  else {
+    limits.push({ key: `streams:browser:${locals.browser}`, max: 20 });
+    const network = networkAddress(request, () => context.clientAddress);
+    if (network !== null) limits.push({ key: `streams:network:${network}`, max: 1000 });
+  }
+  const release = connections.acquire(limits);
+  if (!release) {
+    locals.log("refused", { action: "stream", session: session.code, reason: "rate" });
+    return new Response("Too many live pages are open. Close one and try again in a minute.\n", {
+      status: 429,
+      headers: { "retry-after": "60", "content-type": "text/plain; charset=utf-8" },
+    });
+  }
 
   const encoder = new TextEncoder();
-  let leave = (): void => {};
+  let leave = release;
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
-      const send = (text: string): void => {
-        try {
-          controller.enqueue(encoder.encode(text));
-        } catch {
-          leave();
-        }
-      };
       // the projector page asks with ?screen: it is not a person in the room
       const person = locals.account && !url.searchParams.has("screen") ? locals.person : null;
       const token = cookies.get(SIGNIN_COOKIE)?.value;
-      const signIn = person && token ? tokenHash(token) : undefined;
+      const signIn = locals.account && token ? tokenHash(token) : undefined;
+      const opened = Date.now();
+      let stop: (() => void) | undefined;
+      let beat: ReturnType<typeof setInterval> | undefined;
+      let gone = false;
       const end = (): void => {
         leave();
         try {
@@ -36,32 +56,42 @@ export const GET: APIRoute = ({ params, request, url, locals, cookies }) => {
           // already closed
         }
       };
-      const stop = listen(session.id, { person, send, signIn, end });
-      // who opened the session and when they left, with how many people are
-      // here after; the projector page is a screen, not a person
-      const opened = Date.now();
-      locals.log(person ? "session_joined" : "screen_opened", { session: session.code, here: here(session.id) });
-      const beat = setInterval(() => send(": still here\n\n"), BEAT_MS);
-      let gone = false;
       leave = () => {
         if (gone) return;
         gone = true;
         clearInterval(beat);
-        stop();
-        const stayed = `${Math.round((Date.now() - opened) / 1000)}s`;
-        locals.log(person ? "session_left" : "screen_closed", { session: session.code, here: here(session.id), stayed });
-      };
-      request.signal.addEventListener("abort", () => {
-        leave();
-        try {
-          controller.close();
-        } catch {
-          // already closed
+        request.signal.removeEventListener("abort", end);
+        release();
+        if (stop) {
+          stop();
+          const stayed = `${Math.round((Date.now() - opened) / 1000)}s`;
+          locals.log(person ? "session_left" : "screen_closed", { session: session.code, here: here(session.id), stayed });
         }
-      });
-      // if the connection drops, the browser tries again after two seconds
-      send("retry: 2000\n\n");
-      send(asEvent(board(session.id)));
+      };
+      const send = (text: string): void => {
+        if (gone) return;
+        try {
+          controller.enqueue(encoder.encode(text));
+        } catch {
+          end();
+        }
+      };
+      request.signal.addEventListener("abort", end, { once: true });
+      if (request.signal.aborted) {
+        end();
+        return;
+      }
+      try {
+        stop = listen(session.id, { person, send, signIn, end });
+        locals.log(person ? "session_joined" : "screen_opened", { session: session.code, here: here(session.id) });
+        beat = setInterval(() => send(": still here\n\n"), BEAT_MS);
+        // if the connection drops, the browser tries again after two seconds
+        send("retry: 2000\n\n");
+        if (!gone) send(asEvent(board(session.id)));
+      } catch (error) {
+        leave();
+        throw error;
+      }
     },
     cancel() {
       leave();

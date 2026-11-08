@@ -445,7 +445,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
           }
         }
       } else if (!ok) {
-        problem("Could not save that change. Check the list before trying again.");
+        problem(doc.querySelector("[role='alert']")?.textContent?.trim()
+          || "Could not save that change. Check the list before trying again.");
       }
     } catch {
       if (button && pressed) button.setAttribute("aria-pressed", pressed);
@@ -492,9 +493,13 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   };
 
   let opened = false;
+  // error pages in a row, for how long to wait before the next try
+  let failures = 0;
   function connect(): void {
     const source = new EventSource(url);
+    let retrying = false;
     source.onopen = () => {
+      failures = 0;
       connected = true;
       // The public question signature cannot reveal every missed HTML change.
       if (opened || cardsStale) void refresh();
@@ -522,8 +527,14 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
       cardsStale = true;
       say(false);
       // The browser reconnects by itself after a dropped connection, but gives
-      // up for good on an error page, which is what a redeploy answers with.
-      if (source.readyState === EventSource.CLOSED) setTimeout(connect, 2000);
+      // up for good on an error page: a redeploy, or a refusal for too many open
+      // pages. Then try again after 2 seconds, twice as long after each failure,
+      // up to a minute, so a refused page doesn't knock without end.
+      if (source.readyState === EventSource.CLOSED && !retrying) {
+        retrying = true;
+        setTimeout(connect, Math.min(2000 * 2 ** failures, 60_000));
+        failures += 1;
+      }
     };
   }
   connect();

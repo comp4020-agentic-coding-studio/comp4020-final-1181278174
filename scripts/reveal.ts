@@ -6,8 +6,9 @@
 //   node scripts/reveal.ts --db hands-up.db --key ~/hands-up-audit-private-key.pem \
 //     --question 42 --reason "reported as a threat, case 2026-11-09-1"
 //
-// For the live app, copy the database off the volume first
-// (`mise exec -- flyctl ssh sftp get /data/hands-up.db`) and run this on the copy.
+// For the live app, take a backup first (`mise exec -- scripts/backup.sh`, which
+// copies what is still in the write-ahead log too), copy it, and run this on the
+// copy: never on the live database.
 import { readFileSync } from "node:fs";
 import Database from "better-sqlite3";
 import { open } from "../src/lib/escrow.ts";

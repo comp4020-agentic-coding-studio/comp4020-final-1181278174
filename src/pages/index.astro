@@ -3,8 +3,9 @@ import Icon from "../components/Icon.astro";
 import JoinForm from "../components/JoinForm.astro";
 import Layout from "../layouts/Layout.astro";
 import { checkTitle, length, MAX_TITLE, sessionsHostedBy, startSession } from "../lib/board.ts";
-import { clock, day } from "../lib/words.ts";
+import { clock, day, tooFast } from "../lib/words.ts";
 import { authLink } from "../lib/auth.ts";
+import { accountRefusal } from "../lib/abuse.ts";
 
 // Starting a session posts back here: on success it goes to the new
 // session, otherwise this page comes back with the name kept and the reason.
@@ -22,13 +23,21 @@ if (Astro.request.method === "POST" && signedOut) {
   title = String(form.get("title") ?? "").trim();
   problem = checkTitle(title);
   if (!problem) {
-    const code = startSession(title, Astro.locals.person);
-    Astro.locals.log("session_started", { session: code });
-    return Astro.redirect(`/s/${code}`, 303);
+    const limited = accountRefusal(Astro.locals.person, "start", Astro.locals.log);
+    if (limited) {
+      Astro.response.status = limited.status;
+      Astro.response.headers.set("Retry-After", String(limited.retryAfter));
+      problem = tooFast(limited.retryAfter);
+    } else {
+      const code = startSession(title, Astro.locals.person);
+      Astro.locals.log("session_started", { session: code });
+      return Astro.redirect(`/s/${code}`, 303);
+    }
+  } else {
+    Astro.response.status = 422;
+    const reason = title.length === 0 ? "empty" : "too-long";
+    Astro.locals.log("refused", { action: "start", reason, length: length(title) });
   }
-  Astro.response.status = 422;
-  const reason = title.length === 0 ? "empty" : "too-long";
-  Astro.locals.log("refused", { action: "start", reason, length: length(title) });
 }
 
 // The account's sessions are available in every signed-in browser.
@@ -113,7 +122,7 @@ const hosted = Astro.locals.account ? sessionsHostedBy(Astro.locals.person) : []
         </section>
       )}
 
-      <p class="foot"><a href="/readme/">About Hands Up</a> <span>Your username stays private.</span></p>
+      <p class="foot"><span>Your username stays private.</span></p>
     </div>
   </main>
 </Layout>

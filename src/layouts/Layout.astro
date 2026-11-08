@@ -2,9 +2,10 @@
 import "../styles.css";
 import AccountMenu from "../components/AccountMenu.astro";
 
-// `account` false leaves out "Signed in as ...": the projector is on a big screen
-type Props = { title: string; sunny?: boolean; account?: boolean };
-const { title, sunny = false, account = true } = Astro.props;
+// `account` false leaves out "Signed in as ...": the projector is on a big screen.
+// `footer` false leaves out the links at the foot, for the same reason.
+type Props = { title: string; sunny?: boolean; account?: boolean; footer?: boolean };
+const { title, sunny = false, account = true, footer = true } = Astro.props;
 ---
 
 <!doctype html>
@@ -13,7 +14,7 @@ const { title, sunny = false, account = true } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
-    <meta name="description" content="An anonymous question board for one room." />
+    <meta name="description" content="Lost in a lecture? Put your hand up with one press and see how many others are lost too." />
     <meta name="theme-color" content="#f5f6f1" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#181d19" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -24,5 +25,16 @@ const { title, sunny = false, account = true } = Astro.props;
     <a class="skip" href="#main">Skip to content</a>
     {account && <header class="account-header"><div class="wrap"><AccountMenu /></div></header>}
     <slot />
+    {
+      footer && (
+        <footer class="site-footer">
+          <nav class="wrap" aria-label="About this app">
+            <a href="/help">How it works</a>
+            <a href="/privacy">Privacy and rules</a>
+            <a href="/readme/">About</a>
+          </nav>
+        </footer>
+      )
+    }
   </body>
 </html>

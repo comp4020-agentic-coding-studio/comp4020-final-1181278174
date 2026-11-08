@@ -6,20 +6,23 @@ import { recordGoingOver } from "./going-over.ts";
 import { addMark, atCanberra, MAX_MARK, setRecording } from "./record.ts";
 import { questions, reports } from "./schema.ts";
 import { tagFor } from "./tags.ts";
+import { accountRefusal, type Refused } from "./abuse.ts";
 
 // What a form sent to either part of a session does, where both parts take the
 // same form: "Me too" is on the questions page and on the hall's three most
 // wanted. Each returns the question to come back to, or the status to refuse with.
 
 type Log = (what: string, fields?: Record<string, string | number | undefined>) => void;
-type Done = { ok: true; question: number } | { ok: false; status: number };
+type Done = { ok: true; question: number } | Refused;
 
 /** The host is going over it now. Repeating this while active changes nothing. */
-export function goingOver(session: Session, person: string, log: Log): { ok: true } | { ok: false; status: number } {
+export function goingOver(session: Session, person: string, log: Log): { ok: true } | Refused {
   if (!isHost(session, person)) {
     log("refused", { action: "going_over", session: session.code, reason: "not-host" });
     return { ok: false, status: 403 };
   }
+  const limited = accountRefusal(person, "going_over", log, session.code);
+  if (limited) return limited;
   const changed = recordGoingOver(session.id);
   log(changed ? "going_over_started" : "going_over_unchanged", { session: session.code });
   if (changed) publish(session.id);
@@ -37,6 +40,8 @@ export function vote(session: Session, person: string, form: FormData, log: Log)
     return { ok: false, status: 422 };
   }
   const want = given === "1";
+  const limited = accountRefusal(person, "vote", log, session.code);
+  if (limited) return limited;
   const done = Number.isInteger(id) && id > 0 ? setVote(session, id, person, want) : "no-such-question";
   if (done === "changed" || done === "unchanged") {
     const what = done === "unchanged" ? "vote_unchanged" : want ? "vote_given" : "vote_taken_back";
@@ -59,6 +64,8 @@ export function report(session: Session, person: string, form: FormData, log: Lo
     log("refused", { action: "report", session: session.code, question: Number.isInteger(id) ? id : undefined, reason });
     return { ok: false, status: 404 };
   }
+  const limited = accountRefusal(person, "report", log, session.code);
+  if (limited) return limited;
   const { changes } = db.insert(reports)
     .values({ questionId: id, reporter: tagFor("reporter", person), createdAt: new Date() })
     .onConflictDoNothing().run();
@@ -86,6 +93,8 @@ export function unreport(session: Session, person: string, form: FormData, log: 
     log("refused", { action: "unreport", session: session.code, question: id, reason: "too-late" });
     return { ok: false, status: 422 };
   }
+  const limited = accountRefusal(person, "unreport", log, session.code);
+  if (limited) return limited;
   db.delete(reports).where(and(eq(reports.questionId, id), eq(reports.reporter, reporter))).run();
   log("report_taken_back", { session: session.code, question: id });
   nudge(session.id, person);
@@ -96,6 +105,10 @@ export function unreport(session: Session, person: string, form: FormData, log: 
 export function mark(session: Session, person: string, form: FormData, log: Log): Done {
   const id = Number(form.get("question"));
   const to = STATES.find((state) => state === form.get("to"));
+  if (to && isHost(session, person)) {
+    const limited = accountRefusal(person, "mark", log, session.code);
+    if (limited) return limited;
+  }
   if (Number.isInteger(id) && to && setState(session, id, person, to)) {
     log("question_marked", { session: session.code, question: id, to });
     return { ok: true, question: id };
@@ -106,7 +119,7 @@ export function mark(session: Session, person: string, form: FormData, log: Log)
 }
 
 /** The host marks the start of a part of the lecture, now. Anyone else is refused. */
-export function timelineMark(session: Session, person: string, form: FormData, log: Log): { ok: true } | { ok: false; status: number } {
+export function timelineMark(session: Session, person: string, form: FormData, log: Log): { ok: true } | Refused {
   const label = String(form.get("label") ?? "").trim();
   if (!isHost(session, person)) {
     log("refused", { action: "timeline_mark", session: session.code, reason: "not-host" });
@@ -116,6 +129,8 @@ export function timelineMark(session: Session, person: string, form: FormData, l
     log("refused", { action: "timeline_mark", session: session.code, reason: "too-long" });
     return { ok: false, status: 422 };
   }
+  const limited = accountRefusal(person, "timeline_mark", log, session.code);
+  if (limited) return limited;
   addMark(session.id, label);
   log("timeline_marked", { session: session.code });
   publish(session.id);
@@ -123,7 +138,7 @@ export function timelineMark(session: Session, person: string, form: FormData, l
 }
 
 /** The host says when the recording started, as a time of day on the day `ref` falls on. */
-export function recordingStart(session: Session, person: string, form: FormData, log: Log, ref: Date): { ok: true } | { ok: false; status: number } {
+export function recordingStart(session: Session, person: string, form: FormData, log: Log, ref: Date): { ok: true } | Refused {
   if (!isHost(session, person)) {
     log("refused", { action: "recording", session: session.code, reason: "not-host" });
     return { ok: false, status: 403 };
@@ -133,6 +148,8 @@ export function recordingStart(session: Session, person: string, form: FormData,
     log("refused", { action: "recording", session: session.code, reason: "no-such-time" });
     return { ok: false, status: 422 };
   }
+  const limited = accountRefusal(person, "recording", log, session.code);
+  if (limited) return limited;
   setRecording(session.id, at);
   log("recording_set", { session: session.code });
   publish(session.id);

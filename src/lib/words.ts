@@ -34,6 +34,20 @@ export const SILENCE = "That doesn't mean everyone follows. Lost? Raise yours, n
 export const SILENCE_SHORT = "That doesn't mean everyone follows.";
 
 /** The lecturer's acknowledgement, without claiming what it changed. */
+/** A refusal for going too fast, saying how long to wait. */
+export function tooFast(seconds = 60): string {
+  const wait = seconds < 90 ? `${seconds} ${seconds === 1 ? "second" : "seconds"}` : `${Math.ceil(seconds / 60)} minutes`;
+  return `Too many in a row. Try again in ${wait}.`;
+}
+
+/** What a refused press says: why, in a few words, and what to do next if anything. */
+export function refusal(intent: string, status: number): string {
+  if (status === 403) return intent === "hand" ? "The host teaches and has no hand." : "Only the host can do that.";
+  if (status === 404) return intent === "unreport" ? "There's no report of yours to take back." : "That question isn't here any more.";
+  if (status === 422 && intent === "unreport") return "A report can only be taken back within a minute.";
+  return "That didn't work. Reload the page and try again.";
+}
+
 export const GOING_OVER_MESSAGE = "The lecturer is going over it.";
 export const GOING_OVER_NOTE = "Shows on every screen for 2 minutes.";
 

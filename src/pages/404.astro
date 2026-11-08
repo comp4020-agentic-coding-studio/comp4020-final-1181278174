@@ -1,0 +1,19 @@
+---
+// A wrong address: say so, and offer the ways in, a session code or the home page.
+// Drawn on the design canvas first ("Not found (404) · phone", 9 November).
+import JoinForm from "../components/JoinForm.astro";
+import SlimHeader from "../components/SlimHeader.astro";
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Nothing here · Hands Up" sunny>
+  <SlimHeader />
+  <main id="main" class="wrap info">
+    <h1>Nothing here</h1>
+    <p class="lead">There's no page at this address. If someone gave you a session code, type it below.</p>
+    <section class="card" aria-label="Join a session">
+      <JoinForm />
+    </section>
+    <a class="go" href="/">Go to the home page</a>
+  </main>
+</Layout>
