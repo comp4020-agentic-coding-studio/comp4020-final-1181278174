@@ -9,6 +9,7 @@ import SlimHeader from "../../../components/SlimHeader.astro";
 import Layout from "../../../layouts/Layout.astro";
 import { mark, report, unreport, vote } from "../../../lib/actions.ts";
 import { authLink } from "../../../lib/auth.ts";
+import { accountRefusal } from "../../../lib/abuse.ts";
 import {
   askQuestion,
   checkQuestion,
@@ -21,7 +22,7 @@ import {
   normaliseCode,
   type Sort,
 } from "../../../lib/board.ts";
-import { howMany, lostLabel, refusal, SILENCE_SHORT } from "../../../lib/words.ts";
+import { howMany, lostLabel, refusal, SILENCE_SHORT, tooFast } from "../../../lib/words.ts";
 import { goingOverAge } from "../../../lib/going-over.ts";
 import { people } from "../../../lib/live.ts";
 import { handsUp } from "../../../lib/room.ts";
@@ -59,19 +60,28 @@ if (signedOutPost) {
     draft = String(form.get("body") ?? "").trim();
     problem = checkQuestion(draft);
     if (!problem) {
-      const id = askQuestion(session, person, draft);
-      log("question_asked", { session: session.code, question: id });
-      return Astro.redirect(`${here}${sort === "recent" ? "&" : "?"}posted=${id}`, 303);
+      const limited = accountRefusal(person, "ask", log, session.code);
+      if (limited) {
+        Astro.response.status = limited.status;
+        Astro.response.headers.set("Retry-After", String(limited.retryAfter));
+        problem = tooFast(limited.retryAfter);
+      } else {
+        const id = askQuestion(session, person, draft);
+        log("question_asked", { session: session.code, question: id });
+        return Astro.redirect(`${here}${sort === "recent" ? "&" : "?"}posted=${id}`, 303);
+      }
+    } else {
+      Astro.response.status = 422;
+      const reason = draft.length === 0 ? "empty" : "too-long";
+      log("refused", { action: "ask", session: session.code, reason, length: length(draft) });
     }
-    Astro.response.status = 422;
-    const reason = draft.length === 0 ? "empty" : "too-long";
-    log("refused", { action: "ask", session: session.code, reason, length: length(draft) });
   } else if (intent === "vote" || intent === "state" || intent === "report" || intent === "unreport") {
     const action = intent === "vote" ? vote : intent === "report" ? report : intent === "unreport" ? unreport : mark;
     const done = action(session, person, form, log);
     if (done.ok) return Astro.redirect(`${here}#q-${done.question}`, 303);
     Astro.response.status = done.status;
-    refused = refusal(intent, done.status);
+    if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
+    refused = done.status === 429 ? tooFast(done.retryAfter) : refusal(intent, done.status);
   } else {
     Astro.response.status = 400;
     refused = refusal("", 400);

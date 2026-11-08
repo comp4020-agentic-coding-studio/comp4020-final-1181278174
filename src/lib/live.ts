@@ -128,8 +128,15 @@ export function listen(sessionId: number, listener: Listener): () => void {
   if (!room) listeners.set(sessionId, (room = new Set()));
   room.add(listener);
   // the timeline's "out of how many" (src/lib/record.ts)
-  notePresence(sessionId, here(sessionId));
-  publish(sessionId);
+  try {
+    notePresence(sessionId, here(sessionId));
+    publish(sessionId);
+  } catch (error) {
+    // No stop function reached the caller, so undo the registration here.
+    room.delete(listener);
+    if (room.size === 0) listeners.delete(sessionId);
+    throw error;
+  }
   return () => {
     if (!room.delete(listener)) return;
     if (room.size === 0) {

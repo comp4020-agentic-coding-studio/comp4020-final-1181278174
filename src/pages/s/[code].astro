@@ -9,13 +9,14 @@ import SlimHeader from "../../components/SlimHeader.astro";
 import Layout from "../../layouts/Layout.astro";
 import { goingOver, mark, report, timelineMark, unreport, vote } from "../../lib/actions.ts";
 import { authLink } from "../../lib/auth.ts";
+import { accountRefusal } from "../../lib/abuse.ts";
 import { findSession, isCode, isHost, listQuestions, normaliseCode, raiseHand } from "../../lib/board.ts";
 import { HAND_MS } from "../../lib/hall.ts";
 import { goingOverAge } from "../../lib/going-over.ts";
 import { people } from "../../lib/live.ts";
 import { MAX_MARK, marksOf, recentLost } from "../../lib/record.ts";
 import { handOf, handsUp } from "../../lib/room.ts";
-import { clock, GOING_OVER_NOTE, handNote, lostLabel, refusal, SILENCE, SILENCE_SHORT } from "../../lib/words.ts";
+import { clock, GOING_OVER_NOTE, handNote, lostLabel, refusal, SILENCE, SILENCE_SHORT, tooFast } from "../../lib/words.ts";
 
 // The hall, the first part of a session: "I'm lost", and how many of the
 // people here have pressed it. Under it, the three open questions the room
@@ -53,37 +54,49 @@ if (signedOutPost) {
     // "I'm lost": one press, no words. Like a vote, it sends up (1) or down (0).
     const up = form.get("up");
     if (up === "1" || up === "0") {
-      const done = raiseHand(session, person, up === "1");
-      log(done === "unchanged" ? "hand_unchanged" : `hand_${done}`, { session: session.code });
-      return Astro.redirect(`/s/${session.code}#hall`, 303);
+      const limited = accountRefusal(person, "hand", log, session.code);
+      if (limited) {
+        Astro.response.status = limited.status;
+        Astro.response.headers.set("Retry-After", String(limited.retryAfter));
+        problem = tooFast(limited.retryAfter);
+      } else {
+        const done = raiseHand(session, person, up === "1");
+        log(done === "unchanged" ? "hand_unchanged" : `hand_${done}`, { session: session.code });
+        return Astro.redirect(`/s/${session.code}#hall`, 303);
+      }
+    } else {
+      Astro.response.status = 422;
+      problem = refusal("hand", 422);
+      log("refused", { action: "hand", session: session.code, reason: "no-such-value" });
     }
-    Astro.response.status = 422;
-    problem = refusal("hand", 422);
-    log("refused", { action: "hand", session: session.code, reason: "no-such-value" });
   } else if (intent === "vote" || intent === "report" || intent === "unreport") {
     const done = (intent === "vote" ? vote : intent === "report" ? report : unreport)(session, person, form, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
     Astro.response.status = done.status;
-    problem = refusal(intent, done.status);
+    if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
+    problem = done.status === 429 ? tooFast(done.retryAfter) : refusal(intent, done.status);
   } else if (intent === "going-over") {
     const done = goingOver(session, person, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#host`, 303);
     Astro.response.status = done.status;
-    goingOverProblem = "Only the host can say they are going over it.";
+    if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
+    goingOverProblem = done.status === 429 ? tooFast(done.retryAfter) : "Only the host can say they are going over it.";
   } else if (intent === "timeline_mark") {
     const done = timelineMark(session, person, form, log);
     // back to the host's controls, saying which mark it was: the newest is last
     if (done.ok) return Astro.redirect(`/s/${session.code}?marked=${marksOf(session.id).length}#host`, 303);
     Astro.response.status = done.status;
+    if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
     markValue = String(form.get("label") ?? "");
-    markProblem = done.status === 422 ? `Use at most ${MAX_MARK} characters for a mark.` : refusal("timeline_mark", done.status);
+    markProblem = done.status === 429 ? tooFast(done.retryAfter) : done.status === 422 ? `Use at most ${MAX_MARK} characters for a mark.` : refusal("timeline_mark", done.status);
     if (done.status !== 422) problem = markProblem;
   } else if (intent === "state") {
     // the host's Answered and Hide, on the three most wanted
     const done = mark(session, person, form, log);
     if (done.ok) return Astro.redirect(`/s/${session.code}#q-${done.question}`, 303);
     Astro.response.status = done.status;
-    problem = refusal("state", done.status);
+    if (done.retryAfter) Astro.response.headers.set("Retry-After", String(done.retryAfter));
+    problem = done.status === 429 ? tooFast(done.retryAfter) : refusal("state", done.status);
   } else {
     Astro.response.status = 400;
     problem = refusal("", 400);

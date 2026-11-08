@@ -4,6 +4,8 @@ import SlimHeader from "../components/SlimHeader.astro";
 import Layout from "../layouts/Layout.astro";
 import { createAccount } from "../lib/accounts.ts";
 import { completeSignIn, returnPath } from "../lib/auth.ts";
+import { signupRetryAfter } from "../lib/abuse.ts";
+import { tooFast } from "../lib/words.ts";
 
 let username = "";
 let problem: string | undefined;
@@ -12,15 +14,24 @@ if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   username = String(form.get("username") ?? "");
   returnTo = returnPath(form.get("return") ?? returnTo);
-  const result = await createAccount(username, String(form.get("password") ?? ""));
-  if (result.ok) {
-    completeSignIn(result.account.id, Astro.cookies, Astro.url);
-    Astro.locals.log("account_created");
-    return Astro.redirect(returnTo, 303);
+  // Count before hashing, including attempts at a username already taken.
+  const retryAfter = signupRetryAfter(Astro.request, () => Astro.clientAddress);
+  if (retryAfter) {
+    Astro.response.status = 429;
+    Astro.response.headers.set("Retry-After", String(retryAfter));
+    problem = tooFast(retryAfter);
+    Astro.locals.log("refused", { action: "signup", reason: "rate" });
+  } else {
+    const result = await createAccount(username, String(form.get("password") ?? ""));
+    if (result.ok) {
+      completeSignIn(result.account.id, Astro.cookies, Astro.url);
+      Astro.locals.log("account_created");
+      return Astro.redirect(returnTo, 303);
+    }
+    Astro.response.status = 422;
+    problem = result.message;
+    Astro.locals.log("refused", { action: "signup", reason: result.reason });
   }
-  Astro.response.status = 422;
-  problem = result.message;
-  Astro.locals.log("refused", { action: "signup", reason: result.reason });
 }
 ---
 

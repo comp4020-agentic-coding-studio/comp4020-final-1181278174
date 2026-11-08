@@ -445,7 +445,8 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
           }
         }
       } else if (!ok) {
-        problem("Could not save that change. Check the list before trying again.");
+        problem(doc.querySelector("[role='alert']")?.textContent?.trim()
+          || "Could not save that change. Check the list before trying again.");
       }
     } catch {
       if (button && pressed) button.setAttribute("aria-pressed", pressed);
