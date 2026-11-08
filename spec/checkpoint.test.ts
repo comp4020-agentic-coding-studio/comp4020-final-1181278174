@@ -66,6 +66,21 @@ describe("At your next pause", () => {
   });
 });
 
+describe("At your next pause, at a new part", () => {
+  it("counts only the hands that were up after the part began", async () => {
+    const host = new Visitor();
+    const path = (await startSession(host, `New part ${tag()}`)).url.pathname;
+    const student = new Visitor();
+    await hand(student, path, "1");
+    await hand(student, path, "0");
+    const page = await host.open(path);
+    const form = formWithButton(page, /^mark$/i);
+    fill(form, `After ${tag()}`);
+    expect((await host.submit(page, form)).status).toBe(200);
+    expect(lines(await host.open(path))).toContain("No one has said they were lost in this part.");
+  });
+});
+
 describe("The class that ended", () => {
   it("shows the host its minutes with the most hands up and the questions left open, until the next class starts", async () => {
     const host = new Visitor();

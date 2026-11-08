@@ -231,9 +231,31 @@ export function partSoFar(sessionId: number, hereNow: number, now = Date.now()):
   const mark = marksOf(sessionId).filter((m) => m.at >= lesson.startedAt).at(-1);
   const from = mark?.at ?? lesson.startedAt;
   const start = Math.floor(from.getTime() / MINUTE) * MINUTE;
-  const minutes = (sittings(sessionId, hereNow, now)[0]?.minutes ?? []).filter((m) => m.at.getTime() >= start && m.lost > 0);
+  // every sitting in the part, not only the newest: the room may have been empty a while
+  const minutes = sittings(sessionId, hereNow, now)
+    .flatMap((s) => s.minutes)
+    .filter((m) => m.at.getTime() >= start)
+    .sort((a, b) => a.at.getTime() - b.at.getTime())
+    // the part's first minute counts only the hands that were up after the part began
+    .map((m) => (m.at.getTime() === start ? { ...m, lost: lostWithin(sessionId, from.getTime(), start + MINUTE, now) } : m))
+    .filter((m) => m.lost > 0);
   const most = minutes.reduce<Minute | null>((best, m) => (!best || m.lost >= best.lost ? m : best), null);
   return { from, label: mark?.label ?? null, most };
+}
+
+/** How many people had a hand up at some moment from `from` until `to`: a count, never who. */
+function lostWithin(sessionId: number, from: number, to: number, now: number): number {
+  const host = hostOf(sessionId);
+  const rows = db
+    .select({ person: hands.person, raisedAt: hands.raisedAt, loweredAt: hands.loweredAt })
+    .from(hands)
+    .where(sql`${hands.sessionId} = ${sessionId} AND ${hands.raisedAt} < ${to} AND ${hands.raisedAt} >= ${from - HAND_MS}`)
+    .all();
+  const up = rows.filter((h) => {
+    const down = Math.min(h.loweredAt?.getTime() ?? h.raisedAt.getTime() + HAND_MS, h.raisedAt.getTime() + HAND_MS, now);
+    return h.person !== host && h.raisedAt.getTime() < to && down > from;
+  });
+  return new Set(up.map((h) => h.person)).size;
 }
 
 /** The class that ended, for the host until the next one starts: when, and its minutes with the most hands up. */
