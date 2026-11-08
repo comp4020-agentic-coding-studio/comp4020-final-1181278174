@@ -406,3 +406,120 @@ live app with `flyctl logs` open.
 7. the decision record and the changes to README.md and CLAUDE.md, as drafts
 8. a rehearsal: two Chrome profiles, the URL only, me reading the logs
 9. I write PROCESS.md and `reflections/crit-10.md`, then preflight and ship
+
+## Final: the hall
+
+Deadline Monday 9 November 2026, 12:00. Showcase Wednesday 11 November, a room
+full of people using it at once.
+
+### Where it starts
+
+What is live after crit 10 is a question board: anonymous questions, "Me too",
+Popular and Recent, a projector page, live updates and logs. On 8 November I
+looked at what students here already have and at the other final projects. Ed
+has anonymous posts. Echo360 takes questions during a live stream, and has a
+"confused" flag whose count only the lecturer sees. Another final project in
+the class works almost the same way as mine. A board that carries questions to
+the person at the front is the answer anyone would build.
+
+### The decision
+
+Decided 8 November, 18:00: the main thing the app does becomes a hand anyone can
+raise without words, which the whole room sees. The question board stays, as the
+second part.
+
+- Why: a lost student does not ask, because no other hand is up and each one
+  thinks they alone are confused (Miller 2023, describing Miller and McFarland
+  1987). Asking also needs you to know what you do not know (Miyake and Norman
+  1979), so a board that needs words leaves out the people who are most lost.
+  The tools students already have send "confused" to the lecturer only. Here
+  the room sees it, so each person can see they are not alone.
+- What it costs: a 3D view that has to run on phones (three.js), and a night of
+  work before the deadline.
+
+### Two parts
+
+1. The hall, `/s/CODE`: a 3D lecture hall with a figure for everyone who has the
+   session open, an "I'm lost" button, "3 of 12 here are lost", and under it the
+   three open questions with the most "Me too", which can be voted on there.
+2. The questions, `/s/CODE/questions`: the board as it was.
+
+The hall's record is at `/s/CODE/timeline`, the projector at `/s/CODE/present`.
+
+### The hall
+
+- One press, no words. A person has at most one hand up. It comes down when
+  they press again, or by itself after 3 minutes, so the hall shows now.
+- Every count has its denominator: "3 of 12 here are lost".
+- Nobody can tell whose hand it is, the host included. Proposed 8 November,
+  18:10, to be confirmed: the server sends how many hands are up and how long
+  each has been up, never a seat or a person. Each screen places the figures
+  itself, with its own person at the back in the middle, so the whole room is
+  in front of them, and puts the other hands on figures it picks. The other
+  option, a fixed seat per person, lets anyone who sees a phone pressed learn
+  which seat is that person.
+- The figures are all the same and have no faces. The room is in paper and ink
+  colours, and the only strong colour is a raised hand, in tomato. Your own
+  figure is blue, on your screen only.
+- The projector shows the hall from the front, so the room sees itself.
+- A screen at the front of the 3D hall shows the question with the most
+  "Me too".
+- A hand sinks slowly as its 3 minutes run out. With reduced motion set,
+  nothing moves except what changed.
+
+### The record
+
+- Every hand is kept: when it went up and when it came down. The timeline shows
+  how many hands were up in each minute, against clock time, and it is still
+  there the next day.
+- The host can add a mark with a short label when the lecture moves on, such as
+  "Part 3: proofs". Marks show on the timeline.
+- The host can say when the recording started. Every point then also says how
+  far into the recording it is, so it can be found in Echo360. A link that
+  starts an Echo360 recording at a given time is made by the video's owner in
+  Echo360, so the app does not make one.
+
+### Floating windows
+
+Chrome and Edge on a computer can keep a small window above every other window
+(Document Picture-in-Picture). Three uses:
+
+- a student's: the count, the button and the last 15 minutes
+- the host's: the count, the last 15 minutes and the mark button
+- after class: the whole timeline beside the Echo360 recording
+
+Where the browser cannot do it, the button is not shown.
+
+### Not building
+
+Showing Echo360 inside the app: its pages need an ANU login the marker does not
+have, Wattle refuses to be shown inside another site, and Safari blocks a login
+inside one. Also not now: the lecturer's "I'll go over it", a line of words on a
+hand, an export.
+
+### Tests (`spec/`)
+
+- a hand needs no words: a form with only the intent raises it
+- a raised hand reaches another open page within a second
+- no page and no event ties a hand to a person or a seat
+- two raises from one person at once make one hand
+- a hand comes down by itself after its time (shortened for the tests)
+- the timeline lists hands that have come down
+- only the host can add a mark or set the recording time
+- the board's checks move to `/s/CODE/questions`
+
+The 3D view, the floating windows and how the hall feels are checked by hand at
+both widths. That the record survives a restart is checked by hand after a
+deploy.
+
+### Order of work
+
+1. this plan
+2. the design canvas: the hall, the timeline, the floating windows, the projector
+3. the two parts and the hand, with their tests
+4. the 3D hall
+5. the record: the timeline, marks, the recording time
+6. the floating windows
+7. the projector, a push, then two Chrome profiles on the live app at both widths
+8. the changes to CLAUDE.md, a decision record and README changes as drafts; I
+   write README.md and PROCESS.md
