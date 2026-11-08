@@ -34,14 +34,14 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   // how long a card that moved can't be pressed: the slide, and a little more
   const MOVED_MS = 400;
   const settling = new WeakMap<HTMLElement, number>();
-  // Other status regions belong to the hand, connection or ask form. Keep
-  // keyboard feedback beside this list, using the existing hidden-text style.
-  const focusStatus = holder.querySelector<HTMLElement>("[role='status']:not([data-live-status])") ?? document.createElement("p");
-  if (!focusStatus.isConnected) {
-    focusStatus.className = "unseen";
-    focusStatus.setAttribute("role", "status");
-    holder.before(focusStatus);
-  }
+  // Other status regions belong to the hand, the connection, the ask form and
+  // the host's reported line. Keyboard feedback has its own, beside this list,
+  // outside what a refresh replaces.
+  const focusStatus = document.createElement("p");
+  focusStatus.className = "unseen";
+  focusStatus.setAttribute("role", "status");
+  focusStatus.dataset.focusStatus = "";
+  holder.before(focusStatus);
   let focusNotice = 0;
 
   // The controls in a card the keyboard can reach: its buttons and the report
@@ -314,6 +314,38 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
   }
 
   /** Take the list from the server's own HTML for this person, keeping the cards already here. */
+  /**
+   * The host's "N questions have been reported" line (src/components/ReportedNotice.astro),
+   * as the fresh page has it: added, changed in place, or taken away. Focus on
+   * its link stays there, or goes to the list when the line goes.
+   */
+  function reported(fresh: HTMLElement): void {
+    const notice = holder.querySelector<HTMLElement>("[data-reported]");
+    const freshNotice = fresh.querySelector<HTMLElement>("[data-reported]");
+    const focused = notice?.contains(document.activeElement) ?? false;
+    if (!freshNotice) {
+      notice?.remove();
+    } else if (!notice) {
+      holder.prepend(document.adoptNode(freshNotice));
+      return;
+    } else {
+      notice.hidden = freshNotice.hidden;
+      const link = notice.querySelector("a");
+      const freshLink = freshNotice.querySelector("a");
+      if (link && freshLink && link.textContent === freshLink.textContent) {
+        // the same link to another question: move it, keeping focus on it
+        link.href = freshLink.href;
+        if (link.previousSibling && freshLink.previousSibling) link.previousSibling.textContent = freshLink.previousSibling.textContent;
+      } else if (notice.innerHTML !== freshNotice.innerHTML) {
+        notice.replaceChildren(...[...freshNotice.childNodes].map((node) => document.adoptNode(node)));
+      }
+    }
+    if (focused && !holder.querySelector("[data-reported]:not([hidden])")?.contains(document.activeElement)) {
+      const next = holder.querySelector<HTMLElement>("[data-reported]:not([hidden]) a") ?? cards()[0]?.querySelector<HTMLElement>("button, summary, a");
+      next?.focus();
+    }
+  }
+
   function adopt(doc: Document): void {
     const fresh = doc.querySelector<HTMLElement>("[data-board]");
     if (!fresh) return;
@@ -337,10 +369,7 @@ function watch(main: HTMLElement, url: string, holder: HTMLElement): void {
         });
         arrange(list, want);
       }
-      // the host's "N questions have been reported" line (src/components/ReportedNotice.astro)
-      const notice = holder.querySelector<HTMLElement>("[data-reported]");
-      const freshNotice = fresh.querySelector<HTMLElement>("[data-reported]");
-      if (notice && freshNotice && notice.outerHTML !== freshNotice.outerHTML) notice.replaceWith(document.adoptNode(freshNotice));
+      reported(fresh);
       const empty = holder.querySelector<HTMLElement>("[data-empty]");
       const freshEmpty = fresh.querySelector<HTMLElement>("[data-empty]");
       if (empty && freshEmpty && empty.innerHTML !== freshEmpty.innerHTML) empty.replaceChildren(...freshEmpty.childNodes);

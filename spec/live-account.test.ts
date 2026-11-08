@@ -80,3 +80,19 @@ it("after that load, shows the question that wasn't sent, to copy, once", async 
   expect(words?.readOnly).toBe(true);
   expect(window.sessionStorage.getItem(KEPT)).toBeNull();
 });
+
+it("takes the host's reported line away when the fresh page has none, and keeps keyboard feedback apart from it", async () => {
+  const { window, reload } = await start(page("one", reported), page("one", board));
+  const focus = window.document.querySelector("[data-focus-status]");
+  expect(focus).not.toBeNull();
+  expect(focus!.closest("[data-board]")).toBeNull();
+  nudge();
+  await vi.waitFor(() => expect(window.document.querySelector("[data-reported]")).toBeNull());
+  expect(reload).not.toHaveBeenCalled();
+});
+
+it("adds the reported line when a report arrives on a page that had none", async () => {
+  const { window } = await start(page("one", board), page("one", reported));
+  nudge();
+  await vi.waitFor(() => expect(window.document.querySelector("[data-reported] a")?.getAttribute("href")).toBe("/s/ABCD/questions#q-1"));
+});
