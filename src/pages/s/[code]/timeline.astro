@@ -336,39 +336,3 @@ const busiest = (minutes: Minute[]): Minute[] =>
     </Layout>
   )
 }
-
-<style>
-  /* A separate symbol and dashed line keep this apart from numbered parts. */
-  .going-mark {
-    width: 0;
-    border-left: 2px dashed var(--ink);
-    background: none;
-  }
-
-  /* A class's start and end: a solid line, the bounds the hands were open between. */
-  .class-mark {
-    width: 0;
-    border-left: 2px solid var(--ink);
-    background: none;
-  }
-
-  .class-mark .class-symbol,
-  .mark-number.class-symbol {
-    border: var(--line);
-    border-radius: 4px;
-    background: var(--card);
-    color: var(--ink);
-    font-size: 14px;
-    line-height: 1;
-  }
-
-  .going-mark .going-symbol,
-  .mark-number.going-symbol {
-    border: var(--line);
-    border-radius: 4px;
-    background: var(--sun);
-    color: var(--on-brand);
-    font-size: 20px;
-    line-height: 1;
-  }
-</style>

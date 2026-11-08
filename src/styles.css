@@ -617,16 +617,19 @@ textarea:disabled {
 .button.ink:active {
   background: var(--color-strong-active);
 }
-.button.tomato {
+.button.tomato,
+.float-ask .button.ink {
   background: var(--color-action);
   color: var(--color-on-action);
   border-color: var(--color-action-border);
 }
-.button.tomato:hover {
+.button.tomato:hover,
+.float-ask .button.ink:hover {
   background: var(--color-action-hover);
   border-color: var(--color-action-border);
 }
-.button.tomato:active {
+.button.tomato:active,
+.float-ask .button.ink:active {
   background: var(--color-action-active);
   border-color: var(--color-action-border);
 }
@@ -1087,6 +1090,29 @@ textarea:disabled {
   min-height: var(--control-height);
 }
 
+/* Class controls keep the explanation beside the action that opens hands. */
+.hall-class {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-bottom: var(--space-4);
+  border-bottom: var(--line);
+}
+.hall-class .button {
+  width: 100%;
+}
+.hall-class p {
+  margin: 0;
+}
+.hall-hand:has(.lost-button:disabled) .hand-note {
+  padding: var(--space-3);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-subtle);
+  color: var(--ink);
+}
+
 /* Host tools share the same fields and actions as the rest of the room. */
 .host-panel {
   display: flex;
@@ -1107,6 +1133,74 @@ textarea:disabled {
   font: 650 var(--text-xl) / 1.2 var(--display);
   letter-spacing: -0.025em;
 }
+/* The current part is a reading card; the completed class is a quieter record. */
+.checkpoint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--line);
+  border-top: 3px solid var(--sun);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.checkpoint h3,
+.checkpoint p {
+  margin: 0;
+}
+.checkpoint h3 {
+  font-family: var(--display);
+  font-size: var(--text-lg);
+  font-weight: 650;
+  line-height: 1.25;
+}
+.checkpoint-part {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.checkpoint-most {
+  line-height: var(--leading-body);
+}
+.checkpoint-question {
+  padding-top: var(--space-3);
+  border-top: var(--line);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+}
+.checkpoint-question a {
+  overflow-wrap: anywhere;
+}
+.checkpoint.recap {
+  border-top-color: var(--color-control-border);
+}
+.recap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+.recap-list li {
+  padding-block: var(--space-2);
+  border-top: var(--line);
+}
+.recap-list strong {
+  margin-right: var(--space-1);
+  font-family: var(--display);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.recap > p:last-child a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  font-weight: var(--weight-semibold);
+}
+
 .host-form,
 .hall-mark,
 .hall-going-over {
@@ -1186,6 +1280,109 @@ textarea:disabled {
   text-align: left;
 }
 
+/* First-use guidance stays in the page flow, using the shared controls. */
+.guide {
+  padding: var(--space-4);
+  border: var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-subtle);
+  color: var(--ink);
+}
+.guide-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.guide h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: var(--text-xl);
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+.guide [data-guide-progress] {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.guide ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding-left: var(--space-6);
+}
+.guide li {
+  padding-inline-start: var(--space-1);
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+.guide li::marker {
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: var(--weight-bold);
+}
+.guide li strong {
+  font-weight: var(--weight-semibold);
+}
+.guide-controls,
+.guide-paging,
+.guide form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.guide-controls {
+  padding-top: var(--space-3);
+  border-top: var(--line);
+}
+.guide form {
+  margin: 0;
+}
+.guide .button {
+  min-height: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+}
+.guide-skip {
+  min-height: var(--target-min);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.guide-skip:hover {
+  color: var(--ink);
+  background: var(--color-surface-hover);
+}
+.guide-skip:active {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+
 /* Questions: the content is primary, metadata and moderation are secondary. */
 .question-layout {
   max-width: var(--layout-reading);
@@ -1195,6 +1392,22 @@ textarea:disabled {
 .question-layout > .alert {
   margin-bottom: var(--space-4);
 }
+.kept-question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.kept-question p {
+  margin: 0;
+}
+.kept-question textarea {
+  margin: 0;
+  min-height: 6rem;
+  border-color: var(--color-control-border);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-body);
+}
+
 .ask {
   display: flex;
   flex-direction: column;
@@ -1655,6 +1868,7 @@ main:has([data-live-status="waiting"]) .question-room {
 }
 .chart-mark span {
   position: absolute;
+  z-index: 1;
   top: 0;
   left: 1px;
   transform: translateX(-50%);
@@ -1677,6 +1891,43 @@ main:has([data-live-status="waiting"]) .question-room {
 .chart-legend li > span:last-child {
   overflow-wrap: anywhere;
 }
+/* Distinct class bounds, numbered parts and Going over it markers. */
+.going-mark {
+  width: 0;
+  border-left: 2px dashed var(--ink);
+  background: none;
+}
+.class-mark {
+  width: 0;
+  border-left: 2px solid var(--ink);
+  background: none;
+}
+.class-mark .class-symbol,
+.mark-number.class-symbol {
+  border: 1px solid var(--color-strong-border);
+  border-radius: var(--radius-control);
+  background: var(--color-strong);
+  color: var(--color-on-strong);
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+.going-mark .going-symbol,
+.mark-number.going-symbol {
+  border: 1px solid var(--color-action-border);
+  border-radius: var(--radius-control);
+  background: var(--sun);
+  color: var(--on-brand);
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+.chart-legend[aria-label="Class"] {
+  padding-block: var(--space-2);
+  border-block: var(--line);
+}
+.chart-legend[aria-label="Class"] > li > span:last-child {
+  font-weight: var(--weight-semibold);
+}
+
 .busiest,
 .minute-list {
   list-style: none;
@@ -2193,30 +2444,70 @@ main:has([data-live-status="waiting"]) .question-room {
   font-weight: var(--weight-semibold);
 }
 
-/* Floating window inherits this sheet, including fonts and color scheme. */
+/* Floating window: the same palette and controls, sized for a glance. */
 .float-box {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-4);
+  padding: var(--space-3);
 }
-/* Explicit longhands survive CSSOM copying into Document Picture-in-Picture. */
+.float-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
 .float-count {
   margin: 0;
+}
+/* Explicit longhands survive CSSOM copying into Document Picture-in-Picture. */
+.float-big {
+  display: flex;
+  align-items: baseline;
+  margin: 0;
   font-family: var(--display);
-  font-weight: 650;
-  font-size: var(--text-2xl);
-  line-height: 1.15;
-  letter-spacing: -0.025em;
+  font-weight: 750;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.float-big strong {
+  min-width: 1.5em;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--sun);
+  color: var(--on-brand);
+  font-size: 2.75rem;
+  font-weight: inherit;
+  text-align: center;
+}
+.float-big.is-zero strong {
+  background: transparent;
+  color: var(--ink);
+}
+.float-words {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: var(--text-md);
+  font-weight: 650;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 .float-silence {
   margin: 0;
   color: var(--muted);
   font-size: var(--text-xs);
 }
+.float-trend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .float-chart {
-  height: 46px;
+  height: 40px;
   display: flex;
   align-items: flex-end;
   gap: 3px;
@@ -2279,15 +2570,99 @@ main:has([data-live-status="waiting"]) .question-room {
   color: var(--ink);
   background: var(--color-surface-subtle);
 }
-/* Direct status lines explain a refused hand or host action; mark results can also succeed. */
 .float-box > .float-said[role="status"]:not(:empty) {
   border-color: var(--color-error);
   color: var(--color-error);
   background: var(--color-error-soft);
 }
+/* This line also carries ordinary hand/class state; its words explain refusals. */
+.float-box > .float-said.float-hand[role="status"] {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+.float-ask summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1.4;
+  cursor: pointer;
+  list-style: none;
+}
+.float-ask summary::-webkit-details-marker {
+  display: none;
+}
+.float-ask summary:hover {
+  background: var(--color-surface-subtle);
+}
+.float-ask summary::after {
+  content: "+";
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+.float-ask[open] summary::after {
+  content: "\2212";
+}
+.float-ask form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.float-ask textarea {
+  flex: 1 1 100%;
+  min-height: 4rem;
+  padding: var(--space-2) var(--space-3);
+}
+/* A successful send clears the field; native validation still marks it on focus. */
+.float-ask textarea:placeholder-shown:not(:focus):not([aria-invalid="true"]) {
+  border: 1px solid var(--color-control-border);
+}
+.float-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: var(--line);
+  border-top: 3px solid var(--sun);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+.float-checkpoint h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: var(--text-md);
+  font-weight: 650;
+  line-height: 1.25;
+}
+.float-checkpoint p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.float-checkpoint .checkpoint-question {
+  padding-top: var(--space-2);
+  font-size: var(--text-sm);
+}
 .float-timeline .sitting {
   margin: 0;
-  padding: var(--space-4);
+  padding: var(--space-3);
   box-shadow: none;
 }
 .float-going-over {
@@ -2306,6 +2681,32 @@ main:has([data-live-status="waiting"]) .question-room {
   font-size: var(--text-xs);
   line-height: 1.4;
 }
+/* Compact windows keep the count and action, with their factual qualifications. */
+@media (max-height: 280px) {
+  .float-box .float-trend,
+  .float-box .float-silence,
+  .float-box .float-lifetime,
+  .float-box .float-ask,
+  .float-box .float-top,
+  .float-box .float-mark,
+  .float-box #float-going-over-note {
+    display: none;
+  }
+  .float-big strong {
+    padding-inline: var(--space-2);
+    font-size: var(--text-4xl);
+  }
+  .float-words {
+    font-size: var(--text-sm);
+  }
+  .float-box > .button {
+    min-height: var(--target-min);
+    font-size: var(--text-lg);
+  }
+  .float-box > .float-said.float-hand[role="status"] {
+    font-size: var(--text-xs);
+  }
+}
 
 /* Disabled wins over all variant, pressed, hover and active treatments. */
 button:disabled,
@@ -2318,13 +2719,23 @@ button:disabled,
 .lost-button[aria-pressed="true"]:disabled,
 .ask .button:disabled,
 .ask .button:disabled:hover,
-.ask .button:disabled:active {
+.ask .button:disabled:active,
+.float-ask .button:disabled,
+.float-ask .button:disabled:hover,
+.float-ask .button:disabled:active {
   background: var(--color-surface-subtle);
   border-color: var(--color-border);
   color: var(--muted);
   cursor: not-allowed;
   opacity: 1;
   box-shadow: none;
+}
+
+.lost-button:disabled,
+.lost-button:disabled:hover,
+.lost-button:disabled:active {
+  border-color: var(--color-control-border);
+  border-style: dashed;
 }
 
 /* Content-driven breakpoints: wide room, readable single-column pages. */
@@ -2771,213 +3182,4 @@ button:disabled,
   .live::before {
     background: CanvasText;
   }
-}
-
-/* Added on main since the last merge (class controls, the floating window, the
-   host's pause card and recap, a kept question); to be restyled in this system */
-
-/* the host's Start class / End class, where a student has their hand button */
-.hall-class {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.hall-class p {
-  margin: 0;
-}
-
-.lost-button:disabled {
-  opacity: 0.65;
-  cursor: default;
-  box-shadow: none;
-}
-
-/* the number first, large enough to read at a glance from the side of the
-   screen; the sentence beside it says the same with its denominator */
-.float-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.float-big {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-family: var(--display);
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.float-big strong {
-  min-width: 1em;
-  padding: 4px 10px;
-  border-radius: 12px;
-  background: var(--tomato);
-  color: var(--ink);
-  font-size: 44px;
-  text-align: center;
-}
-
-.float-big.is-zero strong {
-  padding: 4px 0;
-  background: none;
-}
-
-.float-words {
-  flex: 1 1 0;
-  min-width: 0;
-  margin: 0;
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 16px;
-  line-height: 1.2;
-}
-
-.float-trend {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.float-said.float-hand {
-  font-size: 13px;
-  color: var(--ink);
-}
-
-.float-ask summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.float-ask summary::after {
-  content: "+";
-  font-size: 22px;
-  line-height: 1;
-}
-
-.float-ask[open] summary::after {
-  content: "\2212";
-}
-
-.float-ask form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.float-ask textarea {
-  flex: 1 1 100%;
-  min-height: 56px;
-  box-sizing: border-box;
-  border: var(--line);
-  border-radius: 12px;
-  padding: 8px 10px;
-  font: inherit;
-  background: var(--card);
-  resize: vertical;
-}
-
-/* the host's: the hall's "At your next pause" card */
-.float-top {
-  margin: 0;
-  padding: 8px 10px;
-  border: var(--line);
-  border-radius: 12px;
-  background: var(--card);
-  font-size: 14px;
-  line-height: 1.3;
-}
-
-.float-checkpoint h3 {
-  margin: 0 0 4px;
-  font-size: 13px;
-}
-
-.float-checkpoint p {
-  margin: 0 0 4px;
-  overflow-wrap: anywhere;
-}
-
-.float-checkpoint[hidden] {
-  display: none;
-}
-
-/* the host's card on the hall: the part so far, for the next pause */
-.checkpoint {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
-  border: var(--line);
-  border-radius: 14px;
-  background: var(--field);
-}
-
-.checkpoint[hidden] {
-  display: none;
-}
-
-.checkpoint h3,
-.checkpoint p {
-  margin: 0;
-}
-
-.checkpoint h3 {
-  font-size: 17px;
-}
-
-.checkpoint-question a {
-  overflow-wrap: anywhere;
-}
-
-/* the class that ended: its minutes with the most hands up */
-.recap-list {
-  margin: 0;
-  padding-left: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.recap-list strong {
-  font-family: var(--display);
-}
-
-/* made small, the window keeps the number and the button */
-@media (max-height: 280px) {
-  .float-box .float-trend,
-  .float-box .float-silence,
-  .float-box .float-lifetime,
-  .float-box .float-ask,
-  .float-box .float-top,
-  .float-box .float-mark,
-  .float-box #float-going-over-note {
-    display: none;
-  }
-}
-
-/* a question not sent when this tab's sign-in changed, kept to copy (src/scripts/live.ts) */
-.kept-question p {
-  margin: 0;
-}
-
-.kept-question textarea {
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 6px;
-  border: var(--line);
-  border-radius: 12px;
-  padding: 8px 10px;
-  font: inherit;
-  background: var(--card);
 }
