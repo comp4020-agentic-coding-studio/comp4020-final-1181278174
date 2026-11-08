@@ -100,7 +100,7 @@ function watch(line: HTMLElement): void {
     document.dispatchEvent(new CustomEvent<Hall>("hands-up:hall", { detail: lastHall }));
   }
 
-  // how many states the stream has sent: a refresh it overtakes asks again
+  // how many states the stream has sent, to tell a reply the stream overtook
   let heard = 0;
   document.addEventListener("hands-up:board", (event) => {
     heard++;
@@ -164,27 +164,28 @@ function watch(line: HTMLElement): void {
 
   let refreshing = false;
   let refreshAgain = false;
-  let tries = 0;
   async function refreshOwn(): Promise<void> {
     if (refreshing || pressing) {
       refreshAgain = true;
       return;
     }
     refreshing = true;
-    tries = 0;
     try {
       do {
         refreshAgain = false;
         const began = revision;
         const since = heard;
         const room = await askServer();
-        if (pressing || began !== revision || (since !== heard && ++tries < 3)) {
+        if (pressing || began !== revision) {
           refreshAgain = true;
           if (pressing) return;
           continue;
         }
         if (room) {
-          takeRoom(room);
+          // The stream's hands are newer than a reply it overtook: take only
+          // this browser's own hand from that reply.
+          if (since === heard) takeRoom(room);
+          else mine = room.mine;
           doubt = false;
           render();
         }
