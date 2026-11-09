@@ -752,6 +752,20 @@ morning and brought onto main as it stood.
 - The host can look at the student's room ("Student view"); a student can't
   reach the lecturer's page. A tutorial's `/teach` leads to its tutorial room.
 
+### For markers
+
+Decided 9 November, 11:16.
+
+- The floating window stays light whatever the system's colour scheme: it sits
+  over slides and notes, and a dark box over them looked wrong.
+- The auditor's private key is published in `auditor/` so markers can try the
+  auditor's side; it is still kept out of the image and off the server. The
+  cost: anyone with a copy of the database could open who asked, and only
+  whoever runs the server has that copy.
+- Demo accounts and a lecture that has already run (code MARK) are on the live
+  app, so a marker sees the lecturer's recap, a report and the timeline without
+  running a class first. The accounts and password are in the README.
+
 ### Order of work, 8 November
 
 (Steps 1 to 7 were done that evening; step 8 is the last thing before the
