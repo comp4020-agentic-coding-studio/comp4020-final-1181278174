@@ -1,10 +1,11 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AUDIT_PUBLIC_KEY, newAuditKeys, open, seal } from "../src/lib/escrow.ts";
 
 // Who asked a question is sealed to the auditor's public key: the app can
 // write it and cannot read it back. These run the sealing itself, with a key
-// pair made for the test; the real private key is never in the repo.
+// pair made for the test, and with the auditor's key published for marking.
 const asked = { account: "acct-test-1", question: 41, session: "AB2C", body: "Why is δ less than 1?", at: 1_762_650_000_000 };
 
 describe("a sealed author", () => {
@@ -39,8 +40,10 @@ describe("a sealed author", () => {
     expect(() => open(JSON.stringify({ ...short, tag: four }), asked.question, keys.privateKeyPem)).toThrow();
   });
 
-  it("is sealed to the auditor's real public key, whose private key is in no file the repo tracks", () => {
-    expect(() => seal(asked)).not.toThrow();
+  it("is sealed to the auditor's public key, whose private key is published in auditor/ for marking and kept out of the image", () => {
+    // the published key opens what the app seals
+    const published = readFileSync("auditor/hands-up-audit-private-key.pem", "utf8");
+    expect(open(seal(asked), asked.question, published, asked.body).account).toBe(asked.account);
     let tracked = "";
     try {
       tracked = execFileSync("git", ["grep", "-l", "-e", "BEGIN PRIVATE KEY", "--", "."], { encoding: "utf8" }).trim();
@@ -48,8 +51,10 @@ describe("a sealed author", () => {
       // git grep exits with 1 when nothing matches
       if ((error as { status?: number }).status !== 1) throw error;
     }
-    // only this check names the marker it looks for
-    expect(tracked.split("\n").filter((file) => file && file !== "spec/escrow.test.ts")).toEqual([]);
+    // no other private key anywhere in the repo; only this check names the marker it looks for
+    expect(tracked.split("\n").filter((file) => file && file !== "spec/escrow.test.ts" && file !== "auditor/hands-up-audit-private-key.pem")).toEqual([]);
+    // and the image is built without it
+    expect(readFileSync(".dockerignore", "utf8").split("\n").map((line) => line.trim())).toContain("auditor");
     expect(AUDIT_PUBLIC_KEY).toMatch(/^[A-Za-z0-9+/]+=*$/);
   });
 });

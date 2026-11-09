@@ -1,9 +1,9 @@
 // Open the sealed author of one question, as the auditor, with a reason. The
-// private key stays with the auditor and is read from a file given here; the
-// app never has it. Every opening is written to the database's `reveals`
-// table first: which question, when, and why.
+// private key is read from a file given here; the app never has it. For
+// marking, it is published in `auditor/`. Every opening is written to the
+// database's `reveals` table first: which question, when, and why.
 //
-//   node scripts/reveal.ts --db hands-up.db --key ~/hands-up-audit-private-key.pem \
+//   node scripts/reveal.ts --db hands-up.db --key auditor/hands-up-audit-private-key.pem \
 //     --question 42 --reason "reported as a threat, case 2026-11-09-1"
 //
 // For the live app, take a backup first (`mise exec -- scripts/backup.sh`, which

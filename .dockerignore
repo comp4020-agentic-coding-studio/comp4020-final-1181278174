@@ -13,3 +13,6 @@ mise.local.toml
 .claude
 .astro
 .data
+
+# the auditor key is in the repo for marking, never in the image
+auditor
