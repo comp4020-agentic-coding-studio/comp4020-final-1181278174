@@ -762,9 +762,17 @@ Decided 9 November, 11:16.
   auditor's side; it is still kept out of the image and off the server. The
   cost: anyone with a copy of the database could open who asked, and only
   whoever runs the server has that copy.
-- Demo accounts and a lecture that has already run (code MARK) are on the live
-  app, so a marker sees the lecturer's recap, a report and the timeline without
-  running a class first. The accounts and password are in the README.
+- Demo accounts and lectures that have already run are on the live app, so a
+  marker sees the lecturer's recap, a report and the timeline without running
+  a class first. The accounts and password are in the README. HAND is the main
+  one (11:30): its host is now `marker-lecturer`, and it has three two-hour
+  lectures (2, 4 and 6 November) with four parts each, 40 student accounts and
+  ten more questions. MARK stays for trying Start class.
+- The timeline shows only the last five sittings, so short visits after the
+  last lecture pushed the lectures out of it. The test visits on HAND after
+  6 November were taken out (a copy is on the volume). A marker who comes back
+  many times will still push them out; to be decided whether the timeline
+  should keep every class.
 
 ### Order of work, 8 November
 
