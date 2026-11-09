@@ -770,9 +770,9 @@ Decided 9 November, 11:16.
   ten more questions. MARK stays for trying Start class.
 - The timeline shows only the last five sittings, so short visits after the
   last lecture pushed the lectures out of it. The test visits on HAND after
-  6 November were taken out (a copy is on the volume). A marker who comes back
-  many times will still push them out; to be decided whether the timeline
-  should keep every class.
+  6 November were taken out (a copy is on the volume). Since 11:45 the
+  timeline keeps every sitting, newest first, so later visits cannot push a
+  lecture out.
 
 ### Order of work, 8 November
 

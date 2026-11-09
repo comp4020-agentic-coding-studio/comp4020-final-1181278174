@@ -16,8 +16,6 @@ const MINUTE = 60_000;
 const CARRY_MINUTES = 2;
 // a quiet spell longer than this starts a new sitting: the next lecture, or the marker's second visit
 const GAP_MINUTES = 20;
-// how many sittings the timeline shows, newest first
-const SHOWN = 5;
 
 /** Who started a session: the host, whose hands the record never counts. */
 const hostOf = (sessionId: number): string | null =>
@@ -51,7 +49,7 @@ export type Minute = { at: Date; here: number; lost: number };
 export type Sitting = { from: Date; to: Date; minutes: Minute[]; most: number; mostLost: number };
 
 /** The newest sittings first, each minute by minute. `hereNow` is how many have it open at this moment. */
-export function sittings(sessionId: number, hereNow: number, now = Date.now(), limit = SHOWN): Sitting[] {
+export function sittings(sessionId: number, hereNow: number, now = Date.now(), limit = Infinity): Sitting[] {
   const rows = db.select().from(presence).where(eq(presence.sessionId, sessionId)).orderBy(asc(presence.minute)).all();
   // the host's own moments: Going over it, and each class's start and end
   const eventMinutes = [
