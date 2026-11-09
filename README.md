@@ -16,6 +16,21 @@ their identity to the class. Everyone sees the count; a question board adds
 
 [HAND](https://comp4020-final-1181278174.fly.dev/s/HAND) stays open for a quick look.
 
+## For markers
+
+A demo lecture that has already run is at code **MARK**. Every demo account's
+password is `watch-the-hall-2026`.
+
+- **Lecturer:** `marker-lecturer`. The lecturer's page shows the recap of a
+  48-minute class (the minutes most people were lost, with the part and the
+  minute in the recording), a reported question, and the timeline. Press
+  **Start class** to try a live class.
+- **Students:** `marker-student-1` to `marker-student-10`.
+- **Auditor:** the private key is published in
+  [`auditor/`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-1181278174/tree/main/auditor)
+  for marking. Run the app locally, ask a question, and open who asked with
+  `scripts/reveal.ts`.
+
 ## Why this design
 
 I hear fewer questions in lectures than tutorials. Fear of negative evaluation
@@ -45,8 +60,9 @@ attention on asking for help.
 - **Classroom anonymity with accountability.** Students and lecturers are not
   shown others' account identities. Students can report questions; lecturers
   can hide them. Hybrid public-key encryption (X25519 and AES-256-GCM) seals
-  authors: the server uses the public key to encrypt records; an auditor keeps
-  the matching private key off-server to decrypt them. The auditor's tool
+  authors: the server uses the public key to encrypt records, and the matching
+  private key never goes onto the server. For marking it is published in the
+  repository; in real use only an auditor would hold it. The auditor's tool
   records a reason before revealing an individual question's author.
   `spec/rules-privacy.test.ts` checks exposure; `spec/escrow.test.ts` checks
   decryption, wrong keys, tampering and mismatched questions.
@@ -78,9 +94,10 @@ desktop floating windows require a supported browser and the source tab open.
 
 Email verification and ANU email sign-in are unimplemented, so accounts do not
 verify identity or university membership. Operators can link activity to
-accounts; small groups may infer who signalled. Whoever holds the auditor's key
-can open any sealed author: the key itself needs no report and no recorded
-reason; only the tool asks for them
+accounts; small groups may infer who signalled. Because the auditor's key is
+published for marking, anyone with a copy of the database could open any sealed
+author, and only the server's operator has that copy. The key itself needs no
+report and no recorded reason; only the tool asks for them
 ([privacy details](https://comp4020-final-1181278174.fly.dev/privacy)).
 
 There has been no real-class trial. Improved participation, ease of use,
