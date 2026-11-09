@@ -232,6 +232,23 @@ describe("the host's marks and the recording", () => {
     expect(chartLabels).toEqual(expect.arrayContaining(["0", "4", ...range.map(text)]));
   });
 
+  it("gives each chart a zoom along time and a sliding window, left to the page's script", async () => {
+    const host = new Visitor();
+    const path = (await startSession(host, `Zoom ${tag()}`)).url.pathname;
+    await here(path);
+    const section = (await timeline(host, path)).doc.querySelector("section.sitting");
+    expect(section, "no sitting to zoom").not.toBeNull();
+    expect(section!.querySelector("[data-chart] [data-chart-view] .chart-plot"), "the chart has no view to zoom in").not.toBeNull();
+    const zoom = section!.querySelector("[data-chart-zoom]");
+    // hidden without the script: the chart then just fits the width
+    expect(zoom?.hasAttribute("hidden")).toBe(true);
+    const labels = [...zoom!.querySelectorAll("button")].map((button) => button.getAttribute("aria-label"));
+    expect(labels).toEqual(["Zoom out on time", "Zoom in on time", "Show the whole sitting"]);
+    const slider = zoom!.querySelector('[role="slider"]');
+    expect(slider?.getAttribute("aria-label")).toBe("The part of the sitting the chart shows");
+    expect(slider?.getAttribute("tabindex")).toBe("0");
+  });
+
   it("sends a fresh state to timeline readers after a mark or recording time is saved", async () => {
     const host = new Visitor();
     const path = (await startSession(host, `Updates ${tag()}`)).url.pathname;

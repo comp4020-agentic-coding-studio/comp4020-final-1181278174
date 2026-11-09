@@ -406,6 +406,11 @@ async function popTimeline(): Promise<void> {
     const copy = sitting ? win.document.importNode(sitting, true) : null;
     if (copy) {
       for (const detail of copy.querySelectorAll("details")) detail.open = opened.has(detail.id);
+      // the small window shows the whole sitting: no zoom and no sliding window
+      copy.querySelector("[data-chart-zoom]")?.remove();
+      const chart = copy.querySelector<HTMLElement>("[data-chart]");
+      chart?.style.removeProperty("--zoom");
+      if (chart) delete chart.dataset.zoomed;
     }
     const note = box.querySelector(".float-live");
     box.replaceChildren(...(note ? [note] : []), ...(copy ? [copy] : []));

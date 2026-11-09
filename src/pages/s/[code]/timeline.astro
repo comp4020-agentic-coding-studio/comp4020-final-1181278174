@@ -163,6 +163,8 @@ const busiest = (minutes: Minute[]): Minute[] =>
           const going = events.filter((event) => event.kind === "going");
           const lesson = events.filter((event) => event.kind === "class");
           const middle = Math.floor(s.minutes.length / 2);
+          // times along a zoomed axis: every 10 minutes on a long sitting, every 5 on a shorter one
+          const step = s.minutes.length > 60 ? 10 : 5;
           return (
             <section class="card sitting" aria-labelledby={id}>
               <h3 id={id}>
@@ -175,43 +177,71 @@ const busiest = (minutes: Minute[]): Minute[] =>
               </p>
               <p class="hint">Each bar is one minute. Height: how many said they were lost.</p>
               {/* Every minute is also written below, so screen readers can skip the drawing. */}
-              <div class="chart" aria-hidden="true" style={`--mark-rows: ${lanes.length}`}>
-                <div class="chart-plot">
-                  {scale > 1 && <span class="chart-guide" style={`bottom: ${Math.floor(scale / 2) / scale * 100}%`} />}
-                  <div class="chart-scale">
-                    <span style="bottom: 100%">{scale}</span>
-                    {scale > 1 && <span style={`bottom: ${Math.floor(scale / 2) / scale * 100}%`}>{Math.floor(scale / 2)}</span>}
-                    <span style="bottom: 0">0</span>
-                  </div>
-                  <div class="chart-bars" style={`gap: ${s.minutes.length > 120 ? 0 : s.minutes.length > 60 ? 1 : 2}px`}>
-                  {s.minutes.map((m) => (
-                    <span
-                      class={m.lost > 0 && m.lost === s.mostLost ? "chart-bar most" : "chart-bar"}
-                      style={`height: ${(m.lost / scale) * 100}%`}
-                      title={`${clock(m.at)}: ${about(m).join(", ")}`}
-                    />
-                  ))}
-                  </div>
-                  {marked.map((mk) => (
-                    <span class="chart-mark" title={`Mark ${mk.number}: ${mk.label}`} style={`left: clamp(1rem, ${mk.left}%, calc(100% - 1rem)); --lane: ${mk.lane}`}>
-                      <span>{mk.number}</span>
-                    </span>
-                  ))}
-                  {going.map((event) => (
-                    <span class="chart-mark going-mark" title="Going over it" style={`left: clamp(1rem, ${event.left}%, calc(100% - 1rem)); --lane: ${event.lane}`}>
-                      <span class="going-symbol">◇</span>
-                    </span>
-                  ))}
-                  {lesson.map((event) => (
-                    <span class="chart-mark class-mark" title={event.label} style={`left: clamp(1rem, ${event.left}%, calc(100% - 1rem)); --lane: ${event.lane}`}>
-                      <span class="class-symbol">{event.label === "Class started" ? "▸" : "■"}</span>
-                    </span>
-                  ))}
+              <div class="chart" aria-hidden="true" style={`--mark-rows: ${lanes.length}`} data-chart data-step={step}>
+                <div class="chart-scale">
+                  <span style="bottom: 100%">{scale}</span>
+                  {scale > 1 && <span style={`bottom: ${Math.floor(scale / 2) / scale * 100}%`}>{Math.floor(scale / 2)}</span>}
+                  <span style="bottom: 0">0</span>
                 </div>
-                <div class="chart-ticks">
-                  <span class="chart-start">{clock(s.from)}</span>
-                  {s.minutes.length >= 4 && <span style={`left: ${middle / s.minutes.length * 100}%`}>{clock(s.minutes[middle].at)}</span>}
-                  <span class="chart-end">{clock(s.to)}</span>
+                {/* zoomed in, only this part grows: the scale and the page stay put */}
+                <div class="chart-view" data-chart-view>
+                  <div class="chart-track">
+                    <div class="chart-plot">
+                      {scale > 1 && <span class="chart-guide" style={`bottom: ${Math.floor(scale / 2) / scale * 100}%`} />}
+                      <div class="chart-bars" style={`gap: ${s.minutes.length > 120 ? 0 : s.minutes.length > 60 ? 1 : 2}px`}>
+                      {s.minutes.map((m) => (
+                        <span
+                          class={m.lost > 0 && m.lost === s.mostLost ? "chart-bar most" : "chart-bar"}
+                          style={`height: ${(m.lost / scale) * 100}%`}
+                          title={`${clock(m.at)}: ${about(m).join(", ")}`}
+                        />
+                      ))}
+                      </div>
+                      {marked.map((mk) => (
+                        <span class="chart-mark" title={`Mark ${mk.number}: ${mk.label}`} style={`left: clamp(1rem, ${mk.left}%, calc(100% - 1rem)); --lane: ${mk.lane}`}>
+                          <span>{mk.number}</span>
+                        </span>
+                      ))}
+                      {going.map((event) => (
+                        <span class="chart-mark going-mark" title="Going over it" style={`left: clamp(1rem, ${event.left}%, calc(100% - 1rem)); --lane: ${event.lane}`}>
+                          <span class="going-symbol">◇</span>
+                        </span>
+                      ))}
+                      {lesson.map((event) => (
+                        <span class="chart-mark class-mark" title={event.label} style={`left: clamp(1rem, ${event.left}%, calc(100% - 1rem)); --lane: ${event.lane}`}>
+                          <span class="class-symbol">{event.label === "Class started" ? "▸" : "■"}</span>
+                        </span>
+                      ))}
+                    </div>
+                    <div class="chart-ticks">
+                      <span class="chart-start">{clock(s.from)}</span>
+                      {s.minutes.length >= 4 && <span class="chart-middle" style={`left: ${middle / s.minutes.length * 100}%`}>{clock(s.minutes[middle].at)}</span>}
+                      {/* more times along the axis, shown once the chart is zoomed in far enough to fit them */}
+                      {s.minutes.map((m, i) => i > 0 && i < s.minutes.length - 1 && (
+                        <span class={m.at.getMinutes() % step === 0 ? "chart-tick-more" : "chart-tick-fine"} style={`left: ${(i + 0.5) / s.minutes.length * 100}%`}>{clock(m.at)}</span>
+                      ))}
+                      <span class="chart-end">{clock(s.to)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* The sliding window: the whole sitting stays drawn small here, and the
+                  box shows which part the chart above is zoomed in on. Shown by
+                  src/scripts/chart-zoom.ts; without it the chart fits the width. */}
+              <div class="chart-zoom" data-chart-zoom hidden>
+                <div class="chart-overview" data-chart-overview>
+                  <div class="chart-overview-bars" aria-hidden="true">
+                    {s.minutes.map((m) => <span class={m.lost > 0 && m.lost === s.mostLost ? "most" : undefined} style={`height: ${(m.lost / scale) * 100}%`} />)}
+                  </div>
+                  <span class="chart-window" data-chart-window role="slider" tabindex="0" aria-label="The part of the sitting the chart shows" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext={`${clock(s.from)} to ${clock(s.to)}`}>
+                    <span class="chart-window-edge" data-edge="start" />
+                    <span class="chart-window-edge" data-edge="end" />
+                  </span>
+                </div>
+                <div class="chart-zoom-buttons">
+                  <button class="chart-zoom-button" type="button" data-zoom="out" aria-label="Zoom out on time" title="Zoom out">−</button>
+                  <button class="chart-zoom-button" type="button" data-zoom="in" aria-label="Zoom in on time" title="Zoom in (or Ctrl + scroll on the chart)">+</button>
+                  <button class="chart-zoom-button chart-zoom-fit" type="button" data-zoom="fit" aria-label="Show the whole sitting" title="Show the whole sitting">Fit</button>
                 </div>
               </div>
               {marked.length > 0 && (
@@ -329,6 +359,7 @@ const busiest = (minutes: Minute[]): Minute[] =>
       </main>
       <script>
         import "../../../scripts/timeline.ts";
+        import "../../../scripts/chart-zoom.ts";
         import "../../../scripts/float.ts";
       </script>
     </Layout>
