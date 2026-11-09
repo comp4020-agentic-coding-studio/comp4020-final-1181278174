@@ -18,14 +18,23 @@ their identity to the class. Everyone sees the count; a question board adds
 
 ## For markers
 
-A demo lecture that has already run is at code **MARK**. Every demo account's
-password is `watch-the-hall-2026`.
+The course code **HAND** is set up for marking. Every demo account's password
+is `watch-the-hall-2026`.
 
-- **Lecturer:** `marker-lecturer`. The lecturer's page shows the recap of a
-  48-minute class (the minutes most people were lost, with the part and the
-  minute in the recording), a reported question, and the timeline. Press
-  **Start class** to try a live class.
-- **Students:** `marker-student-1` to `marker-student-10`.
+- **Lecturer:** `marker-lecturer` hosts HAND. HAND has three two-hour lectures
+  that have already run (2, 4 and 6 November, 10:00 to 12:00), each with four
+  parts marked and one "Going over it". The lecturer's page shows the recap of
+  the last one (the minutes most people were lost, with the part and the minute
+  in the recording), questions with their Me too counts, a question two
+  students reported, and the timeline of the lectures.
+- **Students:** `marker-student-1` to `marker-student-40`. Sign in as one in a
+  second browser or a private window, press **I'm lost**, and watch the count
+  change on the lecturer's page, in the pop-out window and on the projector
+  page (`/s/HAND/present`). Ask a question or press Me too, and it shows up on
+  the lecturer's page.
+- **A class from the start:** code **MARK** has the same lecturer. Press
+  **Start class** and **End class** there to try a class without changing
+  HAND's record.
 - **Auditor:** the private key is published in
   [`auditor/`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-1181278174/tree/main/auditor)
   for marking. Run the app locally, ask a question, and open who asked with
