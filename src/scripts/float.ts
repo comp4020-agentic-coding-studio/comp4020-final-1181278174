@@ -70,10 +70,15 @@ function tell(button: HTMLButtonElement, text: string): void {
 function styled(win: Window): void {
   // the window reads in the page's language, for a screen reader too
   win.document.documentElement.lang = document.documentElement.lang;
+  // The small window stays light, whatever the system's colour scheme: it sits
+  // over slides and notes, and a dark box over them is hard to read past.
+  win.document.documentElement.style.colorScheme = "light";
+  const dark = (rule: CSSRule): boolean =>
+    rule instanceof CSSMediaRule && /prefers-color-scheme:\s*dark/.test(rule.conditionText);
   for (const sheet of document.styleSheets) {
     try {
       const style = win.document.createElement("style");
-      style.textContent = [...sheet.cssRules].map((rule) => rule.cssText).join("\n");
+      style.textContent = [...sheet.cssRules].filter((rule) => !dark(rule)).map((rule) => rule.cssText).join("\n");
       win.document.head.append(style);
     } catch {
       if (!sheet.href) continue;
