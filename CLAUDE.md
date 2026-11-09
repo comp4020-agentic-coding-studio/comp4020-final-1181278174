@@ -111,9 +111,12 @@ Bad: `Implement comprehensive anonymous voting system`
   page and change nothing. A username is shown to nobody but its owner.
 - Who asked is kept as a tag (`src/lib/tags.ts`) and as the author sealed to the
   auditor's public key (`src/lib/escrow.ts`): the app writes the sealed author and can't
-  read it back. The private key never enters the repo, the image or the server;
-  `spec/escrow.test.ts` checks the repo. Opening one is `scripts/reveal.ts`, by the
-  auditor, one question at a time, with a reason that is recorded first.
+  read it back. For marking, the private key is published in `auditor/`, so a marker
+  can open a sealed author on a local copy; it never goes into the image
+  (`.dockerignore`) or onto the server, and in real use it would stay with the auditor.
+  `spec/escrow.test.ts` checks that it opens what the app seals and stays out of the
+  image. Opening one is `scripts/reveal.ts`, one question at a time, with a reason
+  that is recorded first.
 
 ### The hall
 
